@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { FileSearch } from 'lucide-react';
 
 export default function RecordSupplierInvoiceForm() {
   const [pos, setPos] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   
   const [formData, setFormData] = useState({
     id: `INV-2026-${Math.floor(Math.random() * 10000)}`,
@@ -54,8 +56,46 @@ export default function RecordSupplierInvoiceForm() {
     }
   };
 
+  const simulateOCRScan = (e) => {
+    e.preventDefault();
+    setIsScanning(true);
+    // Simulate 2 seconds of AI processing
+    setTimeout(() => {
+      setIsScanning(false);
+      setFormData(prev => ({
+        ...prev,
+        invoice_date: new Date().toISOString().split('T')[0],
+        amount: 4500 // Mock extracted value
+      }));
+      alert('AI Scan Complete: Extracted Date and Amount from Supplier Invoice.');
+    }, 2000);
+  };
+
   return (
     <form onSubmit={handleSubmit}>
+      {/* AI OCR SCANNER MOCK */}
+      <div 
+        style={{ 
+          border: '2px dashed hsl(var(--warning))', 
+          borderRadius: 'var(--radius-md)', 
+          padding: '2rem', 
+          textAlign: 'center', 
+          marginBottom: '1.5rem',
+          background: isScanning ? 'hsla(var(--warning), 0.1)' : 'hsla(var(--warning), 0.02)',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+        onClick={simulateOCRScan}
+      >
+        <FileSearch size={32} style={{ color: 'hsl(var(--warning))', marginBottom: '0.5rem' }} />
+        <h4 style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--warning))' }}>
+          {isScanning ? 'Extracting Invoice Data via AI...' : 'Drag & Drop Supplier Invoice to Auto-Fill'}
+        </h4>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--text-secondary))' }}>
+          {isScanning ? 'Please wait...' : 'Supports PDF, JPG, PNG. Powered by TenderPro OCR.'}
+        </p>
+      </div>
+
       <div className="form-group">
         <label>Supplier Invoice Number</label>
         <input type="text" className="form-control" value={formData.id} disabled />

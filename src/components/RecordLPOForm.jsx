@@ -9,6 +9,7 @@ export default function RecordLPOForm() {
   const [formData, setFormData] = useState({
     id: `LPO-2026-${Math.floor(Math.random() * 10000)}`,
     tender_id: '',
+    client_reference: '',
     issue_date: '',
     due_date: ''
   })
@@ -89,6 +90,10 @@ export default function RecordLPOForm() {
             ))
           )}
         </select>
+      </div>
+      <div className="form-group">
+        <label>Client LPO Reference No. (Optional)</label>
+        <input type="text" className="form-control" placeholder="e.g., PO-456-XYZ" value={formData.client_reference} onChange={e => setFormData({...formData, client_reference: e.target.value})} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div className="form-group">

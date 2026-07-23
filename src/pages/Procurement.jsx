@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
+import { printElement } from '../utils/printHelper'
 import Drawer from '../components/Drawer'
 import RecordGRNForm from '../components/RecordGRNForm'
 import GenerateRFQForm from '../components/GenerateRFQForm'
+import { RoleContext } from '../App'
 
 export default function Procurement({ setGlobalDrawer }) {
+  const { currentRole } = useContext(RoleContext);
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('All')
   const [pos, setPos] = useState([])
   const [rfqs, setRfqs] = useState([])
   const [inventory, setInventory] = useState([])
+  const [requisitions, setRequisitions] = useState([])
   const [isGRNDrawerOpen, setGRNDrawerOpen] = useState(false)
   const [isRFQDrawerOpen, setRFQDrawerOpen] = useState(false)
   const [expandedRFQ, setExpandedRFQ] = useState(null)
   const [expandedPO, setExpandedPO] = useState(null)
 
-  const renderItems = (itemsString) => {
+  const renderItems = (itemsString, isRfq = false) => {
     if (!itemsString) return <span style={{ color: 'hsl(var(--text-secondary))' }}>No items listed.</span>;
     try {
       const items = typeof itemsString === 'string' ? JSON.parse(itemsString) : itemsString;
@@ -27,7 +31,8 @@ export default function Procurement({ setGlobalDrawer }) {
               <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left', fontSize: '0.875rem' }}>
                 <th style={{ padding: '0.5rem' }}>Description</th>
                 <th style={{ padding: '0.5rem' }}>Quantity</th>
-                <th style={{ padding: '0.5rem' }}>Details (Price/Unit)</th>
+                <th style={{ padding: '0.5rem' }}>{isRfq ? 'Quoted Unit Price' : 'Details (Price/Unit)'}</th>
+                {isRfq && <th style={{ padding: '0.5rem' }}>Quoted Total</th>}
               </tr>
             </thead>
             <tbody>
@@ -36,8 +41,13 @@ export default function Procurement({ setGlobalDrawer }) {
                   <td style={{ padding: '0.5rem' }}>{item.desc || item.description || item.name || '-'}</td>
                   <td style={{ padding: '0.5rem' }}>{item.qty || item.quantity || 1}</td>
                   <td style={{ padding: '0.5rem' }}>
-                    {item.unitPrice !== undefined ? `$${Number(item.unitPrice).toLocaleString()}` : (item.unit || '-')}
+                    {isRfq ? <div style={{ borderBottom: '1px dashed hsl(var(--border))', width: '100px', height: '20px' }} /> : (item.unitPrice !== undefined ? `$${Number(item.unitPrice).toLocaleString()}` : (item.unit || '-'))}
                   </td>
+                  {isRfq && (
+                    <td style={{ padding: '0.5rem' }}>
+                      <div style={{ borderBottom: '1px dashed hsl(var(--border))', width: '100px', height: '20px' }} />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -69,7 +79,61 @@ export default function Procurement({ setGlobalDrawer }) {
       .then(res => res.json())
       .then(data => setInventory(data))
       .catch(err => console.error("Could not fetch inventory:", err))
+
+    fetch('http://localhost:5000/api/stock_requisitions')
+      .then(res => res.json())
+      .then(data => setRequisitions(data))
+      .catch(err => console.error("Could not fetch requisitions:", err))
   }, [])
+
+  const handleApproveReq = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/stock_requisitions/${id}/approve`, { method: 'PUT' });
+      if (res.ok) {
+        alert('Requisition Approved! Stock deducted & Cost allocated.');
+        window.location.reload();
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Failed to approve');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRejectReq = async (id) => {
+    try {
+      await fetch(`http://localhost:5000/api/stock_requisitions/${id}/reject`, { method: 'PUT' });
+      alert('Requisition Rejected.');
+      window.location.reload();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleApprovePO = async (id) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/pos/${id}/approve`, { method: 'PUT' });
+      if (res.ok) {
+        alert('PO Approved & Dispatched!');
+        window.location.reload();
+      } else {
+        alert('Failed to approve PO');
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  const handleRejectPO = async (id) => {
+    try {
+      await fetch(`http://localhost:5000/api/pos/${id}/reject`, { method: 'PUT' });
+      alert('PO Rejected.');
+      window.location.reload();
+    } catch (e) { console.error(e); }
+  }
+
+  const handleDispatch = (po, method = 'Email & WhatsApp') => {
+    alert(`[SYSTEM DISPATCH]\n\nSending Purchase Order ${po.id} via ${method} to ${po.supplier_name}...\n\n✅ Sent Successfully!`);
+  }
 
   const filteredPOs = pos.filter(po => {
     const matchesSearch = po.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -142,6 +206,13 @@ export default function Procurement({ setGlobalDrawer }) {
                       </span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <button className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))' }} onClick={() => alert('Sending RFQ via Email...')} title="Email Suppliers">📧</button>
+                        <button className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))' }} onClick={() => alert('Sending RFQ via WhatsApp...')} title="WhatsApp Suppliers">💬</button>
+                      </div>
+                      <button className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--text-secondary), 0.1)', color: 'hsl(var(--text-primary))' }} onClick={() => { setExpandedRFQ(rfq.id); printElement('.print-only', 'RFQ'); }} title="Print / Download PDF">
+                        🖨️
+                      </button>
                       <button 
                         className="btn" 
                         onClick={() => setExpandedRFQ(expandedRFQ === rfq.id ? null : rfq.id)} 
@@ -161,9 +232,30 @@ export default function Procurement({ setGlobalDrawer }) {
                     </td>
                   </tr>
                   {expandedRFQ === rfq.id && (
-                    <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                      <td colSpan="6" style={{ padding: 0 }}>
-                        {renderItems(rfq.items)}
+                    <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
+                      <td colSpan="6" style={{ padding: '1rem' }}>
+                        <div className="print-only" style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                          <h2 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Request for Quotation: {rfq.id}</h2>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                            <div>
+                              <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Tender Reference</p>
+                              <strong style={{ fontSize: '1rem' }}>{rfq.tender_name || 'N/A'}</strong>
+                            </div>
+                            <div>
+                              <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Submission Deadline</p>
+                              <strong style={{ fontSize: '1rem' }}>{new Date(rfq.deadline).toLocaleDateString()}</strong>
+                            </div>
+                            <div>
+                              <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Client References</p>
+                              <strong style={{ fontSize: '0.875rem', color: 'hsl(var(--primary))' }}>
+                                {rfq.tender_client_reference ? `Tender: ${rfq.tender_client_reference}` : 'No Tender Ref'}
+                                <br />
+                                {rfq.lpo_client_reference ? `LPO: ${rfq.lpo_client_reference}` : 'No LPO Ref'}
+                              </strong>
+                            </div>
+                          </div>
+                          {renderItems(rfq.items, true)}
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -177,9 +269,9 @@ export default function Procurement({ setGlobalDrawer }) {
           </table>
         </div>
 
-        <div style={{ display: 'flex', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: '1.5rem', flexDirection: 'column' }}>
           {/* PO Tracking Table */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden', flex: 2 }}>
+          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <div>
@@ -229,9 +321,28 @@ export default function Procurement({ setGlobalDrawer }) {
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'right' }}>${po.total_value.toLocaleString()}</td>
                     <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <span className={`badge ${po.status === 'Delivered' ? 'badge-success' : po.status === 'Awaiting Approval' ? 'badge-danger' : 'badge-warning'}`}>
+                      <span className={`badge ${po.status === 'Delivered' ? 'badge-success' : po.status === 'Awaiting Approval' ? 'badge-danger' : po.status === 'Rejected' ? 'badge-danger' : 'badge-warning'}`}>
                         {po.status}
                       </span>
+                      
+                      {po.status === 'Awaiting Approval' && currentRole !== 'Staff' && (
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <button className="btn btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleApprovePO(po.id)}>Approve</button>
+                          <button className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--danger), 0.1)', color: 'hsl(var(--danger))' }} onClick={() => handleRejectPO(po.id)}>Reject</button>
+                        </div>
+                      )}
+                      
+                      {po.status === 'Pending Delivery' && (
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <button className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))' }} onClick={() => handleDispatch(po, 'Email')} title="Email Supplier">📧</button>
+                          <button className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))' }} onClick={() => handleDispatch(po, 'WhatsApp')} title="WhatsApp Supplier">💬</button>
+                        </div>
+                      )}
+
+                      <button className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--text-secondary), 0.1)', color: 'hsl(var(--text-primary))' }} onClick={() => { setExpandedPO(po.id); printElement('.print-only', 'PO'); }} title="Print / Download PDF">
+                        🖨️
+                      </button>
+
                       <button 
                         className="btn" 
                         onClick={() => setExpandedPO(expandedPO === po.id ? null : po.id)} 
@@ -242,9 +353,30 @@ export default function Procurement({ setGlobalDrawer }) {
                     </td>
                   </tr>
                   {expandedPO === po.id && (
-                    <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                      <td colSpan="5" style={{ padding: 0 }}>
-                        {renderItems(po.items)}
+                    <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
+                      <td colSpan="5" style={{ padding: '1rem' }}>
+                        <div className="print-only" style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                          <h2 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Purchase Order: {po.id}</h2>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                            <div>
+                              <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Supplier Details</p>
+                              <strong style={{ fontSize: '1rem' }}>{po.supplier_name}</strong>
+                            </div>
+                            <div>
+                              <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Tender / Project</p>
+                              <strong style={{ fontSize: '1rem' }}>{po.tender_name || 'N/A'}</strong>
+                            </div>
+                            <div>
+                              <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Expected Delivery Date</p>
+                              <strong style={{ fontSize: '1rem' }}>{po.expected_date}</strong>
+                            </div>
+                            <div>
+                              <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Total Order Value</p>
+                              <strong style={{ fontSize: '1rem' }}>${Number(po.total_value).toLocaleString()}</strong>
+                            </div>
+                          </div>
+                          {renderItems(po.items)}
+                        </div>
                       </td>
                     </tr>
                   )}
@@ -256,29 +388,75 @@ export default function Procurement({ setGlobalDrawer }) {
               )}
             </tbody>
           </table>
-        </div>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
+            {/* Inventory Quick View */}
+            <div className="card">
+              <h3>Live Inventory</h3>
+              <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginBottom: '1rem' }}>Updated by GRNs (In) and Requisitions (Out).</p>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <tbody>
+                  {inventory.length === 0 ? (
+                    <tr><td style={{ color: 'hsl(var(--text-secondary))', textAlign: 'center', padding: '1rem' }}>Inventory is empty. Awaiting GRNs.</td></tr>
+                  ) : inventory.map((item, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
+                      <td style={{ padding: '0.75rem 0' }}>{item.item_name}</td>
+                      <td style={{ padding: '0.75rem 0', textAlign: 'right', fontWeight: 'bold' }}>
+                        {item.quantity} {item.unit}
+                        {item.quantity < 10 && <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'hsl(var(--danger))' }}>⚠️ Low</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-        {/* Inventory Quick View */}
-        <div className="card" style={{ flex: 1 }}>
-          <h3>Live Inventory Engine</h3>
-          <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginBottom: '1rem' }}>Automatically updated by Goods Receipt Notes (GRNs).</p>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <tbody>
-              {inventory.length === 0 ? (
-                <tr><td style={{ color: 'hsl(var(--text-secondary))', textAlign: 'center', padding: '1rem' }}>Inventory is empty. Awaiting GRNs.</td></tr>
-              ) : inventory.map((item, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
-                  <td style={{ padding: '0.75rem 0' }}>{item.item_name}</td>
-                  <td style={{ padding: '0.75rem 0', textAlign: 'right', fontWeight: 'bold' }}>
-                    {item.quantity} {item.unit}
-                    {item.quantity < 10 && <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'hsl(var(--danger))' }}>⚠️ Low</span>}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
+            {/* Stock Requisitions */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
+                <h3 style={{ margin: 0 }}>Stock Requisitions (Outflow)</h3>
+                <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginTop: '0.25rem' }}>Staff requests to issue materials to projects.</p>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: 'hsla(var(--border), 0.3)', textAlign: 'left', fontSize: '0.875rem' }}>
+                    <th style={{ padding: '1rem' }}>ID</th>
+                    <th style={{ padding: '1rem' }}>Project</th>
+                    <th style={{ padding: '1rem' }}>Item</th>
+                    <th style={{ padding: '1rem' }}>Qty</th>
+                    <th style={{ padding: '1rem' }}>Status</th>
+                    <th style={{ padding: '1rem', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {requisitions.length === 0 ? (
+                    <tr><td colSpan="6" style={{ padding: '1rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No requisitions found.</td></tr>
+                  ) : requisitions.map((req, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid hsl(var(--border))', fontSize: '0.875rem' }}>
+                      <td style={{ padding: '1rem' }}>{req.id}</td>
+                      <td style={{ padding: '1rem', color: 'hsl(var(--primary))' }}>{req.tender_name || req.tender_id}</td>
+                      <td style={{ padding: '1rem' }}>{req.item_name}</td>
+                      <td style={{ padding: '1rem', fontWeight: 'bold' }}>{req.quantity}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span className={`badge ${req.status === 'Approved' ? 'badge-success' : req.status === 'Rejected' ? 'badge-danger' : 'badge-warning'}`}>
+                          {req.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '1rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        {req.status === 'Pending' && (
+                          <>
+                            <button className="btn btn-primary" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }} onClick={() => handleApproveReq(req.id)}>Approve</button>
+                            <button className="btn" style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--danger), 0.1)', color: 'hsl(var(--danger))' }} onClick={() => handleRejectReq(req.id)}>Reject</button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 

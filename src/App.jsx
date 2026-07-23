@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, createContext, useContext } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, FileText, Truck, ShoppingCart, Landmark, Menu, Inbox, Search, Bell, HelpCircle, ShieldAlert, LogOut, User } from 'lucide-react'
 
@@ -6,12 +6,20 @@ import Dashboard from './pages/Dashboard'
 import Tenders from './pages/Tenders'
 import Procurement from './pages/Procurement'
 import Finances from './pages/Finances'
+import CorporateHub from './pages/CorporateHub'
 import Drawer from './components/Drawer'
 import NewClientForm from './components/NewClientForm'
 import NewSupplierForm from './components/NewSupplierForm'
 import NewTenderForm from './components/NewTenderForm'
 import RecordTransactionForm from './components/RecordTransactionForm'
 import NewPurchaseOrderForm from './components/NewPurchaseOrderForm'
+import UploadDocumentForm from './components/UploadDocumentForm'
+import InviteUserForm from './components/InviteUserForm'
+import BankAccountForm from './components/BankAccountForm'
+import ApprovalWorkflowForm from './components/ApprovalWorkflowForm'
+import LegalContractForm from './components/LegalContractForm'
+
+export const RoleContext = createContext();
 
 const Sidebar = () => {
   return (
@@ -37,12 +45,17 @@ const Sidebar = () => {
           <Landmark size={20} />
           Finance
         </NavLink>
+        <NavLink to="/corporate" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+          <ShieldAlert size={20} />
+          Corporate Hub
+        </NavLink>
       </nav>
     </aside>
   )
 }
 
 const Topbar = ({ setGlobalDrawer }) => {
+  const { currentRole, setCurrentRole } = useContext(RoleContext);
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -53,6 +66,7 @@ const Topbar = ({ setGlobalDrawer }) => {
       case '/tenders': return 'Tenders & Projects'
       case '/procurement': return 'Procurement & Inventory'
       case '/finances': return 'Finance'
+      case '/corporate': return 'Corporate Management & Admin'
       default: return 'TenderPro'
     }
   }
@@ -62,6 +76,20 @@ const Topbar = ({ setGlobalDrawer }) => {
       <h2>{getPageTitle(location.pathname)}</h2>
       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
         
+        {/* Role Simulator Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'hsla(var(--primary), 0.1)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-md)' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>Simulate Role:</span>
+          <select 
+            value={currentRole} 
+            onChange={(e) => setCurrentRole(e.target.value)}
+            style={{ fontSize: '0.75rem', background: 'transparent', border: 'none', color: 'hsl(var(--text-primary))', fontWeight: '600', cursor: 'pointer', outline: 'none' }}
+          >
+            <option value="Admin">Administrator</option>
+            <option value="Manager">Finance/Procurement Manager</option>
+            <option value="Staff">Junior Staff (Maker)</option>
+          </select>
+        </div>
+
         {/* Global Utilities - Hover Dropdown */}
         <div 
           style={{ position: 'relative' }}
@@ -82,9 +110,6 @@ const Topbar = ({ setGlobalDrawer }) => {
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('inbox'); setMenuOpen(false); }}><Inbox size={18}/> My Inbox (2 Pending)</button>
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('search'); setMenuOpen(false); }}><Search size={18}/> Global Search</button>
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('notifications'); setMenuOpen(false); }}><Bell size={18}/> Notifications (5 New)</button>
-                <div style={{ height: '1px', background: 'hsl(var(--border))', margin: '0.25rem 0' }} />
-                <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('new_client'); setMenuOpen(false); }}><User size={18}/> Add Client (CRM)</button>
-                <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('new_supplier'); setMenuOpen(false); }}><Truck size={18}/> Add Supplier (Vendor)</button>
                 <div style={{ height: '1px', background: 'hsl(var(--border))', margin: '0.25rem 0' }} />
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('help'); setMenuOpen(false); }}><HelpCircle size={18}/> Contextual Help / SOPs</button>
               </div>
@@ -110,7 +135,6 @@ const Topbar = ({ setGlobalDrawer }) => {
                   <p style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))' }}>Administrator</p>
                 </div>
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('profile'); setProfileOpen(false); }}><User size={18}/> Edit Profile</button>
-                <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('roles'); setProfileOpen(false); }}><ShieldAlert size={18}/> Roles & Permissions</button>
                 <div style={{ height: '1px', background: 'hsl(var(--border))', margin: '0.25rem 0' }} />
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--danger))' }} onClick={() => alert('Logging out...')}><LogOut size={18}/> Log Out</button>
               </div>
@@ -124,17 +148,21 @@ const Topbar = ({ setGlobalDrawer }) => {
 
 function App() {
   const [globalDrawer, setGlobalDrawer] = useState(null)
+  const [currentRole, setCurrentRole] = useState('Admin')
+
   return (
-    <div className="app-container">
-      <Sidebar />
-      <main className="main-content">
-        <Topbar setGlobalDrawer={setGlobalDrawer} />
-        <div className="page-container">
+    <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
+      <div className="app-container">
+        <Sidebar />
+        <main className="main-content">
+          <Topbar setGlobalDrawer={setGlobalDrawer} />
+          <div className="page-container">
           <Routes>
             <Route path="/" element={<Dashboard setGlobalDrawer={setGlobalDrawer} />} />
             <Route path="/tenders" element={<Tenders setGlobalDrawer={setGlobalDrawer} />} />
             <Route path="/procurement" element={<Procurement setGlobalDrawer={setGlobalDrawer} />} />
             <Route path="/finances" element={<Finances setGlobalDrawer={setGlobalDrawer} />} />
+            <Route path="/corporate" element={<CorporateHub setGlobalDrawer={setGlobalDrawer} />} />
           </Routes>
         </div>
       </main>
@@ -154,6 +182,26 @@ function App() {
 
       <Drawer isOpen={globalDrawer === 'new_po'} onClose={() => setGlobalDrawer(null)} title="Raise Purchase Order" width="800px">
         <NewPurchaseOrderForm />
+      </Drawer>
+
+      <Drawer isOpen={globalDrawer === 'upload_document'} onClose={() => setGlobalDrawer(null)} title="Upload Corporate Document">
+        <UploadDocumentForm onSuccess={() => setGlobalDrawer(null)} />
+      </Drawer>
+
+      <Drawer isOpen={globalDrawer === 'invite_user'} onClose={() => setGlobalDrawer(null)} title="Invite User to System">
+        <InviteUserForm onSuccess={() => setGlobalDrawer(null)} />
+      </Drawer>
+
+      <Drawer isOpen={globalDrawer === 'bank_account'} onClose={() => setGlobalDrawer(null)} title="Add Bank Account">
+        <BankAccountForm onSuccess={() => setGlobalDrawer(null)} />
+      </Drawer>
+
+      <Drawer isOpen={globalDrawer === 'approval_workflow'} onClose={() => setGlobalDrawer(null)} title="Create Approval Rule">
+        <ApprovalWorkflowForm onSuccess={() => setGlobalDrawer(null)} />
+      </Drawer>
+
+      <Drawer isOpen={globalDrawer === 'legal_contract'} onClose={() => setGlobalDrawer(null)} title="Log Legal Contract">
+        <LegalContractForm onSuccess={() => setGlobalDrawer(null)} />
       </Drawer>
 
       <Drawer isOpen={globalDrawer === 'transaction'} onClose={() => setGlobalDrawer(null)} title="Record Transaction" onSubmit={() => { setGlobalDrawer(null) }} width="800px">
@@ -212,7 +260,8 @@ function App() {
         </div>
       </Drawer>
 
-    </div>
+      </div>
+    </RoleContext.Provider>
   )
 }
 

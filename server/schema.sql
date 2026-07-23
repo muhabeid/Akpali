@@ -1,4 +1,78 @@
 -- Master Data Tables
+CREATE TABLE IF NOT EXISTS company_profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1), -- Enforce single row
+    legal_name TEXT DEFAULT 'Akpali & Co.',
+    registration_num TEXT,
+    tax_pin TEXT,
+    email TEXT,
+    phone TEXT,
+    address TEXT,
+    logo_url TEXT,
+    base_currency TEXT DEFAULT 'USD',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS system_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1), -- Enforce single row
+    smtp_host TEXT,
+    smtp_port TEXT,
+    smtp_user TEXT,
+    smtp_pass TEXT,
+    wa_token TEXT,
+    wa_phone_id TEXT,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS document_templates (
+    id TEXT PRIMARY KEY, -- E.g. 'GLOBAL', 'SQ', 'LPO', 'PO', 'DELIVERY', 'LETTERHEAD'
+    header_logo_url TEXT,
+    header_text TEXT,
+    footer_text TEXT,
+    terms_conditions_text TEXT,
+    primary_color TEXT DEFAULT '#0f172a',
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS approval_workflows (
+    id TEXT PRIMARY KEY,
+    module_name TEXT NOT NULL,
+    maker_role TEXT NOT NULL,
+    checker_role TEXT NOT NULL,
+    threshold_amount REAL DEFAULT 0.00,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS legal_contracts (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    party_name TEXT NOT NULL,
+    contract_type TEXT NOT NULL,
+    start_date TEXT,
+    end_date TEXT,
+    status TEXT DEFAULT 'Active',
+    file_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS company_documents (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    document_type TEXT,
+    expiry_date TEXT,
+    status TEXT DEFAULT 'Active',
+    file_path TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    role TEXT DEFAULT 'Staff',
+    status TEXT DEFAULT 'Active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS clients (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -32,6 +106,8 @@ CREATE TABLE IF NOT EXISTS tenders (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     client_id TEXT REFERENCES clients(id),
+    client_name TEXT,
+    client_reference TEXT,
     category TEXT NOT NULL CHECK(category IN ('Supply of goods', 'Provision of services', 'Construction works', 'Mixed contracts')),
     contract_value REAL DEFAULT 0.00,
     status TEXT DEFAULT 'Active' CHECK(status IN ('Draft', 'Active', 'On Hold', 'Completed', 'Cancelled')),
@@ -45,9 +121,21 @@ CREATE TABLE IF NOT EXISTS tenders (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS sales_quotes (
+    id TEXT PRIMARY KEY,
+    tender_id TEXT REFERENCES tenders(id) ON DELETE CASCADE,
+    issue_date TEXT,
+    total_value REAL DEFAULT 0.00,
+    items TEXT, -- JSON string of line items
+    status TEXT DEFAULT 'Sent' CHECK(status IN ('Sent', 'Accepted', 'Rejected')),
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS client_lpos (
     id TEXT PRIMARY KEY,
     tender_id TEXT REFERENCES tenders(id) ON DELETE CASCADE,
+    client_reference TEXT,
     issue_date TEXT,
     due_date TEXT,
     total_value REAL DEFAULT 0.00,
@@ -101,6 +189,17 @@ CREATE TABLE IF NOT EXISTS inventory (
     last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS stock_requisitions (
+    id TEXT PRIMARY KEY,
+    tender_id TEXT REFERENCES tenders(id),
+    item_name TEXT REFERENCES inventory(item_name),
+    quantity REAL NOT NULL,
+    status TEXT DEFAULT 'Pending' CHECK(status IN ('Pending', 'Approved', 'Rejected')),
+    request_date TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS supplier_invoices (
     id TEXT PRIMARY KEY,
     po_id TEXT REFERENCES purchase_orders(id) ON DELETE CASCADE,
@@ -128,6 +227,7 @@ CREATE TABLE IF NOT EXISTS deliverables (
     id TEXT PRIMARY KEY,
     tender_id TEXT REFERENCES tenders(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
+    items TEXT, -- JSON string of line items
     type TEXT NOT NULL CHECK(type IN ('Goods', 'Service', 'Construction')),
     billing_method TEXT NOT NULL,
     planned_date TEXT,
@@ -236,6 +336,25 @@ BEGIN
     SET 
         total_cost = total_cost + NEW.total_value,
         profit = total_revenue - (total_cost + NEW.total_value),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = NEW.tender_id;
+END;
+
+-- 5. When a Stock Requisition is approved, deduct inventory and add cost to Tender
+CREATE TRIGGER IF NOT EXISTS after_stock_requisition_update
+AFTER UPDATE OF status ON stock_requisitions
+WHEN NEW.status = 'Approved' AND OLD.status != 'Approved'
+BEGIN
+    -- Deduct from inventory
+    UPDATE inventory 
+    SET quantity = quantity - NEW.quantity, last_updated = CURRENT_TIMESTAMP
+    WHERE item_name = NEW.item_name;
+
+    -- Add cost to tender
+    UPDATE tenders
+    SET 
+        total_cost = total_cost + (NEW.quantity * (SELECT avg_unit_cost FROM inventory WHERE item_name = NEW.item_name)),
+        profit = total_revenue - (total_cost + (NEW.quantity * (SELECT avg_unit_cost FROM inventory WHERE item_name = NEW.item_name))),
         updated_at = CURRENT_TIMESTAMP
     WHERE id = NEW.tender_id;
 END;

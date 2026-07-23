@@ -5,6 +5,7 @@ export default function NewTenderForm() {
     id: `TND-${Math.floor(Math.random() * 1000)}`,
     name: '',
     client: '',
+    client_reference: '',
     category: '',
     contract_value: ''
   });
@@ -55,6 +56,10 @@ export default function NewTenderForm() {
           <option>Athi Water Works</option>
           <option>TechCorp</option>
         </select>
+      </div>
+      <div className="form-group">
+        <label>Client Tender Reference No. (Optional)</label>
+        <input type="text" className="form-control" placeholder="e.g., REF-2026-99A" value={formData.client_reference} onChange={e => setFormData({...formData, client_reference: e.target.value})} />
       </div>
       <div className="form-group">
         <label>Tender Category</label>

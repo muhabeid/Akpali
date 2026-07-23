@@ -11,6 +11,7 @@ export default function NewDeliverableForm() {
     planned_date: '',
     due_date: ''
   })
+  const [items, setItems] = useState([{ desc: '', qty: 1 }])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -20,6 +21,21 @@ export default function NewDeliverableForm() {
       .catch(err => console.error("Could not fetch tenders:", err))
   }, [])
 
+  const handleAddItem = () => {
+    setItems([...items, { desc: '', qty: 1 }])
+  }
+
+  const handleItemChange = (index, field, value) => {
+    const newItems = [...items]
+    newItems[index][field] = value
+    setItems(newItems)
+  }
+
+  const handleRemoveItem = (index) => {
+    const newItems = items.filter((_, i) => i !== index)
+    setItems(newItems)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.tender_id) {
@@ -28,12 +44,18 @@ export default function NewDeliverableForm() {
     }
 
     setIsSubmitting(true);
+    
+    // Only send items if type is Goods
+    const payload = { ...formData };
+    if (formData.type === 'Goods') {
+      payload.items = JSON.stringify(items);
+    }
 
     try {
       const res = await fetch('http://localhost:5000/api/deliverables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
 
       if (res.ok) {
@@ -50,13 +72,10 @@ export default function NewDeliverableForm() {
     }
   }
 
+  const selectedTender = tenders.find(t => t.id === formData.tender_id);
+
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div className="form-group">
-        <label>Deliverable ID (Auto-Generated)</label>
-        <input type="text" className="form-control" value={formData.id} disabled />
-      </div>
-      
       <div className="form-group">
         <label>Parent Tender</label>
         <select className="form-control" required value={formData.tender_id} onChange={e => setFormData({...formData, tender_id: e.target.value})}>
@@ -65,14 +84,19 @@ export default function NewDeliverableForm() {
             <option disabled>No tenders found in database</option>
           ) : (
             tenders.map(t => (
-              <option key={t.id} value={t.id}>{t.id} - {t.name}</option>
+              <option key={t.id} value={t.id}>{t.name} ({t.id})</option>
             ))
           )}
         </select>
+        {selectedTender && (
+          <small style={{ color: 'hsl(var(--primary))', marginTop: '0.25rem', display: 'block' }}>
+            <strong>Client:</strong> {selectedTender.client}
+          </small>
+        )}
       </div>
 
       <div className="form-group">
-        <label>Description</label>
+        <label>Deliverable Title / Description</label>
         <input type="text" className="form-control" placeholder="e.g. Supply of 500 Laptops" required value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
       </div>
 
@@ -98,6 +122,24 @@ export default function NewDeliverableForm() {
           </select>
         </div>
       </div>
+
+      {formData.type === 'Goods' && (
+        <div className="form-group">
+          <label>Goods to Supply (Items List)</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'hsla(var(--border), 0.2)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+            {items.map((item, index) => (
+              <div key={index} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr auto', gap: '0.5rem', alignItems: 'center' }}>
+                <input type="text" className="form-control" placeholder="Item Description" value={item.desc} onChange={e => handleItemChange(index, 'desc', e.target.value)} required />
+                <input type="number" className="form-control" placeholder="Qty" value={item.qty} onChange={e => handleItemChange(index, 'qty', e.target.value)} min="1" required />
+                {items.length > 1 && (
+                  <button type="button" className="btn" style={{ background: 'hsla(var(--danger), 0.1)', color: 'hsl(var(--danger))', padding: '0.5rem' }} onClick={() => handleRemoveItem(index)}>X</button>
+                )}
+              </div>
+            ))}
+            <button type="button" className="btn" onClick={handleAddItem} style={{ marginTop: '0.5rem', alignSelf: 'flex-start' }}>+ Add Item</button>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div className="form-group">

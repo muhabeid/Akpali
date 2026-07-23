@@ -1,13 +1,56 @@
 import React, { useState, useEffect } from 'react'
+import { printElement } from '../utils/printHelper'
 
 export default function Tenders({ setGlobalDrawer }) {
   const [selectedTender, setSelectedTender] = useState(null)
   const [expandedDeliverable, setExpandedDeliverable] = useState(null)
+  const [expandedLPO, setExpandedLPO] = useState(null)
+  const [expandedSQ, setExpandedSQ] = useState(null)
   const [tenders, setTenders] = useState([])
   const [loading, setLoading] = useState(true)
   const [usingMockData, setUsingMockData] = useState(false)
 
-
+  const renderItems = (itemsString) => {
+    if (!itemsString) return <span style={{ color: 'hsl(var(--text-secondary))' }}>No items listed.</span>;
+    try {
+      const items = typeof itemsString === 'string' ? JSON.parse(itemsString) : itemsString;
+      if (!Array.isArray(items)) throw new Error('Not an array');
+      if (items.length === 0) return <span style={{ color: 'hsl(var(--text-secondary))' }}>No items listed.</span>;
+      
+      return (
+        <div style={{ padding: '1rem', background: 'hsla(var(--border), 0.1)', borderLeft: '4px solid hsl(var(--primary))' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', textTransform: 'uppercase', color: 'hsl(var(--text-secondary))' }}>Document Contents</h4>
+          
+          <div style={{ width: '100%', display: 'flex', flexDirection: 'column', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-sm)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', background: 'hsla(var(--border), 0.2)', borderBottom: '2px solid hsl(var(--border))', fontWeight: 'bold', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0.75rem' }}>Description</div>
+              <div style={{ padding: '0.75rem' }}>Quantity</div>
+              <div style={{ padding: '0.75rem' }}>Details (Price/Unit)</div>
+            </div>
+            
+            {items.map((item, idx) => (
+              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', borderBottom: idx === items.length - 1 ? 'none' : '1px solid hsl(var(--border))', fontSize: '0.875rem' }}>
+                <div style={{ padding: '0.75rem' }}>{item.desc || item.description || item.name || '-'}</div>
+                <div style={{ padding: '0.75rem' }}>{item.qty || item.quantity || 1}</div>
+                <div style={{ padding: '0.75rem' }}>
+                  {item.unitPrice !== undefined ? `$${Number(item.unitPrice).toLocaleString()}` : (item.unit || '-')}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    } catch(e) {
+      return (
+        <div style={{ padding: '1rem', background: 'hsla(var(--border), 0.2)', borderLeft: '4px solid hsl(var(--danger))' }}>
+          <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', textTransform: 'uppercase', color: 'hsl(var(--danger))' }}>Raw Contents</h4>
+          <pre style={{ fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+            {typeof itemsString === 'object' ? JSON.stringify(itemsString, null, 2) : String(itemsString)}
+          </pre>
+        </div>
+      );
+    }
+  }
 
   useEffect(() => {
     fetch('http://localhost:5000/api/tenders')
@@ -36,11 +79,17 @@ export default function Tenders({ setGlobalDrawer }) {
               ← Back to Tenders
             </button>
             <h2>{selectedTender.name}</h2>
-            <p style={{ color: 'hsl(var(--text-secondary))' }}>{selectedTender.id} | Client: {selectedTender.client}</p>
+            <p style={{ color: 'hsl(var(--text-secondary))' }}>
+              {selectedTender.id} {selectedTender.client_reference ? <span style={{ color: 'hsl(var(--primary))' }}>(Ref: {selectedTender.client_reference})</span> : ''} | Client: {selectedTender.client}
+            </p>
           </div>
-          <div className="badge badge-success">{selectedTender.status}</div>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div className="badge badge-success">{selectedTender.status}</div>
+            <a href={`http://localhost:5000/api/tenders/${selectedTender.id}/archive`} className="btn" style={{ background: 'hsla(var(--primary), 0.2)', color: 'hsl(var(--primary))', textDecoration: 'none' }} target="_blank" rel="noopener noreferrer">
+              📦 Download Archive (.zip)
+            </a>
+          </div>
         </div>
-        
 
 
         <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
@@ -62,10 +111,75 @@ export default function Tenders({ setGlobalDrawer }) {
           </div>
         </div>
 
-        {/* LINKED DOCUMENTS: LPOs and POs */}
+        {/* LINKED DOCUMENTS */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
           
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '1rem', background: 'hsla(var(--primary), 0.1)', borderBottom: '1px solid hsl(var(--border))' }}>
+                <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Sales Quotes (Outbound)</h4>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                <tbody>
+                  {!selectedTender.sales_quotes || selectedTender.sales_quotes.length === 0 ? (
+                    <tr><td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>No Quotes sent yet.</td></tr>
+                  ) : selectedTender.sales_quotes.map(sq => (
+                    <React.Fragment key={sq.id}>
+                      <tr style={{ borderBottom: expandedSQ === sq.id ? 'none' : '1px solid hsl(var(--border))', cursor: 'pointer' }}>
+                        <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }} onClick={() => setExpandedSQ(expandedSQ === sq.id ? null : sq.id)}>{sq.id}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }} onClick={() => setExpandedSQ(expandedSQ === sq.id ? null : sq.id)}>{sq.issue_date}</td>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <span style={{ color: 'hsl(var(--primary))', marginRight: '0.5rem' }}>${Number(sq.total_value).toLocaleString()}</span>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <button className="btn" onClick={(e) => { e.stopPropagation(); setExpandedSQ(sq.id); printElement('.print-only', 'SQ'); }} style={{ background: 'hsla(var(--text-secondary), 0.1)', color: 'hsl(var(--text-primary))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="Print / Save PDF">🖨️</button>
+                            <button className="btn" onClick={(e) => { e.stopPropagation(); alert('Dispatching Quote via Email...'); }} style={{ background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="Email Quote">📧</button>
+                            <button className="btn" onClick={(e) => { e.stopPropagation(); alert('Dispatching Quote via WhatsApp...'); }} style={{ background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="WhatsApp Quote">💬</button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expandedSQ === sq.id && (
+                        <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
+                          <td colSpan="3" style={{ padding: '1rem' }}>
+                            <div className="print-only" style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                              <h2 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Sales Quotation: {sq.id}</h2>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                                <div>
+                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Tender / Project</p>
+                                  <strong style={{ fontSize: '1rem' }}>{selectedTender.name} ({selectedTender.id})</strong>
+                                </div>
+                                {selectedTender.client_reference && (
+                                  <div>
+                                    <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Client Tender Ref</p>
+                                    <strong style={{ fontSize: '1rem', color: 'hsl(var(--primary))' }}>{selectedTender.client_reference}</strong>
+                                  </div>
+                                )}
+                                <div>
+                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Quoted To</p>
+                                  <strong style={{ fontSize: '1rem' }}>{selectedTender.client}</strong>
+                                </div>
+                                <div>
+                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Date Issued</p>
+                                  <strong style={{ fontSize: '1rem' }}>{sq.issue_date}</strong>
+                                </div>
+                                <div>
+                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Total Quoted Value</p>
+                                  <strong style={{ fontSize: '1rem' }}>${Number(sq.total_value).toLocaleString()}</strong>
+                                </div>
+                              </div>
+                              {renderItems(sq.items)}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '1rem', background: 'hsla(var(--border), 0.3)', borderBottom: '1px solid hsl(var(--border))' }}>
               <h4 style={{ margin: 0 }}>Client LPOs (Incoming)</h4>
             </div>
@@ -74,11 +188,61 @@ export default function Tenders({ setGlobalDrawer }) {
                 {!selectedTender.lpos || selectedTender.lpos.length === 0 ? (
                   <tr><td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>No Client LPOs linked.</td></tr>
                 ) : selectedTender.lpos.map(lpo => (
-                  <tr key={lpo.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{lpo.id}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>Due: {lpo.due_date}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'hsl(var(--success))' }}>${Number(lpo.total_value).toLocaleString()}</td>
-                  </tr>
+                  <React.Fragment key={lpo.id}>
+                    <tr style={{ borderBottom: expandedLPO === lpo.id ? 'none' : '1px solid hsl(var(--border))', cursor: 'pointer' }}>
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }} onClick={() => setExpandedLPO(expandedLPO === lpo.id ? null : lpo.id)}>
+                        {lpo.id}
+                        {lpo.client_reference && (
+                          <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.25rem', fontWeight: 'normal' }}>
+                            Ref: {lpo.client_reference}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }} onClick={() => setExpandedLPO(expandedLPO === lpo.id ? null : lpo.id)}>Due: {lpo.due_date}</td>
+                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <span style={{ color: 'hsl(var(--success))', marginRight: '0.5rem' }}>${Number(lpo.total_value).toLocaleString()}</span>
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <button className="btn" onClick={(e) => { e.stopPropagation(); setExpandedLPO(lpo.id); printElement('.print-only', 'LPO'); }} style={{ background: 'hsla(var(--text-secondary), 0.1)', color: 'hsl(var(--text-primary))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="Print / Save PDF">🖨️</button>
+                          <button className="btn" onClick={(e) => { e.stopPropagation(); alert('Dispatching LPO via Email...'); }} style={{ background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="Email LPO">📧</button>
+                          <button className="btn" onClick={(e) => { e.stopPropagation(); alert('Dispatching LPO via WhatsApp...'); }} style={{ background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="WhatsApp LPO">💬</button>
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedLPO === lpo.id && (
+                      <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
+                        <td colSpan="3" style={{ padding: '1rem' }}>
+                          <div className="print-only" style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                            <h2 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Client Local Purchase Order: {lpo.id}</h2>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
+                              <div>
+                                <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Tender / Project</p>
+                                <strong style={{ fontSize: '1rem' }}>{selectedTender.name} ({selectedTender.id})</strong>
+                              </div>
+                              <div>
+                                <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Client Name</p>
+                                <strong style={{ fontSize: '1rem' }}>{selectedTender.client}</strong>
+                              </div>
+                              <div>
+                                <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Due Date</p>
+                                <strong style={{ fontSize: '1rem' }}>{lpo.due_date}</strong>
+                              </div>
+                              {lpo.client_reference && (
+                                <div>
+                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Client LPO Ref</p>
+                                  <strong style={{ fontSize: '1rem', color: 'hsl(var(--primary))' }}>{lpo.client_reference}</strong>
+                                </div>
+                              )}
+                              <div>
+                                <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Total Value</p>
+                                <strong style={{ fontSize: '1rem' }}>${Number(lpo.total_value).toLocaleString()}</strong>
+                              </div>
+                            </div>
+                            {renderItems(lpo.items)}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -102,6 +266,7 @@ export default function Tenders({ setGlobalDrawer }) {
               </tbody>
             </table>
           </div>
+        </div>
 
         </div>
 
@@ -198,6 +363,73 @@ export default function Tenders({ setGlobalDrawer }) {
                           ) : (
                             <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.875rem', margin: 0 }}>No evidence submitted for this deliverable yet.</p>
                           )}
+
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid hsla(var(--border), 0.5)', paddingTop: '1.5rem' }}>
+                            <button className="btn" onClick={() => { printElement('.print-only', 'DELIVERY'); }} style={{ background: 'hsla(var(--text-secondary), 0.1)', color: 'hsl(var(--text-primary))', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              🖨️ Print / Save PDF
+                            </button>
+                            <button className="btn" onClick={() => alert('Dispatching Delivery Note via Email...')} style={{ background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              📧 Email
+                            </button>
+                            <button className="btn" onClick={() => alert('Dispatching Delivery Note via WhatsApp...')} style={{ background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              💬 WhatsApp
+                            </button>
+                          </div>
+
+                          <div className="print-only" style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
+                            <h1 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '2rem', textAlign: 'center' }}>DELIVERY NOTE</h1>
+                            
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
+                              <div>
+                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'hsl(var(--text-secondary))' }}>To Client:</h4>
+                                <strong style={{ fontSize: '1.25rem' }}>{selectedTender.client}</strong>
+                              </div>
+                              <div style={{ textAlign: 'right' }}>
+                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'hsl(var(--text-secondary))' }}>Project / Tender:</h4>
+                                <strong>{selectedTender.name} ({selectedTender.id})</strong>
+                              </div>
+                            </div>
+
+                            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '3rem' }}>
+                              <thead>
+                                <tr style={{ borderBottom: '2px solid hsl(var(--border))', textAlign: 'left' }}>
+                                  <th style={{ padding: '1rem' }}>Deliverable Ref</th>
+                                  <th style={{ padding: '1rem' }}>{dlv.type === 'Goods' ? 'Quantity' : 'Type'}</th>
+                                  <th style={{ padding: '1rem' }}>Description of Goods/Services</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(dlv.type === 'Goods' && dlv.items && dlv.items.length > 0) ? (
+                                  dlv.items.map((item, idx) => (
+                                    <tr key={idx}>
+                                      <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}><strong>{dlv.id}-{idx+1}</strong></td>
+                                      <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>{item.qty} Unit(s)</td>
+                                      <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>{item.desc}</td>
+                                    </tr>
+                                  ))
+                                ) : (
+                                  <tr>
+                                    <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}><strong>{dlv.id}</strong></td>
+                                    <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>{dlv.type}</td>
+                                    <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>{dlv.description}</td>
+                                  </tr>
+                                )}
+                              </tbody>
+                            </table>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', marginTop: '4rem' }}>
+                              <div>
+                                <p style={{ color: 'hsl(var(--text-secondary))', marginBottom: '2rem' }}>Authorized Dispatch By:</p>
+                                <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.5rem', height: '2rem' }}></div>
+                                <p style={{ margin: 0, fontSize: '0.875rem' }}>Name & Signature</p>
+                              </div>
+                              <div>
+                                <p style={{ color: 'hsl(var(--text-secondary))', marginBottom: '2rem' }}>Received in Good Condition By (Client):</p>
+                                <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.5rem', height: '2rem' }}></div>
+                                <p style={{ margin: 0, fontSize: '0.875rem' }}>Name, Signature, & Date</p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -242,7 +474,14 @@ export default function Tenders({ setGlobalDrawer }) {
               <tr><td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No tenders found. Click "New Tender" to create one.</td></tr>
             ) : tenders.map(t => (
               <tr key={t.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                <td style={{ padding: '1rem', fontWeight: '500' }}>{t.id}</td>
+                <td style={{ padding: '1rem', fontWeight: '500' }}>
+                  {t.id}
+                  {t.client_reference && (
+                    <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.25rem' }}>
+                      Ref: {t.client_reference}
+                    </div>
+                  )}
+                </td>
                 <td style={{ padding: '1rem' }}>{t.name}</td>
                 <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>{t.client}</td>
                 <td style={{ padding: '1rem' }}>

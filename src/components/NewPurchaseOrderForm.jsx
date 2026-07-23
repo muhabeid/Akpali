@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useContext } from 'react'
 import { Trash2, PlusCircle } from 'lucide-react'
+import { RoleContext } from '../App'
 
 export default function NewPurchaseOrderForm() {
+  const { currentRole } = useContext(RoleContext);
   const [tenders, setTenders] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [poType, setPoType] = useState('Goods') // 'Goods' or 'Service'
@@ -104,6 +106,7 @@ export default function NewPurchaseOrderForm() {
         type: poType,
         expected_date: formData.expected_date,
         total_value: calculateTotal(),
+        status: currentRole === 'Staff' ? 'Awaiting Approval' : 'Pending Delivery',
         items: poType === 'Goods' ? JSON.stringify(lineItems) : JSON.stringify([{ desc: serviceDescription }])
       };
 
@@ -114,7 +117,11 @@ export default function NewPurchaseOrderForm() {
       });
 
       if (res.ok) {
-        alert('Purchase Order raised successfully!');
+        if (currentRole === 'Staff') {
+          alert('Purchase Order drafted successfully and sent to Manager for approval.');
+        } else {
+          alert('Purchase Order raised and dispatched successfully!');
+        }
         window.location.reload();
       } else {
         alert('Failed to raise PO');

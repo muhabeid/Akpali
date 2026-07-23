@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { PlusCircle, FilePlus, Send, HandCoins, Truck, Zap, FileText } from 'lucide-react'
+import { PlusCircle, FilePlus, Send, HandCoins, Truck, Zap, FileText, Box } from 'lucide-react'
 import Drawer from '../components/Drawer'
 import NewTenderForm from '../components/NewTenderForm'
 import RecordLPOForm from '../components/RecordLPOForm'
@@ -8,6 +8,8 @@ import FulfillDeliverableForm from '../components/FulfillDeliverableForm'
 import NewDeliverableForm from '../components/NewDeliverableForm'
 import RecordGRNForm from '../components/RecordGRNForm'
 import GenerateRFQForm from '../components/GenerateRFQForm'
+import StockRequisitionForm from '../components/StockRequisitionForm'
+import SalesQuoteForm from '../components/SalesQuoteForm'
 
 export default function Dashboard({ setGlobalDrawer }) {
   const [openDrawer, setOpenDrawer] = useState(null)
@@ -54,51 +56,69 @@ export default function Dashboard({ setGlobalDrawer }) {
       <Drawer isOpen={openDrawer === 'grn'} onClose={() => setOpenDrawer(null)} title="Record Goods Receipt Note (GRN)">
         <RecordGRNForm />
       </Drawer>
+      
+      <Drawer isOpen={openDrawer === 'stock_req'} onClose={() => setOpenDrawer(null)} title="Request Stock / Materials">
+        <StockRequisitionForm />
+      </Drawer>
+
+      <Drawer isOpen={openDrawer === 'sales_quote'} onClose={() => setOpenDrawer(null)} title="Generate Sales Quotation">
+        <SalesQuoteForm />
+      </Drawer>
 
       <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem', borderTop: '4px solid hsl(var(--primary))' }}>
         <h3 style={{ margin: '0 0 1.25rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Zap size={20} color="hsl(var(--primary))" /> Project Pipeline & Actions
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '0.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
           
           <button className="btn" onClick={() => setGlobalDrawer('tender')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--primary), 0.05)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <PlusCircle size={22} style={{ opacity: 0.8 }} />
             <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>1. New Tender</span>
           </button>
 
+          <button className="btn" onClick={() => setOpenDrawer('sales_quote')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <FileText size={22} style={{ opacity: 0.8 }} />
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>2. Quote Client</span>
+          </button>
+
           <button className="btn" onClick={() => setOpenDrawer('lpo')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--accent), 0.05)', color: 'hsl(var(--accent))', border: '1px solid hsla(var(--accent), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <FilePlus size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>2. Record LPO</span>
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>3. Record LPO</span>
           </button>
 
           <button className="btn" onClick={() => setOpenDrawer('new_deliverable')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--primary), 0.05)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <PlusCircle size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>3. Add Deliverable</span>
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>4. Add Deliverable</span>
           </button>
 
           <button className="btn" onClick={() => setOpenDrawer('rfq')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--warning), 0.05)', color: 'hsl(var(--warning))', border: '1px solid hsla(var(--warning), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <FileText size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>4. Generate RFQ</span>
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>5. Generate RFQ</span>
           </button>
 
           <button className="btn" onClick={() => setGlobalDrawer('new_po')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--warning), 0.1)', color: 'hsl(var(--warning))', border: '1px solid hsla(var(--warning), 0.3)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <Send size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>5. Raise PO</span>
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>6. Raise PO</span>
           </button>
 
           <button className="btn" onClick={() => setOpenDrawer('grn')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--success), 0.05)', color: 'hsl(var(--success))', border: '1px solid hsla(var(--success), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <Truck size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>6. Record GRN</span>
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>7. Record GRN</span>
+          </button>
+
+          <button className="btn" onClick={() => setOpenDrawer('stock_req')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--accent), 0.1)', color: 'hsl(var(--accent))', border: '1px solid hsla(var(--accent), 0.3)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <Box size={22} style={{ opacity: 0.8 }} />
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>8. Stock Req.</span>
           </button>
 
           <button className="btn" onClick={() => setOpenDrawer('delivery')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))', border: '1px solid hsla(var(--success), 0.3)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <Truck size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>7. Fulfill Delivery</span>
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>9. Fulfill Delivery</span>
           </button>
 
           <button className="btn" onClick={() => setOpenDrawer('invoice')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--success), 0.8)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             <HandCoins size={22} style={{ opacity: 0.9 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>8. Gen. Invoice</span>
+            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>10. Gen. Invoice</span>
           </button>
         </div>
       </div>

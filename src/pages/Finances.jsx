@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import Drawer from '../components/Drawer'
 import RecordSupplierInvoiceForm from '../components/RecordSupplierInvoiceForm'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 
 export default function Finances({ setGlobalDrawer }) {
   const [matchResult, setMatchResult] = useState(null)
@@ -8,6 +9,7 @@ export default function Finances({ setGlobalDrawer }) {
   const [evidenceList, setEvidenceList] = useState([])
   const [grns, setGrns] = useState([])
   const [invoices, setInvoices] = useState([])
+  const [cashflow, setCashflow] = useState([])
   const [isInvoiceDrawerOpen, setInvoiceDrawerOpen] = useState(false)
 
   useEffect(() => {
@@ -29,6 +31,11 @@ export default function Finances({ setGlobalDrawer }) {
     fetch('http://localhost:5000/api/supplier_invoices')
       .then(res => res.json())
       .then(data => setInvoices(data))
+      .catch(err => console.error(err))
+
+    fetch('http://localhost:5000/api/analytics/cashflow')
+      .then(res => res.json())
+      .then(data => setCashflow(data))
       .catch(err => console.error(err))
   }, [])
 
@@ -80,6 +87,25 @@ export default function Finances({ setGlobalDrawer }) {
               </div>
             ))
           )}
+        </div>
+      </div>
+
+      {/* CASH FLOW FORECASTING */}
+      <div className="card" style={{ padding: '1.5rem', overflow: 'hidden' }}>
+        <h3 style={{ margin: '0 0 0.5rem 0' }}>Cash Flow Forecast</h3>
+        <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginBottom: '1.5rem' }}>6-month projection combining historical transactions with pending Purchase Orders and Client Invoices.</p>
+        <div style={{ width: '100%', height: 300 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={cashflow} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsla(var(--border), 0.5)" />
+              <XAxis dataKey="month" stroke="hsl(var(--text-secondary))" />
+              <YAxis stroke="hsl(var(--text-secondary))" />
+              <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)' }} />
+              <Legend />
+              <Line type="monotone" dataKey="inflow" name="Inflow (Revenue)" stroke="hsl(var(--success))" strokeWidth={3} activeDot={{ r: 8 }} />
+              <Line type="monotone" dataKey="outflow" name="Outflow (Expenses)" stroke="hsl(var(--danger))" strokeWidth={3} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

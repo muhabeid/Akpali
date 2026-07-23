@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { FileSearch } from 'lucide-react';
 
 export default function RecordGRNForm() {
   const [pos, setPos] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
   
   const [formData, setFormData] = useState({
     id: `GRN-2026-${Math.floor(Math.random() * 10000)}`,
@@ -101,8 +103,48 @@ export default function RecordGRNForm() {
     }
   };
 
+  const simulateOCRScan = (e) => {
+    e.preventDefault();
+    setIsScanning(true);
+    // Simulate 2 seconds of AI processing
+    setTimeout(() => {
+      setIsScanning(false);
+      setFormData(prev => ({
+        ...prev,
+        received_date: new Date().toISOString().split('T')[0],
+        received_value: 4500, // Mock extracted value
+        details: 'Extracted via TenderPro AI Vision. No damages noted on delivery note.'
+      }));
+      // If we had a specific PO in the mock receipt, we'd auto-select it here.
+      alert('AI Scan Complete: Extracted Date, Value, and Details from Delivery Note.');
+    }, 2000);
+  };
+
   return (
     <form onSubmit={handleSubmit}>
+      {/* AI OCR SCANNER MOCK */}
+      <div 
+        style={{ 
+          border: '2px dashed hsl(var(--primary))', 
+          borderRadius: 'var(--radius-md)', 
+          padding: '2rem', 
+          textAlign: 'center', 
+          marginBottom: '1.5rem',
+          background: isScanning ? 'hsla(var(--primary), 0.1)' : 'hsla(var(--primary), 0.02)',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease'
+        }}
+        onClick={simulateOCRScan}
+      >
+        <FileSearch size={32} style={{ color: 'hsl(var(--primary))', marginBottom: '0.5rem' }} />
+        <h4 style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--primary))' }}>
+          {isScanning ? 'Extracting Data using AI Vision...' : 'Drag & Drop Delivery Note to Auto-Fill'}
+        </h4>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--text-secondary))' }}>
+          {isScanning ? 'Please wait...' : 'Supports PDF, JPG, PNG. Powered by TenderPro OCR.'}
+        </p>
+      </div>
+
       <div className="form-group">
         <label>GRN Document ID</label>
         <input type="text" className="form-control" value={formData.id} disabled />
