@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1050" viewBox="0 0 800 1050">
+  <rect width="800" height="1050" fill="#fff8f0"/>
+  <rect x="30" y="30" width="740" height="990" fill="none" stroke="#0f172a" stroke-width="6"/>
+  <rect x="45" y="45" width="710" height="960" fill="none" stroke="#94a3b8" stroke-width="2"/>
+  <circle cx="400" cy="180" r="60" fill="#0f172a"/>
+  <text x="400" y="190" font-family="Arial" font-size="32" fill="#fff" text-anchor="middle" font-weight="bold">OFFICIAL</text>
+  <text x="400" y="290" font-family="Georgia" font-size="34" fill="#0f172a" text-anchor="middle" font-weight="bold">REPUBLIC COMPLIANCE VAULT</text>
+  <text x="400" y="330" font-family="Arial" font-size="20" fill="#64748b" text-anchor="middle">STATUTORY &amp; REGULATORY CERTIFICATE</text>
+  <line x1="150" y1="360" x2="650" y2="360" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="400" y="440" font-family="Georgia" font-size="28" fill="#0f172a" text-anchor="middle" font-weight="bold">AGPO COMPLIANCE CERTIFICATE</text>
+  <text x="400" y="490" font-family="Arial" font-size="18" fill="#334155" text-anchor="middle">Certificate / Ref No: AGPO/2026/902</text>
+  <text x="400" y="570" font-family="Arial" font-size="16" fill="#475569" text-anchor="middle">This is to certify that the business entity</text>
+  <text x="400" y="610" font-family="Arial" font-size="26" fill="#0f172a" text-anchor="middle" font-weight="bold">AKPALI &amp; CO.</text>
+  <text x="400" y="650" font-family="Arial" font-size="16" fill="#475569" text-anchor="middle">is duly registered and verified under category: Special Categories</text>
+  <rect x="250" y="720" width="300" height="60" fill="#f1f5f9" stroke="#cbd5e1" rx="8"/>
+  <text x="400" y="757" font-family="Arial" font-size="16" fill="#16a34a" text-anchor="middle" font-weight="bold">✓ VERIFIED &amp; ACTIVE</text>
+  <line x1="150" y1="880" x2="350" y2="880" stroke="#0f172a" stroke-width="2"/>
+  <text x="250" y="910" font-family="Arial" font-size="14" fill="#64748b" text-anchor="middle">Registrar General</text>
+  <line x1="450" y1="880" x2="650" y2="880" stroke="#0f172a" stroke-width="2"/>
+  <text x="550" y="910" font-family="Arial" font-size="14" fill="#64748b" text-anchor="middle">Official Stamp &amp; Date</text>
+</svg>

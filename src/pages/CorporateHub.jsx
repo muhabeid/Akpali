@@ -1,25 +1,38 @@
 import React, { useState, useEffect } from 'react'
-import { Building2, Shield, Settings, Users, Landmark, FileText, Briefcase, Download, Upload, GitMerge, HardDrive, Database, Scale, PlusCircle } from 'lucide-react'
+import { Building2, Shield, Settings, Users, Landmark, FileText, Briefcase, Download, Upload, GitMerge, HardDrive, Database, Scale, PlusCircle, Printer, Eye, Award, CheckSquare, UserCheck, Scroll, Compass, FileCheck, Mail } from 'lucide-react'
+import CompanyProfileDossier from '../components/CompanyProfileDossier'
+import DirectorForm from '../components/DirectorForm'
+import TenderRegistrationForm from '../components/TenderRegistrationForm'
+import CompanyPolicyForm from '../components/CompanyPolicyForm'
+import CompanyExperienceForm from '../components/CompanyExperienceForm'
+import OperationalDocumentGeneratorModal from '../components/OperationalDocumentGeneratorModal'
+import { printElement } from '../utils/printHelper'
 
 export default function CorporateHub({ setGlobalDrawer }) {
   const [activeTab, setActiveTab] = useState('profile')
+  const [profileSubTab, setProfileSubTab] = useState('info')
+  const [showDocGenModal, setShowDocGenModal] = useState(false)
+
   const [companyData, setCompanyData] = useState({
-    legal_name: '',
-    registration_num: '',
-    tax_pin: '',
-    email: '',
-    phone: '',
-    address: '',
-    logo_url: '',
-    base_currency: 'USD'
+    legal_name: '', trading_name: '', registration_num: '', registration_date: '',
+    business_type: 'Private Limited Company', tax_pin: '', vat_num: '', email: '',
+    phone: '', address: '', postal_address: '', website: '', logo_url: '', seal_url: '',
+    industry: '', nature_of_business: '', years_in_operation: 1, vision: '',
+    mission: '', core_values: '', profile_doc_url: '', base_currency: 'USD'
   })
   const [isSaving, setIsSaving] = useState(false)
   const [documents, setDocuments] = useState([])
+  const [directors, setDirectors] = useState([])
+  const [tenderRegistrations, setTenderRegistrations] = useState([])
+  const [policies, setPolicies] = useState([])
+  const [experience, setExperience] = useState([])
   const [accounts, setAccounts] = useState([])
   const [users, setUsers] = useState([])
   const [clients, setClients] = useState([])
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(true)
+
+  const [activeModal, setActiveModal] = useState(null) // 'director', 'registration', 'policy', 'experience'
 
   const [systemSettings, setSystemSettings] = useState({
     smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass: '', wa_token: '', wa_phone_id: ''
@@ -28,240 +41,584 @@ export default function CorporateHub({ setGlobalDrawer }) {
   const [selectedDocType, setSelectedDocType] = useState('SQ')
   const [approvalWorkflows, setApprovalWorkflows] = useState([])
   const [legalContracts, setLegalContracts] = useState([])
+  const [dossierData, setDossierData] = useState(null)
+  const [dossierOptions, setDossierOptions] = useState({
+    showFinancials: true,
+    showBankAccounts: true,
+    showPersonnel: true,
+    showLegalContracts: true,
+    showCapacityHighlights: true,
+    showAppendix: true,
+    showLPOs: true,
+    showDirectors: true,
+    showRegistrations: true,
+    showPolicies: true,
+    showExperience: true,
+    watermark: 'NONE'
+  })
+  const [previewFile, setPreviewFile] = useState(null)
 
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [isSavingTemplates, setIsSavingTemplates] = useState(false)
   
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [coRes, docRes, accRes, usrRes, clRes, supRes, setRes, tplRes, wfRes, lglRes] = await Promise.all([
-          fetch('http://localhost:5000/api/company'),
-          fetch('http://localhost:5000/api/documents'),
-          fetch('http://localhost:5000/api/accounts'),
-          fetch('http://localhost:5000/api/users'),
-          fetch('http://localhost:5000/api/clients'),
-          fetch('http://localhost:5000/api/suppliers'),
-          fetch('http://localhost:5000/api/settings'),
-          fetch('http://localhost:5000/api/templates'),
-          fetch('http://localhost:5000/api/workflows'),
-          fetch('http://localhost:5000/api/contracts')
-        ])
-        
-        const coData = await coRes.json();
-        if (coData && coData.id) setCompanyData(coData);
-        
-        setDocuments(await docRes.json());
-        setAccounts(await accRes.json());
-        setUsers(await usrRes.json());
-        setClients(await clRes.json());
-        setSuppliers(await supRes.json());
-        
-        const setData = await setRes.json();
-        if (setData && setData.id) setSystemSettings(setData);
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const [compRes, docsRes, dirRes, regRes, polRes, expRes, accRes, usrRes, cliRes, supRes, setRes, tmplRes, wfRes, lcRes, dossierRes] = await Promise.all([
+        fetch('http://localhost:5000/api/company'),
+        fetch('http://localhost:5000/api/documents'),
+        fetch('http://localhost:5000/api/directors'),
+        fetch('http://localhost:5000/api/tender-registrations'),
+        fetch('http://localhost:5000/api/policies'),
+        fetch('http://localhost:5000/api/experience'),
+        fetch('http://localhost:5000/api/accounts'),
+        fetch('http://localhost:5000/api/users'),
+        fetch('http://localhost:5000/api/clients'),
+        fetch('http://localhost:5000/api/suppliers'),
+        fetch('http://localhost:5000/api/settings'),
+        fetch('http://localhost:5000/api/document-templates'),
+        fetch('http://localhost:5000/api/approval-workflows'),
+        fetch('http://localhost:5000/api/legal-contracts'),
+        fetch('http://localhost:5000/api/company/dossier')
+      ])
 
-        const tplData = await tplRes.json();
-        setDocumentTemplates(tplData || {});
-
-        setApprovalWorkflows(await wfRes.json());
-        setLegalContracts(await lglRes.json());
-      } catch (err) {
-        console.error("Error fetching corporate data:", err)
-      } finally {
-        setLoading(false)
-      }
+      if (compRes.ok) setCompanyData(await compRes.json())
+      if (docsRes.ok) setDocuments(await docsRes.json())
+      if (dirRes.ok) setDirectors(await dirRes.json())
+      if (regRes.ok) setTenderRegistrations(await regRes.json())
+      if (polRes.ok) setPolicies(await polRes.json())
+      if (expRes.ok) setExperience(await expRes.json())
+      if (accRes.ok) setAccounts(await accRes.json())
+      if (usrRes.ok) setUsers(await usrRes.json())
+      if (cliRes.ok) setClients(await cliRes.json())
+      if (supRes.ok) setSuppliers(await supRes.json())
+      if (setRes.ok) setSystemSettings(await setRes.json())
+      if (tmplRes.ok) setDocumentTemplates(await tmplRes.json())
+      if (wfRes.ok) setApprovalWorkflows(await wfRes.json())
+      if (lcRes.ok) setLegalContracts(await lcRes.json())
+      if (dossierRes.ok) setDossierData(await dossierRes.json())
+    } catch (err) {
+      console.error('Failed to fetch corporate data:', err)
+    } finally {
+      setLoading(false)
     }
-    
-    fetchData()
+  }
 
+  useEffect(() => {
+    fetchData()
     const handleRefresh = () => fetchData()
     window.addEventListener('refreshCorporateHub', handleRefresh)
     return () => window.removeEventListener('refreshCorporateHub', handleRefresh)
-  }, [activeTab]) // Re-fetch on tab switch for freshness
+  }, [])
 
   const handleSaveProfile = async (e) => {
-    e.preventDefault();
-    setIsSaving(true);
+    e.preventDefault()
+    setIsSaving(true)
     try {
       const res = await fetch('http://localhost:5000/api/company', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(companyData)
-      });
-      if (res.ok) alert('Company profile updated successfully!');
-      else alert('Failed to update company profile');
+      })
+      if (res.ok) {
+        alert('Company Profile saved successfully!')
+        fetchData()
+      } else {
+        alert('Failed to update company profile')
+      }
     } catch (err) {
-      alert('Network error. Ensure backend is running.');
+      console.error(err)
+      alert('Error updating profile')
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      {/* Top Navigation Grid */}
-      <div className="card" style={{ padding: '1.5rem', borderTop: '4px solid hsl(var(--primary))' }}>
-        <h3 style={{ margin: '0 0 1.25rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Building2 size={20} color="hsl(var(--primary))" /> Corporate Configuration Modules
-        </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
-          
+      {/* Top Header */}
+      <div className="card" style={{ padding: '1.5rem 2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div>
+            <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <Building2 size={28} color="hsl(var(--primary))" /> Corporate Qualification Hub
+            </h2>
+            <div style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+              9-Section Enterprise Governance, Directors, Regulatory Registrations, Policies & A4 Tender Dossier
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))' }} onClick={() => setShowDocGenModal(true)}>
+              <FileText size={18} /> + Generate Operational Document
+            </button>
+            <button className="btn btn-primary" onClick={() => setActiveTab('dossier')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Award size={18} /> View A4 Corporate Dossier
+            </button>
+            <a href="http://localhost:5000/api/company/dossier/zip" download className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#16a34a', color: '#fff' }}>
+              <Download size={18} /> Package (.ZIP)
+            </a>
+          </div>
+        </div>
+
+        {/* Module Nav Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.75rem', marginTop: '1rem' }}>
           <button 
             className="btn" 
             onClick={() => setActiveTab('profile')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'profile' ? 'hsla(var(--primary), 0.1)' : 'hsla(var(--primary), 0.05)', color: 'hsl(var(--primary))', border: activeTab === 'profile' ? '2px solid hsla(var(--primary), 0.5)' : '1px solid hsla(var(--primary), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'profile' ? 'hsla(var(--primary), 0.15)' : 'hsla(var(--primary), 0.05)', color: 'hsl(var(--primary))', border: activeTab === 'profile' ? '2px solid hsl(var(--primary))' : '1px solid hsla(var(--primary), 0.2)', borderRadius: 'var(--radius-md)' }}
           >
-            <Building2 size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>Company Profile</span>
+            <Building2 size={20} />
+            <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Company Profile</span>
           </button>
 
           <button 
             className="btn" 
             onClick={() => setActiveTab('governance')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'governance' ? 'hsla(var(--accent), 0.1)' : 'hsla(var(--accent), 0.05)', color: 'hsl(var(--accent))', border: activeTab === 'governance' ? '2px solid hsla(var(--accent), 0.5)' : '1px solid hsla(var(--accent), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'governance' ? 'hsla(var(--accent), 0.15)' : 'hsla(var(--accent), 0.05)', color: 'hsl(var(--accent))', border: activeTab === 'governance' ? '2px solid hsl(var(--accent))' : '1px solid hsla(var(--accent), 0.2)', borderRadius: 'var(--radius-md)' }}
           >
-            <Scale size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>Governance Records</span>
+            <Shield size={20} />
+            <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Statutory Vault</span>
           </button>
 
           <button 
             className="btn" 
             onClick={() => setActiveTab('banks')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'banks' ? 'hsla(var(--success), 0.1)' : 'hsla(var(--success), 0.05)', color: 'hsl(var(--success))', border: activeTab === 'banks' ? '2px solid hsla(var(--success), 0.5)' : '1px solid hsla(var(--success), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'banks' ? 'hsla(var(--success), 0.15)' : 'hsla(var(--success), 0.05)', color: 'hsl(var(--success))', border: activeTab === 'banks' ? '2px solid hsl(var(--success))' : '1px solid hsla(var(--success), 0.2)', borderRadius: 'var(--radius-md)' }}
           >
-            <Landmark size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>Bank Accounts</span>
-          </button>
-
-          <button 
-            className="btn" 
-            onClick={() => setActiveTab('master_data')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'master_data' ? 'hsla(var(--info), 0.1)' : 'hsla(var(--info), 0.05)', color: 'hsl(var(--info))', border: activeTab === 'master_data' ? '2px solid hsla(var(--info), 0.5)' : '1px solid hsla(var(--info), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-          >
-            <Database size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>Master Data (CRM)</span>
-          </button>
-
-          <button 
-            className="btn" 
-            onClick={() => setActiveTab('users')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'users' ? 'hsla(var(--warning), 0.1)' : 'hsla(var(--warning), 0.05)', color: 'hsl(var(--warning))', border: activeTab === 'users' ? '2px solid hsla(var(--warning), 0.5)' : '1px solid hsla(var(--warning), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-          >
-            <Users size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>User Management</span>
-          </button>
-
-          <button 
-            className="btn" 
-            onClick={() => setActiveTab('settings')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'settings' ? 'hsla(var(--primary), 0.1)' : 'hsla(var(--primary), 0.05)', color: 'hsl(var(--primary))', border: activeTab === 'settings' ? '2px solid hsla(var(--primary), 0.5)' : '1px solid hsla(var(--primary), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-          >
-            <Settings size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>System Settings</span>
-          </button>
-
-          <button 
-            className="btn" 
-            onClick={() => setActiveTab('templates')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'templates' ? 'hsla(var(--accent), 0.1)' : 'hsla(var(--accent), 0.05)', color: 'hsl(var(--accent))', border: activeTab === 'templates' ? '2px solid hsla(var(--accent), 0.5)' : '1px solid hsla(var(--accent), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-          >
-            <FileText size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>Document Templates</span>
-          </button>
-
-          <button 
-            className="btn" 
-            onClick={() => setActiveTab('workflows')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'workflows' ? 'hsla(var(--warning), 0.1)' : 'hsla(var(--warning), 0.05)', color: 'hsl(var(--warning))', border: activeTab === 'workflows' ? '2px solid hsla(var(--warning), 0.5)' : '1px solid hsla(var(--warning), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
-          >
-            <GitMerge size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>Approval Workflows</span>
+            <Landmark size={20} />
+            <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Bank Accounts</span>
           </button>
 
           <button 
             className="btn" 
             onClick={() => setActiveTab('contracts')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'contracts' ? 'hsla(var(--info), 0.1)' : 'hsla(var(--info), 0.05)', color: 'hsl(var(--info))', border: activeTab === 'contracts' ? '2px solid hsla(var(--info), 0.5)' : '1px solid hsla(var(--info), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'contracts' ? 'hsla(var(--info), 0.15)' : 'hsla(var(--info), 0.05)', color: 'hsl(var(--info))', border: activeTab === 'contracts' ? '2px solid hsl(var(--info))' : '1px solid hsla(var(--info), 0.2)', borderRadius: 'var(--radius-md)' }}
           >
-            <Shield size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>Legal & Contracts</span>
+            <FileCheck size={20} />
+            <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Legal Contracts</span>
           </button>
 
           <button 
             className="btn" 
-            onClick={() => setActiveTab('backups')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: activeTab === 'backups' ? 'hsla(var(--success), 0.1)' : 'hsla(var(--success), 0.05)', color: 'hsl(var(--success))', border: activeTab === 'backups' ? '2px solid hsla(var(--success), 0.5)' : '1px solid hsla(var(--success), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}
+            onClick={() => setActiveTab('dossier')} 
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'dossier' ? 'hsla(var(--warning), 0.15)' : 'hsla(var(--warning), 0.05)', color: 'hsl(var(--warning))', border: activeTab === 'dossier' ? '2px solid hsl(var(--warning))' : '1px solid hsla(var(--warning), 0.2)', borderRadius: 'var(--radius-md)' }}
           >
-            <HardDrive size={22} style={{ opacity: 0.8 }} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>Data Backup & Export</span>
+            <Award size={20} />
+            <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Corporate Dossier</span>
           </button>
 
+          <button 
+            className="btn" 
+            onClick={() => setActiveTab('settings')} 
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'settings' ? 'hsla(var(--secondary), 0.15)' : 'hsla(var(--secondary), 0.05)', color: '#475569', border: activeTab === 'settings' ? '2px solid #475569' : '1px solid #cbd5e1', borderRadius: 'var(--radius-md)' }}
+          >
+            <Settings size={20} />
+            <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>System Settings</span>
+          </button>
         </div>
       </div>
 
-      {/* Main Content Area */}
-      <div className="card" style={{ flex: 1, padding: '2rem' }}>
-        
+      {/* Main Content Area - SINGLE UNIFIED CARD */}
+      <div className="card" style={{ padding: '1.75rem' }}>
         {loading && <div style={{ textAlign: 'center', padding: '2rem', color: 'hsl(var(--text-secondary))' }}>Loading Corporate Data...</div>}
 
         {!loading && activeTab === 'profile' && (
           <div>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>Company Profile</h3>
-            <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Legal Company Name</label>
-                  <input type="text" className="form-control" required value={companyData.legal_name} onChange={e => setCompanyData({...companyData, legal_name: e.target.value})} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Base Currency</label>
-                  <select className="form-control" value={companyData.base_currency} onChange={e => setCompanyData({...companyData, base_currency: e.target.value})}>
-                    <option value="USD">USD ($)</option>
-                    <option value="KES">KES (Ksh)</option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="GBP">GBP (£)</option>
-                  </select>
-                </div>
+            
+            {/* INTEGRATED SUB-TAB HEADER */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.85rem' }}>
+              <div>
+                <h3 style={{ margin: 0, color: 'hsl(var(--primary))', fontSize: '1.1rem', fontWeight: '700' }}>Company Profile & 9 Qualification Sections</h3>
+                <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>Manage organizational details, directors, regulatory certificates, policies, and past projects.</div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Company Registration No.</label>
-                  <input type="text" className="form-control" value={companyData.registration_num || ''} onChange={e => setCompanyData({...companyData, registration_num: e.target.value})} />
-                </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Tax PIN / VAT No.</label>
-                  <input type="text" className="form-control" value={companyData.tax_pin || ''} onChange={e => setCompanyData({...companyData, tax_pin: e.target.value})} />
-                </div>
+
+              <div style={{ display: 'flex', gap: '0.35rem', background: 'hsla(var(--primary), 0.06)', padding: '0.25rem', borderRadius: '8px', border: '1px solid hsla(var(--primary), 0.12)' }}>
+                <button type="button" className={`btn ${profileSubTab === 'info' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'info' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'info' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'info' ? '700' : '600' }} onClick={() => setProfileSubTab('info')}>Company Info</button>
+                <button type="button" className={`btn ${profileSubTab === 'letter' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'letter' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'letter' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'letter' ? '700' : '600' }} onClick={() => setProfileSubTab('letter')}>Intro Letter</button>
+                <button type="button" className={`btn ${profileSubTab === 'directors' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'directors' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'directors' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'directors' ? '700' : '600' }} onClick={() => setProfileSubTab('directors')}>Directors ({directors.length})</button>
+                <button type="button" className={`btn ${profileSubTab === 'registrations' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'registrations' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'registrations' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'registrations' ? '700' : '600' }} onClick={() => setProfileSubTab('registrations')}>Tender Regs ({tenderRegistrations.length})</button>
+                <button type="button" className={`btn ${profileSubTab === 'policies' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'policies' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'policies' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'policies' ? '700' : '600' }} onClick={() => setProfileSubTab('policies')}>Policies ({policies.length})</button>
+                <button type="button" className={`btn ${profileSubTab === 'experience' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'experience' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'experience' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'experience' ? '700' : '600' }} onClick={() => setProfileSubTab('experience')}>Experience ({experience.length})</button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Official Email</label>
-                  <input type="email" className="form-control" value={companyData.email || ''} onChange={e => setCompanyData({...companyData, email: e.target.value})} />
+            </div>
+              
+              {/* SUB-TAB 1: COMPANY INFORMATION FORM */}
+              {profileSubTab === 'info' && (
+                <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Company Legal Name *</label>
+                      <input type="text" className="form-control" required value={companyData.legal_name} onChange={e => setCompanyData({...companyData, legal_name: e.target.value})} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Trading Name (e.g. Akpali Tech)</label>
+                      <input type="text" className="form-control" value={companyData.trading_name} onChange={e => setCompanyData({...companyData, trading_name: e.target.value})} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Business Type</label>
+                      <select className="form-control" value={companyData.business_type} onChange={e => setCompanyData({...companyData, business_type: e.target.value})}>
+                        <option value="Private Limited Company">Private Limited Company (Ltd)</option>
+                        <option value="Public Limited Company">Public Limited Company (PLC)</option>
+                        <option value="Sole Proprietorship">Sole Proprietorship</option>
+                        <option value="Partnership">Partnership</option>
+                        <option value="Joint Venture">Joint Venture (JV)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Certificate of Incorporation #</label>
+                      <input type="text" className="form-control" value={companyData.registration_num} onChange={e => setCompanyData({...companyData, registration_num: e.target.value})} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Registration Date</label>
+                      <input type="date" className="form-control" value={companyData.registration_date} onChange={e => setCompanyData({...companyData, registration_date: e.target.value})} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>KRA PIN Number *</label>
+                      <input type="text" className="form-control" required value={companyData.tax_pin} onChange={e => setCompanyData({...companyData, tax_pin: e.target.value})} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>VAT Registration #</label>
+                      <input type="text" className="form-control" value={companyData.vat_num} onChange={e => setCompanyData({...companyData, vat_num: e.target.value})} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Official Email Address</label>
+                      <input type="email" className="form-control" value={companyData.email} onChange={e => setCompanyData({...companyData, email: e.target.value})} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Telephone Numbers</label>
+                      <input type="text" className="form-control" value={companyData.phone} onChange={e => setCompanyData({...companyData, phone: e.target.value})} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Company Website</label>
+                      <input type="text" className="form-control" value={companyData.website} onChange={e => setCompanyData({...companyData, website: e.target.value})} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Physical Building Address</label>
+                      <input type="text" className="form-control" value={companyData.address} onChange={e => setCompanyData({...companyData, address: e.target.value})} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Postal Address</label>
+                      <input type="text" className="form-control" value={companyData.postal_address} onChange={e => setCompanyData({...companyData, postal_address: e.target.value})} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Industry / Sector</label>
+                      <input type="text" className="form-control" value={companyData.industry} onChange={e => setCompanyData({...companyData, industry: e.target.value})} placeholder="e.g. Construction & ICT" />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Nature of Main Business</label>
+                      <input type="text" className="form-control" value={companyData.nature_of_business} onChange={e => setCompanyData({...companyData, nature_of_business: e.target.value})} placeholder="e.g. General Supplies & Civil Works" />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Years in Operation</label>
+                      <input type="number" className="form-control" value={companyData.years_in_operation} onChange={e => setCompanyData({...companyData, years_in_operation: e.target.value})} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Company Logo URL</label>
+                      <input type="text" className="form-control" value={companyData.logo_url} onChange={e => setCompanyData({...companyData, logo_url: e.target.value})} placeholder="https://..." />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>Company Seal / Stamp Image URL</label>
+                      <input type="text" className="form-control" value={companyData.seal_url} onChange={e => setCompanyData({...companyData, seal_url: e.target.value})} placeholder="https://..." />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Company Vision Statement</label>
+                    <textarea className="form-control" rows={2} value={companyData.vision} onChange={e => setCompanyData({...companyData, vision: e.target.value})} />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Company Mission Statement</label>
+                    <textarea className="form-control" rows={2} value={companyData.mission} onChange={e => setCompanyData({...companyData, mission: e.target.value})} />
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Core Values (Comma Separated)</label>
+                    <input type="text" className="form-control" value={companyData.core_values} onChange={e => setCompanyData({...companyData, core_values: e.target.value})} placeholder="Integrity, Quality, Efficiency" />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                      {isSaving ? 'Saving Profile...' : 'Save All Company Profile Changes'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* SUB-TAB: EXECUTIVE INTRODUCTORY LETTER */}
+              {profileSubTab === 'letter' && (
+                <form onSubmit={handleSaveProfile} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h4 style={{ margin: 0 }}>Executive Introductory Cover Letter</h4>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Appears on Page 1/2 of your Corporate Dossier as an official cover letter to clients and tender boards.</div>
+                    </div>
+                    <button 
+                      type="button" 
+                      className="btn" 
+                      style={{ fontSize: '0.8rem', padding: '0.3rem 0.65rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))' }}
+                      onClick={() => {
+                        setCompanyData({
+                          ...companyData,
+                          introductory_letter: `RE: OFFICIAL CORPORATE PREQUALIFICATION & TENDER SUBMISSION
+
+To: The Tender Evaluation Committee & Selection Board,
+
+We are pleased to formally submit our Official Corporate Profile and Qualification Dossier for your evaluation. ${companyData.legal_name || 'AKPALI & CO.'} is a fully registered, compliant enterprise with demonstrated capacity in supply of goods, provision of technical services, and complex project execution.
+
+Inside this dossier, you will find our verified statutory licenses, directors credentials, regulatory registration certificates, past project track records, and financial capacity credentials.
+
+We confirm our readiness to execute all scope requirements in full compliance with your standards.
+
+Sincerely,
+Managing Director / Authorized Corporate Signatory`
+                        })
+                      }}
+                    >
+                      + Insert Standard Cover Letter Template
+                    </button>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <textarea 
+                      className="form-control" 
+                      rows={12} 
+                      value={companyData.introductory_letter || ''} 
+                      onChange={e => setCompanyData({...companyData, introductory_letter: e.target.value})}
+                      placeholder="Enter official cover letter text..."
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                    <button type="submit" className="btn btn-primary" disabled={isSaving}>
+                      {isSaving ? 'Saving Letter...' : 'Save Introductory Letter'}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {/* SUB-TAB 2: DIRECTORS & SHAREHOLDERS */}
+              {profileSubTab === 'directors' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div>
+                      <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Directors & Key Shareholders Structure</h4>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Record legal directors, identity credentials, shareholding %, and CV attachments.</div>
+                    </div>
+                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setActiveModal('director')}>+ Add Director / Shareholder</button>
+                  </div>
+
+                  <div style={{ border: '1px solid hsla(var(--primary), 0.18)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: 'hsla(var(--primary), 0.08)', color: 'hsl(var(--primary))', borderBottom: '2px solid hsla(var(--primary), 0.2)', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Name</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Position / Role</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>ID / Passport</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>KRA PIN</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'right' }}>Shareholding %</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {directors.length === 0 ? (
+                          <tr><td colSpan="6" style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>No directors recorded. Click "+ Add Director / Shareholder" to add.</td></tr>
+                        ) : directors.map(dir => (
+                          <tr key={dir.id} style={{ borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
+                            <td style={{ padding: '0.75rem 0.85rem', fontWeight: '700', color: '#ffffff' }}>{dir.name}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', color: '#f8fafc', fontWeight: '500' }}>{dir.position}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', color: '#cbd5e1' }}>{dir.id_passport || 'N/A'}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', color: '#cbd5e1' }}>{dir.kra_pin || 'N/A'}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#38bdf8' }}>{dir.shareholding_pct || 0}%</td>
+                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
+                              <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
+                                if(window.confirm(`Delete director ${dir.name}?`)) {
+                                  await fetch(`http://localhost:5000/api/directors/${dir.id}`, { method: 'DELETE' })
+                                  fetchData()
+                                }
+                              }}>Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>Official Phone</label>
-                  <input type="text" className="form-control" value={companyData.phone || ''} onChange={e => setCompanyData({...companyData, phone: e.target.value})} />
+              )}
+
+              {/* SUB-TAB 3: TENDER REGISTRATION CERTIFICATES */}
+              {profileSubTab === 'registrations' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div>
+                      <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Tender Registration & Regulatory Certificates</h4>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Log registrations with NCA, EBK, Treasury AGPO, UNGM, World Bank, etc.</div>
+                    </div>
+                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setActiveModal('registration')}>+ Add Registration Certificate</button>
+                  </div>
+
+                  <div style={{ border: '1px solid hsla(var(--primary), 0.18)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: 'hsla(var(--primary), 0.08)', color: 'hsl(var(--primary))', borderBottom: '2px solid hsla(var(--primary), 0.2)', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Registering Authority</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Registration Number</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Category / Grade</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Expiry Date</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tenderRegistrations.length === 0 ? (
+                          <tr><td colSpan="5" style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>No registration certificates recorded. Click "+ Add Registration Certificate".</td></tr>
+                        ) : tenderRegistrations.map(reg => (
+                          <tr key={reg.id} style={{ borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
+                            <td style={{ padding: '0.75rem 0.85rem', fontWeight: '700', color: '#ffffff' }}>{reg.authority_name}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', color: '#38bdf8', fontWeight: '600' }}>{reg.registration_number}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', color: '#f8fafc' }}>{reg.category_grade || 'Standard'}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', color: '#cbd5e1' }}>{reg.expiry_date || 'Active'}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
+                              <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
+                                if(window.confirm('Delete registration certificate?')) {
+                                  await fetch(`http://localhost:5000/api/tender-registrations/${reg.id}`, { method: 'DELETE' })
+                                  fetchData()
+                                }
+                              }}>Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Head Office Address</label>
-                <textarea className="form-control" rows="3" value={companyData.address || ''} onChange={e => setCompanyData({...companyData, address: e.target.value})}></textarea>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button type="submit" className="btn btn-primary" disabled={isSaving}>
-                  {isSaving ? 'Saving...' : 'Save Profile Changes'}
-                </button>
-              </div>
-            </form>
+              )}
+
+              {/* SUB-TAB 4: COMPANY POLICIES */}
+              {profileSubTab === 'policies' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div>
+                      <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Company Policies & Compliance Governance</h4>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Store signed corporate policies for tender compliance and bid management.</div>
+                    </div>
+                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setActiveModal('policy')}>+ Add Corporate Policy</button>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+                    {policies.length === 0 ? (
+                      <div style={{ padding: '1.5rem', textAlign: 'center', background: '#f8fafc', border: '1px solid hsla(var(--primary), 0.18)', borderRadius: '8px', color: '#94a3b8' }}>No policies added yet. Click "+ Add Corporate Policy".</div>
+                    ) : policies.map(pol => (
+                      <div key={pol.id} style={{ border: '1px solid hsla(var(--primary), 0.18)', padding: '1rem', borderRadius: '8px', background: 'hsla(var(--primary), 0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <h5 style={{ margin: '0 0 0.4rem 0', color: '#38bdf8', fontSize: '0.95rem' }}>{pol.title}</h5>
+                          <p style={{ margin: 0, fontSize: '0.85rem', color: '#f8fafc', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{pol.content_text}</p>
+                        </div>
+                        <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
+                          if(window.confirm(`Delete policy ${pol.title}?`)) {
+                            await fetch(`http://localhost:5000/api/policies/${pol.id}`, { method: 'DELETE' })
+                            fetchData()
+                          }
+                        }}>Delete</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SUB-TAB 5: PAST EXPERIENCE */}
+              {profileSubTab === 'experience' && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div>
+                      <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Past Project Experience & Reference Letters</h4>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Log executed projects, contract values, reference letters, and completion certificates.</div>
+                    </div>
+                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setActiveModal('experience')}>+ Add Past Project</button>
+                  </div>
+
+                  <div style={{ border: '1px solid hsla(var(--primary), 0.18)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                      <thead>
+                        <tr style={{ background: 'hsla(var(--primary), 0.08)', color: 'hsl(var(--primary))', borderBottom: '2px solid hsla(var(--primary), 0.2)', textAlign: 'left', fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Project Title</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Client</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Completion Date</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'right' }}>Contract Value</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'center' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {experience.length === 0 ? (
+                          <tr><td colSpan="5" style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>No past projects recorded. Click "+ Add Past Project".</td></tr>
+                        ) : experience.map(exp => (
+                          <tr key={exp.id} style={{ borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
+                            <td style={{ padding: '0.75rem 0.85rem', fontWeight: '700', color: '#ffffff' }}>{exp.project_name}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', color: '#f8fafc', fontWeight: '500' }}>{exp.client_name}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', color: '#cbd5e1' }}>{exp.completion_date || 'Completed'}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#4ade80' }}>${Number(exp.contract_value || 0).toLocaleString()}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
+                              <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
+                                if(window.confirm(`Delete project ${exp.project_name}?`)) {
+                                  await fetch(`http://localhost:5000/api/experience/${exp.id}`, { method: 'DELETE' })
+                                  fetchData()
+                                }
+                              }}>Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
           </div>
         )}
 
+        {/* MODAL DRAWERS FOR SUB-ENTITIES */}
+        {activeModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 9999, padding: '1.5rem' }}>
+            <div className="card" style={{ width: '100%', maxWidth: '650px', maxHeight: '90vh', overflow: 'auto', padding: '1.5rem', background: '#fff', borderRadius: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'hsl(var(--primary))' }}>
+                  {activeModal === 'director' && 'Add Director / Shareholder Credentials'}
+                  {activeModal === 'registration' && 'Add Tender Registration Certificate'}
+                  {activeModal === 'policy' && 'Add Corporate Policy Statement'}
+                  {activeModal === 'experience' && 'Add Past Project Experience'}
+                </h3>
+                <button className="btn" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setActiveModal(null)}>✕</button>
+              </div>
+
+              {activeModal === 'director' && <DirectorForm onSuccess={() => { setActiveModal(null); fetchData(); }} />}
+              {activeModal === 'registration' && <TenderRegistrationForm onSuccess={() => { setActiveModal(null); fetchData(); }} />}
+              {activeModal === 'policy' && <CompanyPolicyForm onSuccess={() => { setActiveModal(null); fetchData(); }} />}
+              {activeModal === 'experience' && <CompanyExperienceForm onSuccess={() => { setActiveModal(null); fetchData(); }} />}
+            </div>
+          </div>
+        )}
+
+        {/* OTHER TABS */}
         {!loading && activeTab === 'governance' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>Governance & Statutory Records</h3>
-              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }} onClick={() => setGlobalDrawer('upload_document')}>+ Upload Document</button>
+              <h3 style={{ margin: 0 }}>Statutory & Governance Document Vault</h3>
+              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }} onClick={() => setGlobalDrawer('upload_document')}>+ Upload Statutory Document</button>
             </div>
             
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -280,7 +637,7 @@ export default function CorporateHub({ setGlobalDrawer }) {
                   <tr key={doc.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
                     <td style={{ padding: '0.75rem 1rem', fontWeight: '500' }}>{doc.title}</td>
                     <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>{doc.document_type}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{doc.expiry_date}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>{doc.expiry_date || 'Permanent Certificate'}</td>
                     <td style={{ padding: '0.75rem 1rem' }}><span className="badge badge-success">{doc.status}</span></td>
                   </tr>
                 ))}
@@ -303,7 +660,6 @@ export default function CorporateHub({ setGlobalDrawer }) {
                   <th style={{ padding: '0.75rem 1rem' }}>Account Name</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Type</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Current Balance</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -313,312 +669,6 @@ export default function CorporateHub({ setGlobalDrawer }) {
                     <td style={{ padding: '0.75rem 1rem' }}>{acc.name}</td>
                     <td style={{ padding: '0.75rem 1rem' }}><span className="badge badge-info">{acc.type}</span></td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 'bold' }}>${Number(acc.current_balance).toLocaleString()}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                      <button 
-                        className="btn" 
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--danger), 0.1)', color: 'hsl(var(--danger))' }}
-                        onClick={async () => {
-                          if(window.confirm('Are you sure you want to remove this account?')) {
-                            await fetch(`http://localhost:5000/api/accounts/${acc.id}`, { method: 'DELETE' });
-                            window.dispatchEvent(new Event('refreshCorporateHub'));
-                          }
-                        }}
-                      >Remove</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {!loading && activeTab === 'master_data' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>Master Data (CRM & Vendors)</h3>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }} onClick={() => setGlobalDrawer('new_client')}>+ Add Client</button>
-                <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: 'hsl(var(--accent))' }} onClick={() => setGlobalDrawer('new_supplier')}>+ Add Supplier</button>
-              </div>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-              
-              {/* Clients Table */}
-              <div style={{ border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <div style={{ background: 'hsla(var(--primary), 0.1)', padding: '1rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>Registered Clients</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <tbody>
-                    {clients.length === 0 ? (
-                      <tr><td style={{ padding: '1.5rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No clients found.</td></tr>
-                    ) : clients.map(client => (
-                      <tr key={client.id} style={{ borderTop: '1px solid hsl(var(--border))' }}>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ fontWeight: 'bold' }}>{client.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.25rem' }}>{client.email} | PIN: {client.tax_pin || 'N/A'}</div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Suppliers Table */}
-              <div style={{ border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-                <div style={{ background: 'hsla(var(--accent), 0.1)', padding: '1rem', fontWeight: 'bold', color: 'hsl(var(--accent))' }}>Registered Suppliers (Vendors)</div>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <tbody>
-                    {suppliers.length === 0 ? (
-                      <tr><td style={{ padding: '1.5rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No suppliers found.</td></tr>
-                    ) : suppliers.map(supplier => (
-                      <tr key={supplier.id} style={{ borderTop: '1px solid hsl(var(--border))' }}>
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ fontWeight: 'bold' }}>{supplier.name}</div>
-                          <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.25rem' }}>{supplier.email} | PIN: {supplier.kra_pin || 'N/A'}</div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {!loading && activeTab === 'users' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>User Management & Roles</h3>
-              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }} onClick={() => setGlobalDrawer('invite_user')}>+ Invite User</button>
-            </div>
-            
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ background: 'hsla(var(--border), 0.3)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Name</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Email Address</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Role</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.length === 0 ? (
-                  <tr><td colSpan="4" style={{ padding: '1.5rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No active users found.</td></tr>
-                ) : users.map(user => (
-                  <tr key={user.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '500' }}>{user.name}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>{user.email}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}><span className={`badge ${user.role === 'Admin' ? 'badge-warning' : 'badge-info'}`}>{user.role}</span></td>
-                    <td style={{ padding: '0.75rem 1rem' }}><span className="badge badge-success">{user.status}</span></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {!loading && activeTab === 'settings' && (
-          <div>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>System Settings & Integrations</h3>
-            
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setIsSavingSettings(true);
-              try {
-                const res = await fetch('http://localhost:5000/api/settings', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(systemSettings)
-                });
-                if(res.ok) alert('Settings saved successfully!');
-              } catch (err) {
-                alert('Error saving settings');
-              } finally {
-                setIsSavingSettings(false);
-              }
-            }}>
-              <div style={{ display: 'grid', gap: '2rem' }}>
-                
-                <div style={{ border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)', padding: '1.5rem' }}>
-                  <h4 style={{ margin: '0 0 1rem 0' }}>Email Notifications (SMTP)</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <input type="text" className="form-control" placeholder="SMTP Host (e.g. smtp.gmail.com)" style={{ flex: 1 }} value={systemSettings.smtp_host || ''} onChange={e => setSystemSettings({...systemSettings, smtp_host: e.target.value})} />
-                      <input type="text" className="form-control" placeholder="Port (e.g. 587)" style={{ width: '100px' }} value={systemSettings.smtp_port || ''} onChange={e => setSystemSettings({...systemSettings, smtp_port: e.target.value})} />
-                    </div>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <input type="text" className="form-control" placeholder="SMTP Username (Email)" style={{ flex: 1 }} value={systemSettings.smtp_user || ''} onChange={e => setSystemSettings({...systemSettings, smtp_user: e.target.value})} />
-                      <input type="password" className="form-control" placeholder="SMTP Password / App Password" style={{ flex: 1 }} value={systemSettings.smtp_pass || ''} onChange={e => setSystemSettings({...systemSettings, smtp_pass: e.target.value})} />
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)', padding: '1.5rem' }}>
-                  <h4 style={{ margin: '0 0 1rem 0' }}>WhatsApp Cloud API Integration</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <input type="password" className="form-control" placeholder="API Access Token" value={systemSettings.wa_token || ''} onChange={e => setSystemSettings({...systemSettings, wa_token: e.target.value})} />
-                    <input type="text" className="form-control" placeholder="Phone Number ID" value={systemSettings.wa_phone_id || ''} onChange={e => setSystemSettings({...systemSettings, wa_phone_id: e.target.value})} />
-                  </div>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                  <button type="submit" className="btn btn-primary" disabled={isSavingSettings}>
-                    {isSavingSettings ? 'Saving...' : 'Save Settings'}
-                  </button>
-                </div>
-
-              </div>
-            </form>
-          </div>
-        )}
-
-        {!loading && activeTab === 'templates' && (
-          <div>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>Document Template Designer</h3>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-              
-              {/* GLOBAL SETTINGS */}
-              <div style={{ border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)', padding: '1.5rem' }}>
-                <h4 style={{ margin: '0 0 1rem 0', color: 'hsl(var(--primary))' }}>Global Brand Settings</h4>
-                <p style={{ margin: '0 0 1.5rem 0', color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>These settings apply across all system-generated documents.</p>
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  setIsSavingTemplates(true);
-                  try {
-                    await fetch('http://localhost:5000/api/templates', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ ...documentTemplates['GLOBAL'], id: 'GLOBAL' })
-                    });
-                    alert('Global brand settings saved!');
-                  } catch (err) { alert('Error saving settings'); }
-                  finally { setIsSavingTemplates(false); }
-                }}>
-                  <div style={{ display: 'grid', gap: '1rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Header Logo URL</label>
-                      <input type="url" className="form-control" placeholder="https://example.com/logo.png" 
-                        value={documentTemplates['GLOBAL']?.header_logo_url || ''} 
-                        onChange={e => setDocumentTemplates({...documentTemplates, GLOBAL: {...documentTemplates['GLOBAL'], header_logo_url: e.target.value}})} 
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Primary Brand Color</label>
-                      <input type="color" className="form-control" style={{ width: '100px', padding: '0.25rem' }} 
-                        value={documentTemplates['GLOBAL']?.primary_color || '#0f172a'} 
-                        onChange={e => setDocumentTemplates({...documentTemplates, GLOBAL: {...documentTemplates['GLOBAL'], primary_color: e.target.value}})} 
-                      />
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                      <button type="submit" className="btn btn-primary" disabled={isSavingTemplates}>Save Brand</button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-
-              {/* MODULE SPECIFIC SETTINGS */}
-              <div style={{ border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)', padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h4 style={{ margin: 0, color: 'hsl(var(--accent))' }}>Module-Specific Terms</h4>
-                </div>
-                <div className="form-group">
-                  <select className="form-control" style={{ fontWeight: 'bold' }} value={selectedDocType} onChange={e => setSelectedDocType(e.target.value)}>
-                    <option value="SQ">Sales Quotations</option>
-                    <option value="LPO">Local Purchase Orders (LPO)</option>
-                    <option value="RFQ">Request for Quotation (RFQ)</option>
-                    <option value="PO">Purchase Orders (PO)</option>
-                    <option value="DELIVERY">Delivery Notes</option>
-                    <option value="INVOICE">Invoices</option>
-                    <option value="LETTERHEAD">Standard Letterhead</option>
-                  </select>
-                </div>
-                
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  setIsSavingTemplates(true);
-                  try {
-                    await fetch('http://localhost:5000/api/templates', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ ...documentTemplates[selectedDocType], id: selectedDocType })
-                    });
-                    alert(`${selectedDocType} settings saved!`);
-                  } catch (err) { alert('Error saving settings'); }
-                  finally { setIsSavingTemplates(false); }
-                }}>
-                  <div style={{ display: 'grid', gap: '1rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Header Text ({selectedDocType})</label>
-                      <input type="text" className="form-control" placeholder="Optional header text or title..." 
-                        value={documentTemplates[selectedDocType]?.header_text || ''} 
-                        onChange={e => setDocumentTemplates({...documentTemplates, [selectedDocType]: {...documentTemplates[selectedDocType], header_text: e.target.value}})} 
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Footer Text ({selectedDocType})</label>
-                      <input type="text" className="form-control" placeholder="Registered Office details..." 
-                        value={documentTemplates[selectedDocType]?.footer_text || ''} 
-                        onChange={e => setDocumentTemplates({...documentTemplates, [selectedDocType]: {...documentTemplates[selectedDocType], footer_text: e.target.value}})} 
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Standard Terms & Conditions ({selectedDocType})</label>
-                      <textarea className="form-control" rows="5" placeholder="1. Payment due in 30 days..." 
-                        value={documentTemplates[selectedDocType]?.terms_conditions_text || ''} 
-                        onChange={e => setDocumentTemplates({...documentTemplates, [selectedDocType]: {...documentTemplates[selectedDocType], terms_conditions_text: e.target.value}})} 
-                      ></textarea>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                      <button type="submit" className="btn btn-primary" style={{ background: 'hsl(var(--accent))', borderColor: 'hsl(var(--accent))' }} disabled={isSavingTemplates}>Save {selectedDocType} Terms</button>
-                    </div>
-                  </div>
-                </form>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {!loading && activeTab === 'workflows' && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>Approval Workflows</h3>
-              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }} onClick={() => setGlobalDrawer('approval_workflow')}>+ Create Rule</button>
-            </div>
-            
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ background: 'hsla(var(--border), 0.3)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Module</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Maker Role</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Checker Role</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Threshold ($)</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {approvalWorkflows.length === 0 ? (
-                  <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No workflow rules defined.</td></tr>
-                ) : approvalWorkflows.map(wf => (
-                  <tr key={wf.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '500' }}>{wf.module_name}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{wf.maker_role}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{wf.checker_role}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>{wf.threshold_amount > 0 ? `$${Number(wf.threshold_amount).toLocaleString()}` : 'Any'}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                      <button 
-                        className="btn" 
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--danger), 0.1)', color: 'hsl(var(--danger))' }}
-                        onClick={async () => {
-                          if(window.confirm('Remove this workflow rule?')) {
-                            await fetch(`http://localhost:5000/api/workflows/${wf.id}`, { method: 'DELETE' });
-                            window.dispatchEvent(new Event('refreshCorporateHub'));
-                          }
-                        }}
-                      >Remove</button>
-                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -629,41 +679,28 @@ export default function CorporateHub({ setGlobalDrawer }) {
         {!loading && activeTab === 'contracts' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>Legal & Contract Vault</h3>
-              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }} onClick={() => setGlobalDrawer('legal_contract')}>+ Add Contract</button>
+              <h3 style={{ margin: 0 }}>Legal Contracts & MSAs Vault</h3>
+              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }} onClick={() => setGlobalDrawer('legal_contract')}>+ Upload Legal Contract</button>
             </div>
-            
+
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{ background: 'hsla(var(--border), 0.3)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Contract ID</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Title</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Contract Title</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Party Name</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Type</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>Actions</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {legalContracts.length === 0 ? (
-                  <tr><td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No legal contracts on file.</td></tr>
-                ) : legalContracts.map(lc => (
-                  <tr key={lc.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '500' }}>{lc.id}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{lc.title}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{lc.party_name}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}><span className="badge badge-info">{lc.contract_type}</span></td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                      <button 
-                        className="btn" 
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--danger), 0.1)', color: 'hsl(var(--danger))' }}
-                        onClick={async () => {
-                          if(window.confirm('Delete this contract record?')) {
-                            await fetch(`http://localhost:5000/api/contracts/${lc.id}`, { method: 'DELETE' });
-                            window.dispatchEvent(new Event('refreshCorporateHub'));
-                          }
-                        }}
-                      >Remove</button>
-                    </td>
+                  <tr><td colSpan="4" style={{ padding: '1.5rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No legal contracts uploaded.</td></tr>
+                ) : legalContracts.map(contract => (
+                  <tr key={contract.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: '500' }}>{contract.title}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>{contract.party_name}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}><span className="badge badge-info">{contract.contract_type}</span></td>
+                    <td style={{ padding: '0.75rem 1rem' }}><span className="badge badge-success">{contract.status}</span></td>
                   </tr>
                 ))}
               </tbody>
@@ -671,34 +708,284 @@ export default function CorporateHub({ setGlobalDrawer }) {
           </div>
         )}
 
-        {!loading && activeTab === 'backups' && (
+        {!loading && activeTab === 'dossier' && (
           <div>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>Data Backup & Export</h3>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-              
-              <div style={{ border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)', padding: '1.5rem', display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0' }}>Full Database Backup</h4>
-                <p style={{ margin: '0 0 1.5rem 0', color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>Download a complete snapshot of the raw SQLite database file. This contains all configurations, master data, finances, and settings.</p>
-                <a href="http://localhost:5000/api/backup/sqlite" download className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <HardDrive size={16} /> Download SQLite Backup
-                </a>
-              </div>
-
-              <div style={{ border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)', padding: '1.5rem' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0' }}>CSV Exports</h4>
-                <p style={{ margin: '0 0 1rem 0', color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>Export individual tables to CSV formats for auditing, accounting, or importing into external tools.</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  {['clients', 'suppliers', 'tenders', 'finances', 'purchase_orders', 'inventory'].map(table => (
-                    <a key={table} href={`http://localhost:5000/api/export/${table}`} download className="btn" style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))' }}>
-                      Export {table}
-                    </a>
-                  ))}
+            {/* DOSSIER CONTROLS */}
+            <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.25rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
+                <div style={{ fontWeight: '700', color: 'hsl(var(--primary))', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.95rem' }}>
+                  <Award size={18} /> Dossier Customization & Watermark Controls:
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <button className="btn btn-primary" style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => printElement('.dossier-container', 'DOSSIER')}>
+                    <Printer size={15} /> Print / Export A4 PDF
+                  </button>
+                  <a href="http://localhost:5000/api/company/dossier/zip" download className="btn" style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#16a34a', color: '#fff' }}>
+                    <Download size={15} /> Package (.ZIP)
+                  </a>
                 </div>
               </div>
 
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.25rem', fontSize: '0.825rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showIntroLetter !== false} onChange={e => setDossierOptions({...dossierOptions, showIntroLetter: e.target.checked})} />
+                  <span>Include Cover Letter</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showStatutoryTable !== false} onChange={e => setDossierOptions({...dossierOptions, showStatutoryTable: e.target.checked})} />
+                  <span>Show Statutory Records Table</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showFinancials} onChange={e => setDossierOptions({...dossierOptions, showFinancials: e.target.checked})} />
+                  <span>Show Contract Values</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showLPOs} onChange={e => setDossierOptions({...dossierOptions, showLPOs: e.target.checked})} />
+                  <span>Show LPOs Under Tenders</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showDirectors} onChange={e => setDossierOptions({...dossierOptions, showDirectors: e.target.checked})} />
+                  <span>Include Directors Section</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showRegistrations} onChange={e => setDossierOptions({...dossierOptions, showRegistrations: e.target.checked})} />
+                  <span>Include Regulatory Regs</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showExperience} onChange={e => setDossierOptions({...dossierOptions, showExperience: e.target.checked})} />
+                  <span>Include Past Experience</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showBankAccounts} onChange={e => setDossierOptions({...dossierOptions, showBankAccounts: e.target.checked})} />
+                  <span>Show Bank Settlement Details</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#ffffff', fontWeight: '600' }}>
+                  <input type="checkbox" checked={dossierOptions.showAppendix} onChange={e => setDossierOptions({...dossierOptions, showAppendix: e.target.checked})} />
+                  <span>Include Visual Softcopy Appendix</span>
+                </label>
+              </div>
+            </div>
+
+            {/* PREVIEW CONTAINER */}
+            <div style={{ background: '#f8fafc', padding: '2rem 1rem', borderRadius: 'var(--radius-lg)', border: '1px solid hsl(var(--border))' }}>
+              <CompanyProfileDossier 
+                dossierData={dossierData} 
+                options={dossierOptions} 
+                onPreviewFile={(url, title) => setPreviewFile({ url, title })}
+              />
             </div>
           </div>
+        )}
+
+        {/* SYSTEM SETTINGS TAB */}
+        {!loading && activeTab === 'settings' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            
+            {/* 1. SMTP EMAIL CONFIGURATION */}
+            <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
+                <Mail color="hsl(var(--primary))" size={20} />
+                <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>SMTP Email Server Configuration (Overdue Reminders & Notifications)</h4>
+              </div>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setIsSavingSettings(true);
+                try {
+                  const res = await fetch('http://localhost:5000/api/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(systemSettings)
+                  });
+                  if (res.ok) alert('SMTP & WhatsApp settings updated!');
+                } catch(err) { alert('Failed to save settings'); }
+                finally { setIsSavingSettings(false); }
+              }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>SMTP Host</label>
+                    <input type="text" className="form-control" placeholder="smtp.gmail.com" value={systemSettings.smtp_host || ''} onChange={e => setSystemSettings({...systemSettings, smtp_host: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>SMTP Port</label>
+                    <input type="text" className="form-control" placeholder="587" value={systemSettings.smtp_port || ''} onChange={e => setSystemSettings({...systemSettings, smtp_port: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>SMTP Username / Email</label>
+                    <input type="text" className="form-control" placeholder="notifications@akpali.com" value={systemSettings.smtp_user || ''} onChange={e => setSystemSettings({...systemSettings, smtp_user: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>SMTP Password / App Token</label>
+                    <input type="password" className="form-control" placeholder="••••••••••••" value={systemSettings.smtp_pass || ''} onChange={e => setSystemSettings({...systemSettings, smtp_pass: e.target.value})} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>WhatsApp Cloud Access Token</label>
+                    <input type="text" className="form-control" placeholder="EAABw..." value={systemSettings.wa_token || ''} onChange={e => setSystemSettings({...systemSettings, wa_token: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>WhatsApp Phone Number ID</label>
+                    <input type="text" className="form-control" placeholder="105928194..." value={systemSettings.wa_phone_id || ''} onChange={e => setSystemSettings({...systemSettings, wa_phone_id: e.target.value})} />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn btn-primary" disabled={isSavingSettings}>
+                    {isSavingSettings ? 'Saving Settings...' : 'Save Communication Credentials'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* 2. DOCUMENT BRANDING & TEMPLATES */}
+            <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <FileText color="hsl(var(--primary))" size={20} />
+                  <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Master Document Templates & Branding</h4>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'hsl(var(--primary))' }}>Select Module Template:</label>
+                  <select className="form-control" style={{ width: 'auto', fontSize: '0.8rem', padding: '0.2rem 0.6rem' }} value={selectedDocType} onChange={e => setSelectedDocType(e.target.value)}>
+                    <option value="GLOBAL">Global Master Branding</option>
+                    <option value="SQ">Sales Quotation (SQ)</option>
+                    <option value="LPO">Client LPO</option>
+                    <option value="RFQ">Supplier RFQ</option>
+                    <option value="PO">Purchase Order (PO)</option>
+                    <option value="INVOICE">Client Invoice</option>
+                    <option value="DELIVERY">Delivery Note</option>
+                    <option value="CONTRACT">Contract Agreement Template</option>
+                    <option value="INSPECTION">Inspection Form (QA/QC)</option>
+                    <option value="SITE_VISIT">Site Visit Report</option>
+                    <option value="MATERIAL_REQ">Material Request Form</option>
+                  </select>
+                </div>
+              </div>
+
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                setIsSavingTemplates(true);
+                const currentTpl = documentTemplates[selectedDocType] || {};
+                try {
+                  const res = await fetch('http://localhost:5000/api/templates', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      id: selectedDocType,
+                      header_logo_url: currentTpl.header_logo_url || '',
+                      header_text: currentTpl.header_text || '',
+                      footer_text: currentTpl.footer_text || '',
+                      terms_conditions_text: currentTpl.terms_conditions_text || '',
+                      primary_color: currentTpl.primary_color || '#0f172a'
+                    })
+                  });
+                  if (res.ok) {
+                    alert(`Template '${selectedDocType}' updated!`);
+                    fetchData();
+                  }
+                } catch(err) { alert('Failed to save template'); }
+                finally { setIsSavingTemplates(false); }
+              }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Header Logo URL</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="/uploads/logo.png" 
+                      value={documentTemplates[selectedDocType]?.header_logo_url || ''} 
+                      onChange={e => setDocumentTemplates({
+                        ...documentTemplates,
+                        [selectedDocType]: { ...documentTemplates[selectedDocType], header_logo_url: e.target.value }
+                      })} 
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Primary Brand Color (Hex)</label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input 
+                        type="color" 
+                        style={{ width: '40px', height: '38px', padding: '0.2rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} 
+                        value={documentTemplates[selectedDocType]?.primary_color || '#0f172a'} 
+                        onChange={e => setDocumentTemplates({
+                          ...documentTemplates,
+                          [selectedDocType]: { ...documentTemplates[selectedDocType], primary_color: e.target.value }
+                        })} 
+                      />
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        placeholder="#0f172a" 
+                        value={documentTemplates[selectedDocType]?.primary_color || '#0f172a'} 
+                        onChange={e => setDocumentTemplates({
+                          ...documentTemplates,
+                          [selectedDocType]: { ...documentTemplates[selectedDocType], primary_color: e.target.value }
+                        })} 
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Header Banner Title</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="e.g. OFFICIAL SALES QUOTATION" 
+                      value={documentTemplates[selectedDocType]?.header_text || ''} 
+                      onChange={e => setDocumentTemplates({
+                        ...documentTemplates,
+                        [selectedDocType]: { ...documentTemplates[selectedDocType], header_text: e.target.value }
+                      })} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Footer Notice / Sub-text</label>
+                    <textarea 
+                      className="form-control" 
+                      rows={3} 
+                      placeholder="e.g. Thank you for your business. Generated by Akpali System." 
+                      value={documentTemplates[selectedDocType]?.footer_text || ''} 
+                      onChange={e => setDocumentTemplates({
+                        ...documentTemplates,
+                        [selectedDocType]: { ...documentTemplates[selectedDocType], footer_text: e.target.value }
+                      })} 
+                    />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Default Terms & Conditions</label>
+                    <textarea 
+                      className="form-control" 
+                      rows={3} 
+                      placeholder="1. Payment due within 30 days. 2. Goods once sold are non-refundable." 
+                      value={documentTemplates[selectedDocType]?.terms_conditions_text || ''} 
+                      onChange={e => setDocumentTemplates({
+                        ...documentTemplates,
+                        [selectedDocType]: { ...documentTemplates[selectedDocType], terms_conditions_text: e.target.value }
+                      })} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn btn-primary" disabled={isSavingTemplates}>
+                    {isSavingTemplates ? 'Saving Template...' : `Save '${selectedDocType}' Template`}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+          </div>
+        )}
+
+        {showDocGenModal && (
+          <OperationalDocumentGeneratorModal 
+            onClose={() => setShowDocGenModal(false)} 
+            documentTemplates={documentTemplates} 
+          />
         )}
 
       </div>

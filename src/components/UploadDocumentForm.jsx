@@ -7,6 +7,7 @@ export default function UploadDocumentForm({ onSuccess }) {
     document_type: 'Certificate of Incorporation',
     expiry_date: ''
   })
+  const [file, setFile] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e) => {
@@ -17,14 +18,22 @@ export default function UploadDocumentForm({ onSuccess }) {
     const finalTitle = formData.document_type === 'Other' ? formData.title : formData.document_type;
 
     try {
+      const data = new FormData();
+      data.append('id', formData.id);
+      data.append('title', finalTitle);
+      data.append('document_type', formData.document_type);
+      data.append('expiry_date', formData.expiry_date || '');
+      if (file) {
+        data.append('file', file);
+      }
+
       const res = await fetch('http://localhost:5000/api/documents', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, title: finalTitle })
+        body: data
       });
 
       if (res.ok) {
-        alert('Document uploaded successfully!');
+        alert('Document uploaded successfully with softcopy attachment!');
         window.dispatchEvent(new Event('refreshCorporateHub'));
         if (onSuccess) onSuccess();
       } else {
@@ -71,13 +80,19 @@ export default function UploadDocumentForm({ onSuccess }) {
       )}
 
       <div className="form-group" style={{ marginBottom: 0 }}>
-        <label>Upload File (PDF/JPG)</label>
-        <input type="file" className="form-control" accept=".pdf,.jpg,.jpeg,.png" />
+        <label>Upload Softcopy File (PDF/JPG/PNG)</label>
+        <input 
+          type="file" 
+          className="form-control" 
+          accept=".pdf,.jpg,.jpeg,.png,.webp" 
+          onChange={e => setFile(e.target.files[0])} 
+        />
+        {file && <div style={{ fontSize: '0.75rem', color: '#16a34a', marginTop: '0.25rem' }}>Selected file: {file.name}</div>}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
         <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-          {isSubmitting ? 'Uploading...' : 'Save Document'}
+          {isSubmitting ? 'Uploading...' : 'Save & Attach Document'}
         </button>
       </div>
     </form>

@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1050" viewBox="0 0 800 1050">
+  <rect width="800" height="1050" fill="#f8fafc"/>
+  <rect x="30" y="30" width="740" height="990" fill="none" stroke="#0f172a" stroke-width="6"/>
+  <rect x="45" y="45" width="710" height="960" fill="none" stroke="#3b82f6" stroke-width="2"/>
+  <circle cx="400" cy="180" r="55" fill="#0f172a"/>
+  <text x="400" y="190" font-family="Arial" font-size="28" fill="#fff" text-anchor="middle" font-weight="bold">PROOF</text>
+  <text x="400" y="280" font-family="Georgia" font-size="30" fill="#0f172a" text-anchor="middle" font-weight="bold">OFFICIAL TENDER CREDENTIAL</text>
+  <text x="400" y="320" font-family="Arial" font-size="18" fill="#64748b" text-anchor="middle">VERIFIED CORPORATE EXHIBIT</text>
+  <line x1="150" y1="350" x2="650" y2="350" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="400" y="430" font-family="Georgia" font-size="24" fill="#0f172a" text-anchor="middle" font-weight="bold">CERTIFICATE OF PRACTICAL COMPLETION</text>
+  <text x="400" y="475" font-family="Arial" font-size="16" fill="#334155" text-anchor="middle">Reference Number: KBU/HLTH/2025/420</text>
+  <text x="400" y="550" font-family="Arial" font-size="15" fill="#475569" text-anchor="middle">Issued to Corporate Entity:</text>
+  <text x="400" y="590" font-family="Arial" font-size="24" fill="#0f172a" text-anchor="middle" font-weight="bold">AKPALI ENTERPRISES &amp; CONTRACTORS LTD</text>
+  <text x="400" y="630" font-family="Arial" font-size="15" fill="#475569" text-anchor="middle">Category / Scope: 3-Storey County Health Clinic</text>
+  <rect x="230" y="700" width="340" height="55" fill="#f0fdf4" stroke="#16a34a" rx="8"/>
+  <text x="400" y="735" font-family="Arial" font-size="16" fill="#16a34a" text-anchor="middle" font-weight="bold">✓ OFFICIALLY VERIFIED &amp; VALID</text>
+  <line x1="150" y1="870" x2="350" y2="870" stroke="#0f172a" stroke-width="2"/>
+  <text x="250" y="900" font-family="Arial" font-size="13" fill="#64748b" text-anchor="middle">Authorized Signatory</text>
+  <line x1="450" y1="870" x2="650" y2="870" stroke="#0f172a" stroke-width="2"/>
+  <text x="550" y="900" font-family="Arial" font-size="13" fill="#64748b" text-anchor="middle">Official Stamp &amp; Date</text>
+</svg>

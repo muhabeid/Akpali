@@ -111,6 +111,25 @@ async function initializeDB() {
     console.log('✅ Added client_reference column to client_lpos table.');
   } catch(e) {}
 
+  // Enterprise Company Profile & Accounts column migrations
+  const cpCols = [
+    'trading_name TEXT', 'registration_date TEXT', 'business_type TEXT', 'vat_num TEXT',
+    'postal_address TEXT', 'website TEXT', 'seal_url TEXT', 'industry TEXT',
+    'nature_of_business TEXT', 'years_in_operation INTEGER DEFAULT 1', 'vision TEXT',
+    'mission TEXT', 'core_values TEXT', 'introductory_letter TEXT', 'profile_doc_url TEXT'
+  ];
+  for (const colDef of cpCols) {
+    try { await db.exec(`ALTER TABLE company_profile ADD COLUMN ${colDef};`); } catch(e) {}
+  }
+
+  const accCols = [
+    'branch TEXT', 'account_name TEXT', 'account_number TEXT', 'swift_code TEXT',
+    'currency TEXT DEFAULT "USD"', 'bank_contact TEXT'
+  ];
+  for (const colDef of accCols) {
+    try { await db.exec(`ALTER TABLE accounts ADD COLUMN ${colDef};`); } catch(e) {}
+  }
+
   const accountsCount = await db.get('SELECT COUNT(*) as count FROM accounts');
   if (accountsCount.count === 0) {
     await db.exec(`
@@ -138,16 +157,68 @@ async function initializeDB() {
     INSERT OR IGNORE INTO document_templates (id, header_logo_url, primary_color)
     VALUES ('GLOBAL', '', '#0f172a');
     
-    INSERT OR IGNORE INTO document_templates (id, footer_text, terms_conditions_text) VALUES 
-    ('SQ', 'Sales Quotation Footer', '1. Valid for 30 days.\\n2. Subject to product availability.'),
-    ('LPO', 'LPO Footer', '1. Deliver within 14 days.\\n2. Payment strictly net 30 days after delivery.'),
-    ('RFQ', 'RFQ Footer', '1. Please provide quotation within 3 days.\\n2. Specify delivery timelines.'),
-    ('PO', 'PO Footer', '1. Valid for 30 days.\\n2. Subject to final review.'),
-    ('DELIVERY', 'Delivery Note Footer', '1. Inspect goods upon receipt.'),
-    ('INVOICE', 'Invoice Footer', '1. Payment due upon receipt.\\n2. Late payments incur a 5% penalty.'),
-    ('LETTERHEAD', 'Akpali & Co. | Nairobi, Kenya', '');
+    INSERT OR IGNORE INTO document_templates (id, header_text, footer_text, terms_conditions_text) VALUES 
+    ('SQ', 'OFFICIAL SALES QUOTATION', 'Sales Quotation Footer', '1. Valid for 30 days.\\n2. Subject to product availability.'),
+    ('LPO', 'LOCAL PURCHASE ORDER (LPO)', 'LPO Footer', '1. Deliver within 14 days.\\n2. Payment strictly net 30 days after delivery.'),
+    ('RFQ', 'REQUEST FOR QUOTATION (RFQ)', 'RFQ Footer', '1. Please provide quotation within 3 days.\\n2. Specify delivery timelines.'),
+    ('PO', 'SUPPLIER PURCHASE ORDER', 'PO Footer', '1. Valid for 30 days.\\n2. Subject to final review.'),
+    ('DELIVERY', 'GOODS DELIVERY NOTE', 'Delivery Note Footer', '1. Inspect goods upon receipt.'),
+    ('INVOICE', 'OFFICIAL CLIENT INVOICE', 'Invoice Footer', '1. Payment due upon receipt.\\n2. Late payments incur a 5% penalty.'),
+    ('LETTERHEAD', 'AKPALI ENTERPRISES & CONTRACTORS LTD', 'Akpali Plaza | Upper Hill, Nairobi, Kenya', ''),
+    ('CONTRACT', 'OFFICIAL MASTER CONTRACT & SERVICE AGREEMENT', 'Executed under the laws of Kenya. Confidential Corporate Legal Document.', '1. Both parties agree to execute all obligations described herein.\\n2. Disputes shall be resolved through mutual arbitration prior to legal escalation.\\n3. Amendments must be executed in writing by authorized signatories.'),
+    ('INSPECTION', 'SITE QUALITY & MATERIAL INSPECTION FORM', 'Quality Assurance & Control (QA/QC) Inspection Record', '1. All materials must conform to BS/KS standards.\\n2. Defective items must be quarantined immediately.\\n3. Lead inspector & site manager must sign off upon inspection completion.'),
+    ('SITE_VISIT', 'TECHNICAL SITE VISIT & AUDIT REPORT', 'Field Engineering & Project Supervision Assessment', '1. Field observations recorded reflect site status on audit date.\\n2. Identified non-conformances must be rectified within 7 calendar days.\\n3. Photos & GPS coordinates attached to master site log.'),
+    ('MATERIAL_REQ', 'SITE MATERIAL REQUISITION & ISSUANCE FORM', 'Inventory & Stores Control Record', '1. Requisitions require approval by Project Manager prior to store release.\\n2. Recipient must verify item quantities before signing.\\n3. Unused materials must be returned to central inventory.');
   `);
   console.log('✅ Document templates ensured.');
+
+  // Seed default clients, tenders, LPOs, and past experience for dossier demonstration
+  const clientCount = await db.get('SELECT COUNT(*) as count FROM clients');
+  if (clientCount.count === 0) {
+    await db.exec(`
+      INSERT INTO clients (id, name, registration_num, tax_pin, contact_name, email, phone, address) VALUES
+      ('CLI-101', 'UNHCR Sub-Office Turkana', 'UNHCR-KE-891', 'P051892014Z', 'Sarah Jenkins (Procurement Officer)', 'turkana.procurement@unhcr.org', '+254 733 111 222', 'Kakuma Camp, Turkana, Kenya'),
+      ('CLI-102', 'County Government of Kiambu', 'CGK/PROC/2022', 'P051284910Y', 'Eng. Peter Kamau (Director Infrastructure)', 'infrastructure@kiambu.go.ke', '+254 722 333 444', 'County HQ, Kiambu Town, Kenya'),
+      ('CLI-103', 'KCB Group Headquarters', 'C.12948', 'P000621482X', 'David Ochieng (Head of Facilities)', 'dochieng@kcbgroup.com', '+254 20 327 0000', 'Kencom House, Moi Avenue, Nairobi');
+    `);
+    console.log('✅ Default Mock Clients seeded.');
+  }
+
+  await db.exec(`
+    INSERT OR REPLACE INTO tenders (id, name, client_id, client_name, client_reference, category, contract_value, status, progress) VALUES
+    ('TND-001', 'Supply & Installation of 250 kW Solar Hybrid System', 'CLI-101', 'UNHCR Sub-Office Turkana', 'UNHCR/TURK/2025/89', 'Provision of services', 185000, 'Completed', 100),
+    ('TND-002', 'Construction of 3-Storey County Health Clinic Block', 'CLI-102', 'County Government of Kiambu', 'KBU/HLTH/2025/420', 'Construction works', 420000, 'Completed', 100),
+    ('TND-003', 'Enterprise Fiber Optic Network Expansion Phase 2', 'CLI-103', 'KCB Group Headquarters', 'KCB/ICT/2026/014', 'Provision of services', 95000, 'Active', 65);
+  `);
+
+  await db.exec(`
+    INSERT OR REPLACE INTO client_lpos (id, tender_id, client_reference, issue_date, due_date, total_value) VALUES
+    ('LPO-101', 'TND-001', 'LPO-UNHCR-8910', '2025-06-10', '2025-11-15', 185000),
+    ('LPO-102', 'TND-002', 'LPO-KBU-4209', '2025-01-15', '2025-08-10', 420000),
+    ('LPO-103', 'TND-003', 'LPO-KCB-9021', '2026-02-01', '2026-08-30', 95000);
+  `);
+
+  const expCount = await db.get('SELECT COUNT(*) as count FROM company_experience');
+  if (expCount.count === 0) {
+    await db.exec(`
+      INSERT INTO company_experience (id, project_name, client_name, contract_value, completion_date, scope, reference_letter_url, completion_certificate_url) VALUES
+      ('EXP-401', 'Supply & Installation of 250 kW Solar Hybrid System', 'UNHCR Sub-Office Turkana', 185000, '2025-11-20', 'Turnkey solar hybrid installation with battery storage for refugee facility.', '/uploads/unhcr_reference_letter.svg', '/uploads/unhcr_reference_letter.svg'),
+      ('EXP-402', 'Construction of 3-Storey County Health Clinic Block', 'County Government of Kiambu', 420000, '2025-08-15', 'Civil construction and MEP engineering for 3-storey outpatient health center.', '/uploads/county_health_reference_letter.svg', '/uploads/county_health_reference_letter.svg'),
+      ('EXP-403', 'Regional Logistics & Medical Supplies Distribution', 'World Health Organization (WHO)', 310000, '2024-10-05', 'Cold chain logistics and emergency medical kit distribution across 12 counties.', '/uploads/nca1_certificate.svg', '/uploads/nca1_certificate.svg');
+    `);
+    console.log('✅ Default Company Experience seeded.');
+  }
+
+  const contractCount = await db.get('SELECT COUNT(*) as count FROM legal_contracts');
+  if (contractCount.count === 0) {
+    await db.exec(`
+      INSERT INTO legal_contracts (id, title, party_name, contract_type, start_date, end_date, status, file_url) VALUES
+      ('LC-101', 'Master Services Framework Agreement (MSA)', 'UNHCR Sub-Office Turkana', 'MSA', '2025-01-01', '2027-12-31', 'Active', '/uploads/unhcr_reference_letter.svg'),
+      ('LC-102', 'Mutual Confidentiality & Non-Disclosure Agreement', 'KCB Group Headquarters', 'NDA', '2025-06-01', '2028-06-01', 'Active', '/uploads/ungm_certificate.svg'),
+      ('LC-103', 'Commercial Office Building Lease Agreement', 'Upper Hill Commercial Properties', 'Lease', '2023-04-01', '2028-03-31', 'Active', '/uploads/ebk_certificate.svg');
+    `);
+    console.log('✅ Default Legal Contracts seeded.');
+  }
 }
 
 initializeDB().catch(err => {
@@ -169,15 +240,364 @@ app.get('/api/company', async (req, res) => {
 });
 
 app.put('/api/company', async (req, res) => {
-  const { legal_name, registration_num, tax_pin, email, phone, address, logo_url, base_currency } = req.body;
+  const {
+    legal_name, trading_name, registration_num, registration_date, business_type,
+    tax_pin, vat_num, email, phone, address, postal_address, website, logo_url,
+    seal_url, industry, nature_of_business, years_in_operation, vision, mission,
+    core_values, introductory_letter, profile_doc_url, base_currency
+  } = req.body;
+
   await db.run(
     `UPDATE company_profile 
-     SET legal_name = ?, registration_num = ?, tax_pin = ?, email = ?, phone = ?, address = ?, logo_url = ?, base_currency = ?, updated_at = CURRENT_TIMESTAMP
+     SET legal_name = ?, trading_name = ?, registration_num = ?, registration_date = ?, business_type = ?,
+         tax_pin = ?, vat_num = ?, email = ?, phone = ?, address = ?, postal_address = ?, website = ?,
+         logo_url = ?, seal_url = ?, industry = ?, nature_of_business = ?, years_in_operation = ?,
+         vision = ?, mission = ?, core_values = ?, introductory_letter = ?, profile_doc_url = ?, base_currency = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = 1`,
-    [legal_name, registration_num, tax_pin, email, phone, address, logo_url, base_currency]
+    [
+      legal_name, trading_name, registration_num, registration_date, business_type,
+      tax_pin, vat_num, email, phone, address, postal_address, website, logo_url,
+      seal_url, industry, nature_of_business, years_in_operation || 1, vision, mission,
+      core_values, introductory_letter, profile_doc_url, base_currency || 'USD'
+    ]
   );
   const updatedProfile = await db.get('SELECT * FROM company_profile WHERE id = 1');
   res.json(updatedProfile);
+});
+
+// DIRECTORS & SHAREHOLDERS CRUD
+app.get('/api/directors', async (req, res) => {
+  const directors = await db.all('SELECT * FROM directors ORDER BY appointment_date ASC');
+  res.json(directors);
+});
+
+app.post('/api/directors', upload.fields([{ name: 'cv', maxCount: 1 }, { name: 'photo', maxCount: 1 }]), async (req, res) => {
+  const { id, name, position, id_passport, kra_pin, contact_info, appointment_date, shareholding_pct } = req.body;
+  let cv_url = req.body.cv_url || null;
+  let photo_url = req.body.photo_url || null;
+
+  if (req.files && req.files['cv']) {
+    cv_url = `/uploads/${req.files['cv'][0].filename}`;
+  }
+  if (req.files && req.files['photo']) {
+    photo_url = `/uploads/${req.files['photo'][0].filename}`;
+  }
+
+  const existing = await db.get('SELECT id FROM directors WHERE id = ?', [id]);
+  if (existing) {
+    await db.run(
+      `UPDATE directors SET name = ?, position = ?, id_passport = ?, kra_pin = ?, contact_info = ?, appointment_date = ?, shareholding_pct = ?, cv_url = COALESCE(?, cv_url), photo_url = COALESCE(?, photo_url) WHERE id = ?`,
+      [name, position, id_passport, kra_pin, contact_info, appointment_date, shareholding_pct || 0, cv_url, photo_url, id]
+    );
+  } else {
+    await db.run(
+      `INSERT INTO directors (id, name, position, id_passport, kra_pin, contact_info, appointment_date, shareholding_pct, cv_url, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id || `DIR-${Date.now()}`, name, position, id_passport, kra_pin, contact_info, appointment_date, shareholding_pct || 0, cv_url, photo_url]
+    );
+  }
+  res.json({ success: true });
+});
+
+app.delete('/api/directors/:id', async (req, res) => {
+  await db.run('DELETE FROM directors WHERE id = ?', [req.params.id]);
+  res.json({ success: true });
+});
+
+// TENDER REGISTRATION CERTIFICATES CRUD
+app.get('/api/tender-registrations', async (req, res) => {
+  const regs = await db.all('SELECT * FROM tender_registrations ORDER BY created_at DESC');
+  res.json(regs);
+});
+
+app.post('/api/tender-registrations', upload.single('certificate'), async (req, res) => {
+  const { id, authority_name, registration_number, category_grade, expiry_date } = req.body;
+  let certificate_url = req.body.certificate_url || null;
+
+  if (req.file) {
+    certificate_url = `/uploads/${req.file.filename}`;
+  }
+
+  const existing = await db.get('SELECT id FROM tender_registrations WHERE id = ?', [id]);
+  if (existing) {
+    await db.run(
+      `UPDATE tender_registrations SET authority_name = ?, registration_number = ?, category_grade = ?, expiry_date = ?, certificate_url = COALESCE(?, certificate_url) WHERE id = ?`,
+      [authority_name, registration_number, category_grade, expiry_date, certificate_url, id]
+    );
+  } else {
+    await db.run(
+      `INSERT INTO tender_registrations (id, authority_name, registration_number, category_grade, expiry_date, certificate_url) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id || `REG-${Date.now()}`, authority_name, registration_number, category_grade, expiry_date, certificate_url]
+    );
+  }
+  res.json({ success: true });
+});
+
+app.delete('/api/tender-registrations/:id', async (req, res) => {
+  await db.run('DELETE FROM tender_registrations WHERE id = ?', [req.params.id]);
+  res.json({ success: true });
+});
+
+// COMPANY POLICIES CRUD
+app.get('/api/policies', async (req, res) => {
+  const policies = await db.all('SELECT * FROM company_policies ORDER BY created_at DESC');
+  res.json(policies);
+});
+
+app.post('/api/policies', upload.single('document'), async (req, res) => {
+  const { id, title, content_text } = req.body;
+  let document_url = req.body.document_url || null;
+
+  if (req.file) {
+    document_url = `/uploads/${req.file.filename}`;
+  }
+
+  const existing = await db.get('SELECT id FROM company_policies WHERE id = ?', [id]);
+  if (existing) {
+    await db.run(
+      `UPDATE company_policies SET title = ?, content_text = ?, document_url = COALESCE(?, document_url) WHERE id = ?`,
+      [title, content_text, document_url, id]
+    );
+  } else {
+    await db.run(
+      `INSERT INTO company_policies (id, title, content_text, document_url) VALUES (?, ?, ?, ?)`,
+      [id || `POL-${Date.now()}`, title, content_text, document_url]
+    );
+  }
+  res.json({ success: true });
+});
+
+app.delete('/api/policies/:id', async (req, res) => {
+  await db.run('DELETE FROM company_policies WHERE id = ?', [req.params.id]);
+  res.json({ success: true });
+});
+
+// COMPANY EXPERIENCE (PAST PROJECTS) CRUD
+app.get('/api/experience', async (req, res) => {
+  const exp = await db.all('SELECT * FROM company_experience ORDER BY completion_date DESC');
+  res.json(exp);
+});
+
+app.post('/api/experience', upload.fields([
+  { name: 'reference_letter', maxCount: 1 },
+  { name: 'completion_certificate', maxCount: 1 },
+  { name: 'photo', maxCount: 1 }
+]), async (req, res) => {
+  const { id, project_name, client_name, contract_value, completion_date, scope } = req.body;
+  let reference_letter_url = req.body.reference_letter_url || null;
+  let completion_certificate_url = req.body.completion_certificate_url || null;
+  let photo_url = req.body.photo_url || null;
+
+  if (req.files && req.files['reference_letter']) {
+    reference_letter_url = `/uploads/${req.files['reference_letter'][0].filename}`;
+  }
+  if (req.files && req.files['completion_certificate']) {
+    completion_certificate_url = `/uploads/${req.files['completion_certificate'][0].filename}`;
+  }
+  if (req.files && req.files['photo']) {
+    photo_url = `/uploads/${req.files['photo'][0].filename}`;
+  }
+
+  const existing = await db.get('SELECT id FROM company_experience WHERE id = ?', [id]);
+  if (existing) {
+    await db.run(
+      `UPDATE company_experience SET project_name = ?, client_name = ?, contract_value = ?, completion_date = ?, scope = ?, reference_letter_url = COALESCE(?, reference_letter_url), completion_certificate_url = COALESCE(?, completion_certificate_url), photo_url = COALESCE(?, photo_url) WHERE id = ?`,
+      [project_name, client_name, contract_value || 0, completion_date, scope, reference_letter_url, completion_certificate_url, photo_url, id]
+    );
+  } else {
+    await db.run(
+      `INSERT INTO company_experience (id, project_name, client_name, contract_value, completion_date, scope, reference_letter_url, completion_certificate_url, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id || `EXP-${Date.now()}`, project_name, client_name, contract_value || 0, completion_date, scope, reference_letter_url, completion_certificate_url, photo_url]
+    );
+  }
+  res.json({ success: true });
+});
+
+app.delete('/api/experience/:id', async (req, res) => {
+  await db.run('DELETE FROM company_experience WHERE id = ?', [req.params.id]);
+  res.json({ success: true });
+});
+
+// Company Profile Dossier (Complete Aggregation for 9 Sections)
+app.get('/api/company/dossier', async (req, res) => {
+  try {
+    const [profile, documents, directors, tenderRegistrations, policies, experience, clients, tenders, lpos, accounts, users, contracts] = await Promise.all([
+      db.get('SELECT * FROM company_profile WHERE id = 1'),
+      db.all('SELECT * FROM company_documents ORDER BY created_at DESC'),
+      db.all('SELECT * FROM directors ORDER BY appointment_date ASC'),
+      db.all('SELECT * FROM tender_registrations ORDER BY authority_name ASC'),
+      db.all('SELECT * FROM company_policies ORDER BY created_at DESC'),
+      db.all('SELECT * FROM company_experience ORDER BY completion_date DESC'),
+      db.all('SELECT * FROM clients ORDER BY name ASC'),
+      db.all(`SELECT t.*, c.name as client_full_name, c.contact_name, c.email as client_email, c.phone as client_phone 
+              FROM tenders t LEFT JOIN clients c ON t.client_id = c.id ORDER BY t.created_at DESC`),
+      db.all('SELECT * FROM client_lpos ORDER BY issue_date DESC'),
+      db.all('SELECT * FROM accounts ORDER BY name ASC'),
+      db.all("SELECT * FROM users WHERE status = 'Active' ORDER BY name ASC"),
+      db.all("SELECT * FROM legal_contracts WHERE status = 'Active' ORDER BY created_at DESC")
+    ]);
+
+    // Group tenders and LPOs by client (supporting both clients table and tenders client_name)
+    const clientMap = {};
+
+    for (const c of clients) {
+      clientMap[c.id] = {
+        id: c.id,
+        name: c.name,
+        tax_pin: c.tax_pin || 'N/A',
+        contact_name: c.contact_name || 'N/A',
+        email: c.email || 'N/A',
+        phone: c.phone || 'N/A',
+        tenders: [],
+        lpos: []
+      };
+    }
+
+    for (const t of tenders) {
+      let targetKey = t.client_id;
+      if (!targetKey || !clientMap[targetKey]) {
+        const foundKey = Object.keys(clientMap).find(k => clientMap[k].name === (t.client_name || t.client_full_name));
+        if (foundKey) {
+          targetKey = foundKey;
+        } else {
+          targetKey = `CLI-SYNTH-${t.client_id || t.id}`;
+          clientMap[targetKey] = {
+            id: targetKey,
+            name: t.client_name || t.client_full_name || 'Institutional Client',
+            tax_pin: 'N/A',
+            contact_name: t.contact_name || 'Procurement Office',
+            email: t.client_email || 'N/A',
+            phone: t.client_phone || 'N/A',
+            tenders: [],
+            lpos: []
+          };
+        }
+      }
+      clientMap[targetKey].tenders.push(t);
+    }
+
+    for (const l of lpos) {
+      for (const cKey in clientMap) {
+        if (clientMap[cKey].tenders.some(t => t.id === l.tender_id)) {
+          clientMap[cKey].lpos.push(l);
+        }
+      }
+    }
+
+    const clientPortfolio = Object.values(clientMap).map(c => ({
+      ...c,
+      tenderCount: c.tenders.length,
+      totalContractValue: c.tenders.reduce((sum, t) => sum + (Number(t.contract_value) || 0), 0),
+      completedCount: c.tenders.filter(t => t.status === 'Completed').length
+    }));
+
+    res.json({
+      profile: profile || {},
+      documents: documents || [],
+      directors: directors || [],
+      tenderRegistrations: tenderRegistrations || [],
+      policies: policies || [],
+      experience: experience || [],
+      clientPortfolio: clientPortfolio || [],
+      allTenders: tenders || [],
+      allLPOs: lpos || [],
+      accounts: accounts || [],
+      users: users || [],
+      contracts: contracts || []
+    });
+  } catch (err) {
+    console.error('Error fetching dossier data:', err);
+    res.status(500).json({ error: 'Failed to aggregate dossier data' });
+  }
+});
+
+// ZIP Package Export for Tender Submissions
+app.get('/api/company/dossier/zip', async (req, res) => {
+  try {
+    const [profile, documents, clients, tenders, lpos, accounts, users, contracts, evidence] = await Promise.all([
+      db.get('SELECT * FROM company_profile WHERE id = 1'),
+      db.all('SELECT * FROM company_documents ORDER BY created_at DESC'),
+      db.all('SELECT * FROM clients ORDER BY name ASC'),
+      db.all('SELECT * FROM tenders ORDER BY created_at DESC'),
+      db.all('SELECT * FROM client_lpos ORDER BY issue_date DESC'),
+      db.all('SELECT * FROM accounts ORDER BY name ASC'),
+      db.all("SELECT * FROM users WHERE status = 'Active' ORDER BY name ASC"),
+      db.all("SELECT * FROM legal_contracts WHERE status = 'Active' ORDER BY created_at DESC"),
+      db.all("SELECT * FROM evidence ORDER BY date_submitted DESC")
+    ]);
+
+    const companyNameClean = (profile?.legal_name || 'Akpali').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const zipFilename = `${companyNameClean}_Tender_Submission_Package.zip`;
+
+    res.attachment(zipFilename);
+    res.setHeader('Content-Type', 'application/zip');
+
+    const archive = archiver('zip', { zlib: { level: 9 } });
+
+    archive.on('error', function(err) {
+      console.error('Archive error:', err);
+      if (!res.headersSent) res.status(500).send({ error: err.message });
+    });
+
+    archive.pipe(res);
+
+    // 00_Corporate_Profile_Overview.json
+    const summaryData = {
+      company: profile,
+      governance_documents_count: documents.length,
+      clients_count: clients.length,
+      tenders_count: tenders.length,
+      lpos_count: lpos.length,
+      active_contracts_count: contracts.length,
+      generated_at: new Date().toISOString()
+    };
+    archive.append(JSON.stringify(summaryData, null, 2), { name: '00_Corporate_Profile_Overview.json' });
+
+    // Helper to safely append files
+    const appendFileIfExists = (filePath, archivePath) => {
+      if (!filePath) return;
+      // Convert relative URL /uploads/xyz to absolute disk path if needed
+      let diskPath = filePath;
+      if (filePath.startsWith('/uploads/') || filePath.startsWith('uploads/')) {
+        const cleanName = filePath.replace(/^\/?uploads\//, '');
+        diskPath = path.join(__dirname, 'uploads', cleanName);
+      }
+      if (fs.existsSync(diskPath) && fs.statSync(diskPath).isFile()) {
+        archive.file(diskPath, { name: archivePath });
+      }
+    };
+
+    // 01_Governance_Documents
+    documents.forEach((doc, idx) => {
+      if (doc.file_path) {
+        const ext = path.extname(doc.file_path) || '.pdf';
+        const nameClean = doc.title.replace(/[^a-zA-Z0-9_-]/g, '_');
+        appendFileIfExists(doc.file_path, `01_Governance_Documents/${nameClean}_${doc.id}${ext}`);
+      }
+    });
+
+    // 02_Legal_Contracts
+    contracts.forEach((lc) => {
+      if (lc.file_url) {
+        const ext = path.extname(lc.file_url) || '.pdf';
+        const nameClean = lc.title.replace(/[^a-zA-Z0-9_-]/g, '_');
+        appendFileIfExists(lc.file_url, `02_Legal_Contracts/${nameClean}_${lc.id}${ext}`);
+      }
+    });
+
+    // 03_Tender_Evidence_and_LPOs
+    evidence.forEach((ev) => {
+      if (ev.file_url) {
+        const ext = path.extname(ev.file_url) || '.pdf';
+        const nameClean = (ev.type || 'Evidence').replace(/[^a-zA-Z0-9_-]/g, '_');
+        appendFileIfExists(ev.file_url, `03_Tender_Evidence_and_LPOs/${nameClean}_${ev.id}${ext}`);
+      }
+    });
+
+    await archive.finalize();
+  } catch (err) {
+    console.error('Error creating tender zip package:', err);
+    if (!res.headersSent) res.status(500).json({ error: 'Failed to create zip package' });
+  }
 });
 
 // System Settings
@@ -302,15 +722,24 @@ app.get('/api/documents', async (req, res) => {
   const docs = await db.all('SELECT * FROM company_documents ORDER BY created_at DESC');
   res.json(docs);
 });
-app.post('/api/documents', async (req, res) => {
+app.post('/api/documents', upload.single('file'), async (req, res) => {
   const { id, title, document_type, expiry_date } = req.body;
-  await db.run('INSERT INTO company_documents (id, title, document_type, expiry_date) VALUES (?, ?, ?, ?)', [id, title, document_type, expiry_date]);
+  let file_path = req.body.file_path || null;
   
-  // Trigger WhatsApp notification to Admin (Assuming +254700000000 is admin phone)
+  if (req.file) {
+    file_path = `/uploads/${req.file.filename}`;
+  }
+
+  await db.run(
+    'INSERT INTO company_documents (id, title, document_type, expiry_date, file_path) VALUES (?, ?, ?, ?, ?)', 
+    [id, title, document_type, expiry_date, file_path]
+  );
+  
+  // Trigger WhatsApp notification to Admin
   const waMsg = `📄 New Document Uploaded: ${title} (${document_type}). Expiry: ${expiry_date || 'N/A'}`;
   await sendWhatsApp(db, '+254700000000', waMsg);
   
-  res.json({ success: true });
+  res.json({ success: true, file_path });
 });
 
 // Accounts

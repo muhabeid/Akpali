@@ -2,12 +2,26 @@
 CREATE TABLE IF NOT EXISTS company_profile (
     id INTEGER PRIMARY KEY CHECK (id = 1), -- Enforce single row
     legal_name TEXT DEFAULT 'Akpali & Co.',
+    trading_name TEXT,
     registration_num TEXT,
+    registration_date TEXT,
+    business_type TEXT,
     tax_pin TEXT,
+    vat_num TEXT,
     email TEXT,
     phone TEXT,
     address TEXT,
+    postal_address TEXT,
+    website TEXT,
     logo_url TEXT,
+    seal_url TEXT,
+    industry TEXT,
+    nature_of_business TEXT,
+    years_in_operation INTEGER DEFAULT 1,
+    vision TEXT,
+    mission TEXT,
+    core_values TEXT,
+    profile_doc_url TEXT,
     base_currency TEXT DEFAULT 'USD',
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -39,6 +53,51 @@ CREATE TABLE IF NOT EXISTS approval_workflows (
     maker_role TEXT NOT NULL,
     checker_role TEXT NOT NULL,
     threshold_amount REAL DEFAULT 0.00,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS directors (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    position TEXT DEFAULT 'Director',
+    id_passport TEXT,
+    kra_pin TEXT,
+    contact_info TEXT,
+    appointment_date TEXT,
+    shareholding_pct REAL DEFAULT 0.0,
+    cv_url TEXT,
+    photo_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tender_registrations (
+    id TEXT PRIMARY KEY,
+    authority_name TEXT NOT NULL, -- NCA, EBK, National Treasury, County, PPRA, NGO, UN, World Bank, AfDB
+    registration_number TEXT NOT NULL,
+    category_grade TEXT,
+    expiry_date TEXT,
+    certificate_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS company_policies (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL, -- Tender Bid Management & Compliance Policy
+    content_text TEXT,
+    document_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS company_experience (
+    id TEXT PRIMARY KEY,
+    project_name TEXT NOT NULL,
+    client_name TEXT NOT NULL,
+    contract_value REAL DEFAULT 0.00,
+    completion_date TEXT,
+    scope TEXT,
+    reference_letter_url TEXT,
+    completion_certificate_url TEXT,
+    photo_url TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -257,6 +316,12 @@ CREATE TABLE IF NOT EXISTS accounts (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     type TEXT NOT NULL CHECK(type IN ('Bank', 'Mobile Money', 'Cash')),
+    branch TEXT,
+    account_name TEXT,
+    account_number TEXT,
+    swift_code TEXT,
+    currency TEXT DEFAULT 'USD',
+    bank_contact TEXT,
     current_balance REAL DEFAULT 0.00,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -276,7 +341,6 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 -- TRIGGERS: REAL-TIME PROFITABILITY ENGINE
 
--- 1. When Evidence is added, increase the Deliverable's revenue and recalculate profit.
 CREATE TRIGGER IF NOT EXISTS after_evidence_insert
 AFTER INSERT ON evidence
 BEGIN
@@ -289,7 +353,6 @@ BEGIN
     WHERE id = NEW.deliverable_id;
 END;
 
--- 2. When a Deliverable's financials change, cascade the sum up to the Parent Tender.
 CREATE TRIGGER IF NOT EXISTS after_deliverable_update
 AFTER UPDATE OF revenue, cost, profit ON deliverables
 BEGIN
@@ -302,12 +365,9 @@ BEGIN
     WHERE id = NEW.tender_id;
 END;
 
--- 3. Treasury: When a Transaction occurs, update Account balances. 
---    If an Expense is linked to a Tender, increase the Tender's total_cost directly.
 CREATE TRIGGER IF NOT EXISTS after_transaction_insert
 AFTER INSERT ON transactions
 BEGIN
-    -- Update Account Balance
     UPDATE accounts 
     SET 
         current_balance = CASE 
@@ -317,8 +377,6 @@ BEGIN
         updated_at = CURRENT_TIMESTAMP
     WHERE id = NEW.account_id;
 
-    -- If this is an Expense linked directly to a Tender, add it to the Tender's cost and reduce profit.
-    -- (This allows generic project expenses that don't fit neatly into a specific Deliverable)
     UPDATE tenders
     SET 
         total_cost = total_cost + NEW.amount,
@@ -327,7 +385,6 @@ BEGIN
     WHERE id = NEW.tender_id AND NEW.type = 'Expense';
 END;
 
--- 4. When a Purchase Order is raised, commit the cost to the Tender
 CREATE TRIGGER IF NOT EXISTS after_po_insert
 AFTER INSERT ON purchase_orders
 WHEN NEW.tender_id IS NOT NULL
@@ -340,17 +397,14 @@ BEGIN
     WHERE id = NEW.tender_id;
 END;
 
--- 5. When a Stock Requisition is approved, deduct inventory and add cost to Tender
 CREATE TRIGGER IF NOT EXISTS after_stock_requisition_update
 AFTER UPDATE OF status ON stock_requisitions
 WHEN NEW.status = 'Approved' AND OLD.status != 'Approved'
 BEGIN
-    -- Deduct from inventory
     UPDATE inventory 
     SET quantity = quantity - NEW.quantity, last_updated = CURRENT_TIMESTAMP
     WHERE item_name = NEW.item_name;
 
-    -- Add cost to tender
     UPDATE tenders
     SET 
         total_cost = total_cost + (NEW.quantity * (SELECT avg_unit_cost FROM inventory WHERE item_name = NEW.item_name)),
