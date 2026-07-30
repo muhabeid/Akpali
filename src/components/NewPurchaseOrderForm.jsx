@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { Trash2, PlusCircle } from 'lucide-react'
-import { RoleContext } from '../App'
+import { useRole } from '../context/RoleContext'
 
 export default function NewPurchaseOrderForm() {
-  const { currentRole } = useContext(RoleContext);
+  const { currentRole } = useRole();
   const [tenders, setTenders] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [poType, setPoType] = useState('Goods') // 'Goods' or 'Service'

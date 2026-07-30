@@ -3,10 +3,10 @@ import { printElement } from '../utils/printHelper'
 import Drawer from '../components/Drawer'
 import RecordGRNForm from '../components/RecordGRNForm'
 import GenerateRFQForm from '../components/GenerateRFQForm'
-import { RoleContext } from '../App'
+import { useRole } from '../context/RoleContext'
 
 export default function Procurement({ setGlobalDrawer }) {
-  const { currentRole } = useContext(RoleContext);
+  const { currentRole } = useRole()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('All')
   const [pos, setPos] = useState([])

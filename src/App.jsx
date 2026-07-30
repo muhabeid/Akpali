@@ -23,11 +23,7 @@ import LegalContractForm from './components/LegalContractForm'
 
 import OperationalDocumentGeneratorModal from './components/OperationalDocumentGeneratorModal'
 
-export const RoleContext = createContext();
-
 const Sidebar = ({ companyProfile }) => {
-  const { getRoleDetails } = useRole()
-  const activeRole = getRoleDetails()
   const logoUrl = companyProfile?.logo_url ? (
     companyProfile.logo_url.startsWith('http') ? companyProfile.logo_url : `http://localhost:5000${companyProfile.logo_url}`
   ) : '/logo.png'
@@ -77,8 +73,6 @@ const Sidebar = ({ companyProfile }) => {
 }
 
 const Topbar = ({ setGlobalDrawer }) => {
-  const { currentRole, setCurrentRole, getRoleDetails } = useRole()
-  const activeRole = getRoleDetails()
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
