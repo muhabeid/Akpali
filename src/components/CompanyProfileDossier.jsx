@@ -1,7 +1,9 @@
 import React from 'react'
 import { Building2, Shield, Briefcase, FileCheck, Landmark, Users, Award, CheckCircle2, Clock, AlertCircle, FileText, ExternalLink, Paperclip, BarChart3, CheckSquare, Eye, UserCheck, Scroll, FileCode, HardHat, Compass, Mail } from 'lucide-react'
+import { useCurrency } from '../context/CurrencyContext'
 
 export default function CompanyProfileDossier({ dossierData, options = {}, onPreviewFile }) {
+  const { formatAmount } = useCurrency()
   if (!dossierData) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading corporate dossier data...</div>
 
   const {
@@ -216,13 +218,13 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
             <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.2)', padding: '0.85rem', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: 'hsl(var(--primary))', fontWeight: '700' }}>Single Contract Capacity</div>
               <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#0f172a', marginTop: '0.2rem' }}>
-                {showFinancials && highestSingleContract > 0 ? `${currency} ${Number(highestSingleContract).toLocaleString()}` : 'Qualified'}
+                {showFinancials && highestSingleContract > 0 ? formatAmount(highestSingleContract) : 'Qualified'}
               </div>
             </div>
             <div style={{ background: 'hsla(var(--success), 0.04)', border: '1px solid hsla(var(--success), 0.2)', padding: '0.85rem', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
               <div style={{ fontSize: '0.7rem', textTransform: 'uppercase', color: '#16a34a', fontWeight: '700' }}>Total Executed Volume</div>
               <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#16a34a', marginTop: '0.2rem' }}>
-                {showFinancials ? `${currency} ${Number(totalPortfolioValue).toLocaleString()}` : `${allTenders.length} Projects`}
+                {showFinancials ? formatAmount(totalPortfolioValue) : `${allTenders.length} Projects`}
               </div>
             </div>
             <div style={{ background: 'hsla(var(--accent), 0.04)', border: '1px solid hsla(var(--accent), 0.2)', padding: '0.85rem', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>

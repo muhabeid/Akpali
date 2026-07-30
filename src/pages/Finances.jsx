@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react'
 import Drawer from '../components/Drawer'
 import RecordSupplierInvoiceForm from '../components/RecordSupplierInvoiceForm'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import { useCurrency } from '../context/CurrencyContext'
 
 export default function Finances({ setGlobalDrawer }) {
+  const { formatAmount } = useCurrency()
   const [matchResult, setMatchResult] = useState(null)
   const [treasury, setTreasury] = useState({ accounts: [], transactions: [] })
   const [evidenceList, setEvidenceList] = useState([])
@@ -89,7 +91,7 @@ export default function Finances({ setGlobalDrawer }) {
             treasury.accounts.map(acc => (
               <div key={acc.id} className="card stat-card" style={{ borderTop: `4px solid ${acc.type === 'Bank' ? 'hsl(var(--primary))' : acc.type === 'Mobile Money' ? 'hsl(var(--success))' : 'hsl(var(--warning))'}` }}>
                 <span className="stat-label">{acc.name} ({acc.type})</span>
-                <span className="stat-value" style={{ fontSize: '1.75rem' }}>${Number(acc?.current_balance || 0).toLocaleString()}</span>
+                <span className="stat-value" style={{ fontSize: '1.75rem' }}>{formatAmount(acc?.current_balance || 0)}</span>
               </div>
             ))
           )}
@@ -107,7 +109,7 @@ export default function Finances({ setGlobalDrawer }) {
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>Projected Net Working Capital</div>
               <div style={{ fontSize: '1.5rem', fontWeight: '800', color: Number(forecastEngine.summary.net_working_capital || 0) >= 0 ? '#4ade80' : '#f87171' }}>
-                ${Number(forecastEngine.summary.net_working_capital || 0).toLocaleString()}
+                {formatAmount(forecastEngine.summary.net_working_capital || 0)}
               </div>
             </div>
           </div>
@@ -118,15 +120,15 @@ export default function Finances({ setGlobalDrawer }) {
                 <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#38bdf8', marginBottom: '0.5rem' }}>{item.horizon} Horizon</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.3rem' }}>
                   <span style={{ color: '#94a3b8' }}>Expected Inflows:</span>
-                  <span style={{ color: '#4ade80', fontWeight: '700' }}>+${Number(item?.inflows || 0).toLocaleString()}</span>
+                  <span style={{ color: '#4ade80', fontWeight: '700' }}>+{formatAmount(item?.inflows || 0)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
                   <span style={{ color: '#94a3b8' }}>Expected Outflows:</span>
-                  <span style={{ color: '#f87171', fontWeight: '700' }}>-${Number(item?.outflows || 0).toLocaleString()}</span>
+                  <span style={{ color: '#f87171', fontWeight: '700' }}>-{formatAmount(item?.outflows || 0)}</span>
                 </div>
                 <div style={{ borderTop: '1px solid #334155', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: '700' }}>
                   <span style={{ color: '#fff' }}>Net Position:</span>
-                  <span style={{ color: Number(item?.net || 0) >= 0 ? '#4ade80' : '#f87171' }}>${Number(item?.net || 0).toLocaleString()}</span>
+                  <span style={{ color: Number(item?.net || 0) >= 0 ? '#4ade80' : '#f87171' }}>{formatAmount(item?.net || 0)}</span>
                 </div>
               </div>
             ))}
@@ -186,7 +188,7 @@ export default function Finances({ setGlobalDrawer }) {
                   <td style={{ padding: '1rem' }}>{tx.purpose}</td>
                   <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>{tx.tender_name || '-'}</td>
                   <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold', color: tx.type === 'Income' ? 'hsl(var(--success))' : 'hsl(var(--danger))' }}>
-                    {tx.type === 'Income' ? '+' : '-'}${Number(tx?.amount || 0).toLocaleString()}
+                    {tx.type === 'Income' ? '+' : '-'}{formatAmount(tx?.amount || 0)}
                   </td>
                 </tr>
               ))
@@ -227,7 +229,7 @@ export default function Finances({ setGlobalDrawer }) {
                   <td style={{ padding: '1rem' }}>{grn.po_id}</td>
                   <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>{grn.tender_name || '-'}</td>
                   <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{grn.details}</td>
-                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>${Number(grn?.received_value || 0).toLocaleString()}</td>
+                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>{formatAmount(grn?.received_value || 0)}</td>
                 </tr>
               ))
             )}
@@ -269,18 +271,18 @@ export default function Finances({ setGlobalDrawer }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--text-secondary))' }}>Billed Amount</p>
-                    <h3 style={{ margin: 0, color: 'hsl(var(--danger))' }}>${Number(inv?.amount || 0).toLocaleString()}</h3>
+                    <h3 style={{ margin: 0, color: 'hsl(var(--danger))' }}>{formatAmount(inv?.amount || 0)}</h3>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '1rem', background: 'var(--bg-app)', borderRadius: 'var(--radius-sm)' }}>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Purchase Order Limit</span>
-                    <strong style={{ display: 'block' }}>${Number(inv?.po_value || 0).toLocaleString()}</strong>
+                    <strong style={{ display: 'block' }}>{formatAmount(inv?.po_value || 0)}</strong>
                   </div>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Verified GRN Total</span>
-                    <strong style={{ display: 'block', color: 'hsl(var(--success))' }}>${Number(inv?.total_grn_value || 0).toLocaleString()}</strong>
+                    <strong style={{ display: 'block', color: 'hsl(var(--success))' }}>{formatAmount(inv?.total_grn_value || 0)}</strong>
                   </div>
                 </div>
 
@@ -305,7 +307,7 @@ export default function Finances({ setGlobalDrawer }) {
                       <p style={{ marginTop: '0.25rem' }}>Cleared for payment.</p>
                     </div>
                     <button className="btn" onClick={() => payInvoice(inv)} style={{ background: 'hsl(var(--success))', color: '#fff', padding: '1rem', fontWeight: 'bold' }}>
-                      Pay ${Number(inv?.amount || 0).toLocaleString()}
+                      Pay {formatAmount(inv?.amount || 0)}
                     </button>
                   </div>
                 )}

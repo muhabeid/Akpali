@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { FileText, Printer, CheckCircle2, AlertTriangle, XCircle, Plus, Trash2 } from 'lucide-react'
 import { printElement } from '../utils/printHelper'
+import { useCurrency } from '../context/CurrencyContext'
 
 export default function OperationalDocumentGeneratorModal({ onClose, documentTemplates = {} }) {
+  const { formatAmount } = useCurrency()
   const [docType, setDocType] = useState('CONTRACT') // 10 Types: CONTRACT, INSPECTION, SITE_VISIT, MATERIAL_REQ, HANDOVER_CERT, SITE_LOG, VAR_ORDER, SAFETY_INCIDENT, PAYMENT_CERT, SUBCONTRACTOR_EVAL
   
   // Generic Common Fields
@@ -691,7 +693,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                   <p style={{ whiteSpace: 'pre-wrap' }}>{contractScope}</p>
                   
                   <h4 style={{ color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginTop: '1rem' }}>2. Financial Consideration & Duration</h4>
-                  <div><strong>Contract Value:</strong> USD ${Number(contractValue).toLocaleString()}</div>
+                  <div><strong>Contract Value:</strong> {formatAmount(contractValue)}</div>
                   <div><strong>Execution Duration:</strong> {contractDuration}</div>
                 </div>
               )}
@@ -802,7 +804,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                 <div style={{ marginBottom: '1.5rem', fontSize: '0.85rem', lineHeight: '1.6' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', background: '#fef3c7', border: '1px solid #f59e0b', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.825rem', color: '#b45309' }}>
                     <div><strong>Variation Order Ref:</strong> {variationRef}</div>
-                    <div><strong>Cost Impact:</strong> +USD ${Number(costAdjustment).toLocaleString()}</div>
+                    <div><strong>Cost Impact:</strong> +{formatAmount(costAdjustment)}</div>
                     <div><strong>Extension of Time:</strong> {timeExtension}</div>
                   </div>
 
@@ -840,15 +842,15 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                     <tbody>
                       <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
                         <td style={{ padding: '0.6rem', fontWeight: '600' }}>Gross Executed Work Value to Date:</td>
-                        <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: '700' }}>USD ${Number(grossValue).toLocaleString()}</td>
+                        <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: '700' }}>{formatAmount(grossValue)}</td>
                       </tr>
                       <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#b91c1c' }}>
                         <td style={{ padding: '0.6rem' }}>Less: Contract Statutory Retention Deduction (10%):</td>
-                        <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: '700' }}>-USD ${Number(retentionAmt).toLocaleString()}</td>
+                        <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: '700' }}>-{formatAmount(retentionAmt)}</td>
                       </tr>
                       <tr style={{ background: '#dcfce7', color: '#15803d', fontWeight: '800' }}>
                         <td style={{ padding: '0.75rem', fontSize: '0.95rem' }}>NET PAYABLE CLAIM AMOUNT:</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '1.05rem' }}>USD ${Number(netPayable).toLocaleString()}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '1.05rem' }}>{formatAmount(netPayable)}</td>
                       </tr>
                     </tbody>
                   </table>

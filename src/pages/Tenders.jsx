@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react'
 import { printElement } from '../utils/printHelper'
+import { useCurrency } from '../context/CurrencyContext'
 
 export default function Tenders({ setGlobalDrawer }) {
+  const { formatAmount } = useCurrency()
   const [selectedTender, setSelectedTender] = useState(null)
   const [expandedDeliverable, setExpandedDeliverable] = useState(null)
   const [expandedLPO, setExpandedLPO] = useState(null)
@@ -105,19 +107,19 @@ export default function Tenders({ setGlobalDrawer }) {
         <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <div className="card stat-card">
             <span className="stat-label">Contract Value</span>
-            <span className="stat-value">${Number(selectedTender.contract_value).toLocaleString()}</span>
+            <span className="stat-value">{formatAmount(selectedTender.contract_value)}</span>
           </div>
           <div className="card stat-card">
             <span className="stat-label">Committed Costs (POs) + Actual</span>
-            <span className="stat-value" style={{ color: 'hsl(var(--danger))' }}>${Number(selectedTender.total_cost || 0).toLocaleString()}</span>
+            <span className="stat-value" style={{ color: 'hsl(var(--danger))' }}>{formatAmount(selectedTender.total_cost || 0)}</span>
           </div>
           <div className="card stat-card">
             <span className="stat-label">Total Revenue</span>
-            <span className="stat-value" style={{ color: 'hsl(var(--success))' }}>${Number(selectedTender.total_revenue || 0).toLocaleString()}</span>
+            <span className="stat-value" style={{ color: 'hsl(var(--success))' }}>{formatAmount(selectedTender.total_revenue || 0)}</span>
           </div>
           <div className="card stat-card">
             <span className="stat-label">Project Profit</span>
-            <span className="stat-value" style={{ color: 'hsl(var(--warning))' }}>${Number(selectedTender.profit || 0).toLocaleString()}</span>
+            <span className="stat-value" style={{ color: 'hsl(var(--warning))' }}>{formatAmount(selectedTender.profit || 0)}</span>
           </div>
         </div>
 
@@ -630,7 +632,7 @@ export default function Tenders({ setGlobalDrawer }) {
                     {t.category}
                   </span>
                 </td>
-                <td style={{ padding: '1rem' }}>${Number(t.contract_value).toLocaleString()}</td>
+                <td style={{ padding: '1rem' }}>{formatAmount(t.contract_value)}</td>
                 <td style={{ padding: '1rem' }}>
                   <div style={{ width: '100%', height: '8px', background: 'hsl(var(--border))', borderRadius: '4px' }}>
                     <div style={{ width: `${t.progress}%`, height: '100%', background: 'hsl(var(--primary))', borderRadius: '4px' }} />

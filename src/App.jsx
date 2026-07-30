@@ -1,6 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, FileText, Truck, ShoppingCart, Landmark, Menu, Inbox, Search, Bell, HelpCircle, ShieldAlert, LogOut, User } from 'lucide-react'
+import { LayoutDashboard, FileText, Truck, ShoppingCart, Landmark, Menu, Inbox, Search, Bell, HelpCircle, ShieldAlert, LogOut, User, Globe } from 'lucide-react'
+import { CurrencyProvider, useCurrency } from './context/CurrencyContext'
 
 import Dashboard from './pages/Dashboard'
 import Tenders from './pages/Tenders'
@@ -74,6 +75,7 @@ const Sidebar = ({ companyProfile }) => {
 
 const Topbar = ({ setGlobalDrawer }) => {
   const { currentRole, setCurrentRole } = useContext(RoleContext);
+  const { currency, setCurrency, rates, isLive, lastUpdated } = useCurrency();
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -94,6 +96,24 @@ const Topbar = ({ setGlobalDrawer }) => {
       <h2>{getPageTitle(location.pathname)}</h2>
       <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
         
+        {/* Real-Time Multi-Currency Switcher Dropdown */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'hsla(var(--primary), 0.1)', padding: '0.35rem 0.65rem', borderRadius: 'var(--radius-md)', border: '1px solid hsla(var(--primary), 0.2)' }}>
+          <Globe size={16} color="hsl(var(--primary))" />
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>Currency:</span>
+          <select 
+            value={currency} 
+            onChange={(e) => setCurrency(e.target.value)}
+            style={{ fontSize: '0.78rem', background: 'transparent', border: 'none', color: 'hsl(var(--text-primary))', fontWeight: '700', cursor: 'pointer', outline: 'none' }}
+          >
+            <option value="USD">💵 USD ($)</option>
+            <option value="KES">🇰🇪 KES (KSh)</option>
+            <option value="TZS">🇹🇿 TZS (TSh)</option>
+          </select>
+          <span style={{ fontSize: '0.68rem', color: isLive ? 'hsl(var(--success))' : 'hsl(var(--text-secondary))', fontWeight: '600', marginLeft: '0.2rem' }} title={`Live Rates: 1 USD = ${rates.KES} KES | ${rates.TZS} TZS (Updated: ${lastUpdated})`}>
+            {isLive ? '• Live' : '• System'}
+          </span>
+        </div>
+
         {/* Global Operational Document Generator Shortcut */}
         <button 
           type="button"
@@ -178,11 +198,12 @@ function App() {
   }, [])
 
   return (
-    <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
-      <div className="app-container">
-        <Sidebar companyProfile={companyProfile} />
-        <main className="main-content">
-          <Topbar setGlobalDrawer={setGlobalDrawer} />
+    <CurrencyProvider>
+      <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
+        <div className="app-container">
+          <Sidebar companyProfile={companyProfile} />
+          <main className="main-content">
+            <Topbar setGlobalDrawer={setGlobalDrawer} />
           <div className="page-container">
           <Routes>
             <Route path="/" element={<Dashboard setGlobalDrawer={setGlobalDrawer} />} />
@@ -352,8 +373,9 @@ function App() {
         </div>
       </Drawer>
 
-      </div>
-    </RoleContext.Provider>
+        </div>
+      </RoleContext.Provider>
+    </CurrencyProvider>
   )
 }
 

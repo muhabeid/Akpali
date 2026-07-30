@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { PlusCircle, FilePlus, Send, HandCoins, Truck, Zap, FileText, Box } from 'lucide-react'
+import { useCurrency } from '../context/CurrencyContext'
 import Drawer from '../components/Drawer'
 import NewTenderForm from '../components/NewTenderForm'
 import RecordLPOForm from '../components/RecordLPOForm'
@@ -12,6 +13,7 @@ import StockRequisitionForm from '../components/StockRequisitionForm'
 import SalesQuoteForm from '../components/SalesQuoteForm'
 
 export default function Dashboard({ setGlobalDrawer }) {
+  const { formatAmount } = useCurrency()
   const [openDrawer, setOpenDrawer] = useState(null)
   const [tenders, setTenders] = useState([])
   const [lpos, setLpos] = useState([])
@@ -155,7 +157,7 @@ export default function Dashboard({ setGlobalDrawer }) {
                     <td style={{ padding: '1rem' }}>
                       <span className="badge badge-primary">{t.category}</span>
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>${t.contract_value.toLocaleString()}</td>
+                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>{formatAmount(t.contract_value)}</td>
                   </tr>
                 ))
               )}
