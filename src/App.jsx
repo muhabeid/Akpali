@@ -20,6 +20,7 @@ import InviteUserForm from './components/InviteUserForm'
 import BankAccountForm from './components/BankAccountForm'
 import ApprovalWorkflowForm from './components/ApprovalWorkflowForm'
 import LegalContractForm from './components/LegalContractForm'
+import EditProfileForm from './components/EditProfileForm'
 
 import OperationalDocumentGeneratorModal from './components/OperationalDocumentGeneratorModal'
 
@@ -324,19 +325,8 @@ function App() {
         </div>
       </Drawer>
 
-      <Drawer isOpen={globalDrawer === 'profile'} onClose={() => setGlobalDrawer(null)} title="Edit Profile" submitText="Save Changes" onSubmit={() => { alert('Profile Updated!'); setGlobalDrawer(null) }}>
-        <div className="form-group">
-          <label>Full Name</label>
-          <input type="text" className="form-control" defaultValue="John Doe" />
-        </div>
-        <div className="form-group">
-          <label>Email Address</label>
-          <input type="email" className="form-control" defaultValue="admin@tenderpro.com" />
-        </div>
-        <div className="form-group">
-          <label>Phone Number</label>
-          <input type="text" className="form-control" defaultValue="+254 700 123456" />
-        </div>
+      <Drawer isOpen={globalDrawer === 'profile'} onClose={() => setGlobalDrawer(null)} title="User Profile & Role Allocation">
+        <EditProfileForm onClose={() => setGlobalDrawer(null)} />
       </Drawer>
 
         </div>
