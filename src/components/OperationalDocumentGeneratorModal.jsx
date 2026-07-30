@@ -140,10 +140,20 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
   const [timelinessScore, setTimelinessScore] = useState('100% On Schedule')
   const [recommendation, setRecommendation] = useState('Highly Recommended for Future Enterprise Tenders & Multi-Story Commercial Projects.')
 
+  // 8. Open Letter / Standalone Correspondence Specific Fields
+  const [recipientName, setRecipientName] = useState('The Managing Director / Procurement Committee')
+  const [recipientOrg, setRecipientOrg] = useState('Public Works Department, P.O. Box 40100, Nairobi, Kenya')
+  const [salutation, setSalutation] = useState('Dear Sir/Madam,')
+  const [letterSubject, setLetterSubject] = useState('RE: FORMAL STATEMENT OF INTENT AND CORPORATE UNDERTAKING')
+  const [letterBody, setLetterBody] = useState(`We write to formally present our corporate statement regarding the execution of works under the referenced tender framework.\n\nAkpali Company Limited confirms its technical capacity, financial liquidity, and deployment readiness to undertake the assigned scope of works in accordance with all governing statutory standards and project specifications.\n\nShould you require any further clarification or documentation, please do not hesitate to contact the undersigned.`)
+  const [closingSignoff, setClosingSignoff] = useState('Yours Faithfully,')
+  const [signatoryTitle, setSignatoryTitle] = useState('Eng. John Akpali\nManaging Director & Chief Operations Officer')
+
   // Update defaults when docType changes
   const handleDocTypeChange = (type) => {
     setDocType(type)
-    if (type === 'CONTRACT') setTitle('Master Construction & Service Agreement')
+    if (type === 'OPEN_LETTER') setTitle('Official Corporate Correspondence / Open Letter')
+    else if (type === 'CONTRACT') setTitle('Master Construction & Service Agreement')
     else if (type === 'INSPECTION') setTitle('Site Material & Quality Inspection Form')
     else if (type === 'SITE_VISIT') setTitle('Technical Site Visit & Engineering Progress Report')
     else if (type === 'MATERIAL_REQ') setTitle('Site Material Requisition & Store Issuance Form')
@@ -167,7 +177,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
             <FileText color="#38bdf8" size={24} />
             <div>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#fff' }}>Operational Document & Template Generator</h3>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Generate 10 printable A4 Contracts, Inspection Forms, Site Logs, Handover Certs, Variation Orders & IPCs</div>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Generate 11 printable A4 Open Letters, Contracts, Inspection Forms, Site Logs, Handover Certs & IPCs</div>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.25rem', cursor: 'pointer', fontWeight: '700' }}>✕</button>
@@ -182,6 +192,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Select Document Template Type *</label>
               <select className="form-control" style={{ fontWeight: '600', borderColor: 'hsl(var(--primary))', padding: '0.45rem' }} value={docType} onChange={e => handleDocTypeChange(e.target.value)}>
+                <option value="OPEN_LETTER">✉️ Standalone Open Letter & Official Memorandum</option>
                 <option value="CONTRACT">📜 Contract Agreement Template</option>
                 <option value="INSPECTION">🔍 Inspection Form (QA/QC)</option>
                 <option value="SITE_VISIT">🏗️ Site Visit & Progress Report</option>
@@ -531,6 +542,41 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
               </>
             )}
 
+            {docType === 'OPEN_LETTER' && (
+              <>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Recipient / Addressee</label>
+                  <input type="text" className="form-control" value={recipientName} onChange={e => setRecipientName(e.target.value)} placeholder="e.g. The Director of Procurement" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Recipient Organization & Address</label>
+                  <input type="text" className="form-control" value={recipientOrg} onChange={e => setRecipientOrg(e.target.value)} placeholder="e.g. Ministry of Infrastructure, Nairobi" />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Salutation</label>
+                  <input type="text" className="form-control" value={salutation} onChange={e => setSalutation(e.target.value)} placeholder="e.g. Dear Sir/Madam," />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Letter Subject / Heading</label>
+                  <input type="text" className="form-control" style={{ fontWeight: '700' }} value={letterSubject} onChange={e => setLetterSubject(e.target.value)} placeholder="RE: ..." />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Letter Content Body</label>
+                  <textarea className="form-control" rows={7} value={letterBody} onChange={e => setLetterBody(e.target.value)} placeholder="Draft your letter..." />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Closing Signoff</label>
+                    <input type="text" className="form-control" value={closingSignoff} onChange={e => setClosingSignoff(e.target.value)} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem', fontWeight: '600' }}>Signatory & Title</label>
+                    <input type="text" className="form-control" value={signatoryTitle} onChange={e => setSignatoryTitle(e.target.value)} />
+                  </div>
+                </div>
+              </>
+            )}
+
             <button 
               type="button" 
               className="btn btn-primary" 
@@ -587,6 +633,54 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                 <div><strong>Issued / Inspected By:</strong> {personInCharge}</div>
                 <div><strong>Date Executed:</strong> {docDate}</div>
               </div>
+
+              {/* STANDALONE OPEN LETTER / CORRESPONDENCE SPECIFIC CONTENT */}
+              {docType === 'OPEN_LETTER' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontSize: '0.9rem', color: '#0f172a', lineHeight: '1.6', marginBottom: '2rem' }}>
+                  {/* RECIPIENT BLOCK */}
+                  <div>
+                    <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{recipientName}</div>
+                    <div style={{ color: '#475569', fontSize: '0.85rem' }}>{recipientOrg}</div>
+                  </div>
+
+                  {/* SALUTATION */}
+                  <div style={{ fontWeight: '600' }}>{salutation}</div>
+
+                  {/* SUBJECT HEADING */}
+                  {letterSubject && (
+                    <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#0f172a', textDecoration: 'underline', textTransform: 'uppercase', letterSpacing: '0.02em', margin: '0.25rem 0' }}>
+                      {letterSubject}
+                    </div>
+                  )}
+
+                  {/* LETTER BODY */}
+                  <div style={{ whiteSpace: 'pre-wrap', color: '#1e293b', textAlign: 'justify', minHeight: '180px' }}>
+                    {letterBody}
+                  </div>
+
+                  {/* CLOSING & SIGNATORY BLOCK */}
+                  <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid #cbd5e1', paddingTop: '1.25rem' }}>
+                    <div>
+                      <div style={{ fontWeight: '600', marginBottom: '0.2rem' }}>{closingSignoff}</div>
+                      <div style={{ fontWeight: '700', color: '#0f172a', whiteSpace: 'pre-wrap' }}>{signatoryTitle}</div>
+                      <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>{companyProfile?.legal_name || 'AKPALI COMPANY LIMITED'}</div>
+                    </div>
+
+                    <div style={{ textAlign: 'center', width: '220px' }}>
+                      <div style={{ minHeight: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.25rem' }}>
+                        <img 
+                          src={sealUrl ? (sealUrl.startsWith('http') ? sealUrl : `http://localhost:5000${sealUrl}`) : '/stamp.png'} 
+                          alt="Official Stamp" 
+                          style={{ height: stampSize || '90px', objectFit: 'contain', opacity: 0.9 }} 
+                          onError={(e) => { e.target.src = '/stamp.png'; e.target.onerror = null; }} 
+                        />
+                      </div>
+                      <div style={{ borderBottom: '1px solid #cbd5e1', width: '100%', marginBottom: '0.3rem' }}></div>
+                      <strong style={{ fontSize: '0.8rem', color: '#0f172a' }}>Authorized Corporate Seal & Signature</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* CONTRACT SPECIFIC CONTENT */}
               {docType === 'CONTRACT' && (
