@@ -4,9 +4,11 @@ import Drawer from '../components/Drawer'
 import RecordGRNForm from '../components/RecordGRNForm'
 import GenerateRFQForm from '../components/GenerateRFQForm'
 import { useRole } from '../context/RoleContext'
+import { useCurrency } from '../context/CurrencyContext'
 
 export default function Procurement({ setGlobalDrawer }) {
   const { currentRole } = useRole()
+  const { formatAmount } = useCurrency()
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('All')
   const [pos, setPos] = useState([])
@@ -52,7 +54,7 @@ export default function Procurement({ setGlobalDrawer }) {
                   <td style={{ padding: '0.5rem' }}>{item.desc || item.description || item.name || '-'}</td>
                   <td style={{ padding: '0.5rem' }}>{item.qty || item.quantity || 1}</td>
                   <td style={{ padding: '0.5rem' }}>
-                    {isRfq ? <div style={{ borderBottom: '1px dashed hsl(var(--border))', width: '100px', height: '20px' }} /> : (item.unitPrice !== undefined ? `$${Number(item.unitPrice).toLocaleString()}` : (item.unit || '-'))}
+                    {isRfq ? <div style={{ borderBottom: '1px dashed hsl(var(--border))', width: '100px', height: '20px' }} /> : (item.unitPrice !== undefined ? formatAmount(item.unitPrice) : (item.unit || '-'))}
                   </td>
                   {isRfq && (
                     <td style={{ padding: '0.5rem' }}>
@@ -172,7 +174,7 @@ export default function Procurement({ setGlobalDrawer }) {
       <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <div className="card stat-card">
           <span className="stat-label">Total Spend (Active Tenders)</span>
-          <span className="stat-value">$65,500</span>
+          <span className="stat-value">{formatAmount(65500)}</span>
         </div>
         <div className="card stat-card">
           <span className="stat-label">Pending Deliveries</span>
@@ -349,9 +351,9 @@ export default function Procurement({ setGlobalDrawer }) {
                 <tr style={{ background: '#0f172a', textAlign: 'left', borderBottom: '2px solid #334155', color: '#94a3b8' }}>
                   <th style={{ padding: '0.6rem 0.8rem' }}>PO Ref #</th>
                   <th style={{ padding: '0.6rem 0.8rem' }}>Supplier</th>
-                  <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>PO Value ($)</th>
+                  <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>PO Value</th>
                   <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>GRN Recv Qty</th>
-                  <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>Invoiced ($)</th>
+                  <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>Invoiced</th>
                   <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>Match Status</th>
                   <th style={{ padding: '0.6rem 0.8rem' }}>Audit Findings</th>
                 </tr>
@@ -361,9 +363,9 @@ export default function Procurement({ setGlobalDrawer }) {
                   <tr key={idx} style={{ borderBottom: '1px solid #1e293b' }}>
                     <td style={{ padding: '0.6rem 0.8rem', fontWeight: '700', color: '#38bdf8' }}>{m.po_id}</td>
                     <td style={{ padding: '0.6rem 0.8rem', color: '#fff' }}>{m.supplier_name}</td>
-                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: '600' }}>${Number(m.po_total || 0).toLocaleString()}</td>
+                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: '600' }}>{formatAmount(m.po_total || 0)}</td>
                     <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#94a3b8' }}>{m.total_received}</td>
-                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#94a3b8' }}>${Number(m.total_invoiced || 0).toLocaleString()}</td>
+                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#94a3b8' }}>{formatAmount(m.total_invoiced || 0)}</td>
                     <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
                       <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', fontWeight: '700', background: m.match_status === 'Matched' ? '#dcfce7' : '#fee2e2', color: m.match_status === 'Matched' ? '#15803d' : '#b91c1c' }}>
                         {m.match_status}
@@ -427,7 +429,7 @@ export default function Procurement({ setGlobalDrawer }) {
                     <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>
                       {po.tender_name || <span className="badge badge-warning">Company Overhead</span>}
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'right' }}>${po.total_value.toLocaleString()}</td>
+                    <td style={{ padding: '1rem', textAlign: 'right' }}>{formatAmount(po.total_value)}</td>
                     <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <span className={`badge ${po.status === 'Delivered' ? 'badge-success' : po.status === 'Awaiting Approval' ? 'badge-danger' : po.status === 'Rejected' ? 'badge-danger' : 'badge-warning'}`}>
                         {po.status}
@@ -513,7 +515,7 @@ export default function Procurement({ setGlobalDrawer }) {
                             </div>
                             <div>
                               <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Total Order Value</p>
-                              <strong style={{ fontSize: '1rem' }}>${Number(po.total_value).toLocaleString()}</strong>
+                              <strong style={{ fontSize: '1rem' }}>{formatAmount(po.total_value)}</strong>
                             </div>
                           </div>
                           {renderItems(po.items)}
