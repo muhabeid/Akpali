@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext } from 'react'
+import React, { useState, useEffect, createContext, useContext } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, FileText, Truck, ShoppingCart, Landmark, Menu, Inbox, Search, Bell, HelpCircle, ShieldAlert, LogOut, User } from 'lucide-react'
 
@@ -23,12 +23,28 @@ import OperationalDocumentGeneratorModal from './components/OperationalDocumentG
 
 export const RoleContext = createContext();
 
-const Sidebar = () => {
+const Sidebar = ({ companyProfile }) => {
+  const logoUrl = companyProfile?.logo_url ? (
+    companyProfile.logo_url.startsWith('http') ? companyProfile.logo_url : `http://localhost:5000${companyProfile.logo_url}`
+  ) : '/logo.png'
+
   return (
     <aside className="sidebar">
-      <div className="brand">
-        <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'bold' }}>T</div>
-        TenderPro
+      <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem 1.25rem 1.5rem 1.25rem', borderBottom: '1px solid hsla(var(--border), 0.5)', marginBottom: '1rem' }}>
+        <img 
+          src={logoUrl} 
+          alt="Company Logo" 
+          style={{ height: '36px', width: '36px', objectFit: 'contain', borderRadius: '6px' }}
+          onError={(e) => { e.target.src = '/logo.png'; e.target.onerror = null; }}
+        />
+        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'hsl(var(--text-primary))', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={companyProfile?.legal_name || 'AKPALI COMPANY LIMITED'}>
+            {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
+          </span>
+          <span style={{ fontSize: '0.65rem', color: 'hsl(var(--text-secondary))', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Corporate Portal
+          </span>
+        </div>
       </div>
       <nav className="nav-menu">
         <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
@@ -150,11 +166,21 @@ const Topbar = ({ setGlobalDrawer }) => {
 function App() {
   const [globalDrawer, setGlobalDrawer] = useState(null)
   const [currentRole, setCurrentRole] = useState('Admin')
+  const [companyProfile, setCompanyProfile] = useState(null)
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/company')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) setCompanyProfile(data)
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <RoleContext.Provider value={{ currentRole, setCurrentRole }}>
       <div className="app-container">
-        <Sidebar />
+        <Sidebar companyProfile={companyProfile} />
         <main className="main-content">
           <Topbar setGlobalDrawer={setGlobalDrawer} />
           <div className="page-container">
