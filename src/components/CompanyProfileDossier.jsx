@@ -578,16 +578,24 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
       )}
 
       {/* OFFICIAL SEAL & SIGNATURE */}
-      <div style={{ marginTop: '2.5rem', paddingTop: '1.25rem', borderTop: '2px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.78rem', color: '#64748b', position: 'relative', zIndex: 2 }}>
-        <div>
-          <div style={{ fontWeight: '700', color: '#0f172a', marginBottom: '0.2rem' }}>Corporate Certification:</div>
-          <div>We hereby certify that all corporate credentials and statutory records in this dossier are accurate representations of our official corporate repository.</div>
+      <div style={{ marginTop: '3rem', paddingTop: '1.5rem', borderTop: '2px dashed #cbd5e1', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#475569', position: 'relative', zIndex: 2 }}>
+        <div style={{ maxWidth: '500px' }}>
+          <div style={{ fontWeight: '700', color: '#0f172a', marginBottom: '0.3rem', fontSize: '0.85rem' }}>Corporate Certification & Seal:</div>
+          <div style={{ lineHeight: '1.4' }}>We hereby certify that all corporate credentials, statutory records, and attached exhibits in this dossier are authentic, accurate representations of our official corporate repository.</div>
         </div>
 
-        <div style={{ textAlign: 'center', minWidth: '180px' }}>
-          <div style={{ borderBottom: '1px solid #0f172a', paddingBottom: '0.5rem', marginBottom: '0.2rem', height: '35px' }}></div>
-          <div style={{ fontWeight: '600', color: '#0f172a' }}>Authorized Corporate Signatory</div>
-          <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>Official Seal / Signature</div>
+        <div style={{ textAlign: 'center', minWidth: '220px' }}>
+          <div style={{ minHeight: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.25rem' }}>
+            <img 
+              src={getCleanUrl(profile.seal_url) || '/stamp.png'} 
+              alt="Official Stamp" 
+              style={{ height: '90px', objectFit: 'contain', opacity: 0.9 }} 
+              onError={(e) => e.target.style.display = 'none'} 
+            />
+          </div>
+          <div style={{ borderBottom: '1px dashed #475569', width: '100%', marginBottom: '0.35rem' }}></div>
+          <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '0.85rem' }}>Authorized Corporate Signatory</div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>Official Stamp & Signature</div>
         </div>
       </div>
 
