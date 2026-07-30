@@ -626,13 +626,15 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                 </div>
               </div>
 
-              {/* METADATA SUMMARY GRID */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '1rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.825rem' }}>
-                <div><strong>Project / Site Name:</strong> {projectName}</div>
-                <div><strong>Counterparty / Client:</strong> {partyName}</div>
-                <div><strong>Issued / Inspected By:</strong> {personInCharge}</div>
-                <div><strong>Date Executed:</strong> {docDate}</div>
-              </div>
+              {/* METADATA SUMMARY GRID (FOR OPERATIONAL DOCUMENTS ONLY) */}
+              {docType !== 'OPEN_LETTER' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '1rem', borderRadius: '6px', marginBottom: '1.5rem', fontSize: '0.825rem' }}>
+                  <div><strong>Project / Site Name:</strong> {projectName}</div>
+                  <div><strong>Counterparty / Client:</strong> {partyName}</div>
+                  <div><strong>Issued / Inspected By:</strong> {personInCharge}</div>
+                  <div><strong>Date Executed:</strong> {docDate}</div>
+                </div>
+              )}
 
               {/* STANDALONE OPEN LETTER / CORRESPONDENCE SPECIFIC CONTENT */}
               {docType === 'OPEN_LETTER' && (
@@ -867,34 +869,38 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                 </div>
               )}
 
-              {/* TERMS & CONDITIONS FOOTER */}
-              <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px stroke #cbd5e1', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'pre-wrap' }}>
-                <strong>Field Guidelines & Terms:</strong><br/>
-                {currentTemplate.terms_conditions_text || 'Standard corporate quality, health, and safety protocols apply.'}
-              </div>
+              {/* TERMS & CONDITIONS FOOTER (FOR OPERATIONAL DOCUMENTS ONLY) */}
+              {docType !== 'OPEN_LETTER' && (
+                <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px stroke #cbd5e1', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'pre-wrap' }}>
+                  <strong>Field Guidelines & Terms:</strong><br/>
+                  {currentTemplate.terms_conditions_text || 'Standard corporate quality, health, and safety protocols apply.'}
+                </div>
+              )}
 
-              {/* SIGNATURE BLOCK */}
-              <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#475569' }}>
-                <div style={{ textAlign: 'center', width: '200px' }}>
-                  <div style={{ borderBottom: '1px solid #0f172a', marginBottom: '0.3rem', height: '30px' }}></div>
-                  <div><strong>Prepared / Inspected By:</strong></div>
-                  <div>{personInCharge}</div>
-                </div>
-                <div style={{ textAlign: 'center', width: '220px' }}>
-                  <div style={{ borderBottom: '1px solid #0f172a', marginBottom: '0.3rem', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {sealUrl && (
-                      <img 
-                        src={sealUrl} 
-                        alt="Stamp / Seal" 
-                        style={{ height: stampSize || '90px', objectFit: 'contain', opacity: 0.88 }} 
-                        onError={(e) => e.target.style.display = 'none'} 
-                      />
-                    )}
+              {/* DUAL SIGNATURE BLOCK (FOR OPERATIONAL DOCUMENTS ONLY) */}
+              {docType !== 'OPEN_LETTER' && (
+                <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: '#475569' }}>
+                  <div style={{ textAlign: 'center', width: '200px' }}>
+                    <div style={{ borderBottom: '1px solid #0f172a', marginBottom: '0.3rem', height: '30px' }}></div>
+                    <div><strong>Prepared / Inspected By:</strong></div>
+                    <div>{personInCharge}</div>
                   </div>
-                  <div><strong>Approved By (Sign & Stamp):</strong></div>
-                  <div>Project Manager / QA Director</div>
+                  <div style={{ textAlign: 'center', width: '220px' }}>
+                    <div style={{ borderBottom: '1px solid #0f172a', marginBottom: '0.3rem', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {sealUrl && (
+                        <img 
+                          src={sealUrl} 
+                          alt="Stamp / Seal" 
+                          style={{ height: stampSize || '90px', objectFit: 'contain', opacity: 0.88 }} 
+                          onError={(e) => e.target.style.display = 'none'} 
+                        />
+                      )}
+                    </div>
+                    <div><strong>Approved By (Sign & Stamp):</strong></div>
+                    <div>Project Manager / QA Director</div>
+                  </div>
                 </div>
-              </div>
+              )}
 
             </div>
 
