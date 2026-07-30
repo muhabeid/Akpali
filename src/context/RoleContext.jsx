@@ -6,53 +6,57 @@ export const ROLES = {
   ADMIN: {
     id: 'Admin',
     name: 'Executive Administrator',
-    badge: '👑 Executive',
+    badge: '👑 Admin',
     color: '#0284c7',
-    description: 'Full executive control, high-value approvals, corporate dossier management & user administration.'
+    description: 'Full executive access, high-value approvals, corporate hub administration, dossiers & user management.',
+    tasks: [
+      'Full System Oversight & Executive Dashboards',
+      'Corporate Hub Administration (Bank Accounts, Directors, Statutory Licenses)',
+      'High-Value Contract & Purchase Order Approvals',
+      'Exporting Qualification Dossiers & Managing User Access'
+    ]
   },
-  TENDERS_MANAGER: {
-    id: 'Tenders_Manager',
-    name: 'Tenders & Sales Manager',
-    badge: '📈 Bidding & Sales',
+  OPERATIONS: {
+    id: 'Operations',
+    name: 'Operations Manager (Tenders, Sales & Site Works)',
+    badge: '🏗️ Operations',
     color: '#16a34a',
-    description: 'Client relationship, sales quotes, client LPOs, and deliverable invoicing.'
+    description: 'Manages bidding, client sales quotes, LPOs, site execution, QA/QC reports, and deliverable fulfillment.',
+    tasks: [
+      'Creating Tenders, Sales Quotations (SQ) & Client Delivery Notes',
+      'Recording incoming Client Local Purchase Orders (LPO)',
+      'Uploading site deliverable evidence, photo proof & milestone fulfillment',
+      'Generating QA/QC Inspection Forms, Site Visit Reports, Daily Logs & Variation Orders'
+    ]
   },
-  PROCUREMENT_OFFICER: {
-    id: 'Procurement_Officer',
-    name: 'Procurement & Logistics Officer',
-    badge: '📦 Supply Chain',
+  PROCUREMENT_FINANCE: {
+    id: 'Procurement_Finance',
+    name: 'Procurement & Finance Manager',
+    badge: '💳 Procurement & Finance',
     color: '#d97706',
-    description: 'Supplier RFQs, raising POs, logging site GRNs, and inventory stock management.'
-  },
-  SITE_ENGINEER: {
-    id: 'Site_Engineer',
-    name: 'Site Engineer / QA/QC Manager',
-    badge: '👷 Field Operations',
-    color: '#9333ea',
-    description: 'Site progress reports, QA/QC checklists, deliverable proof upload, daily logs & variation orders.'
-  },
-  ACCOUNTANT: {
-    id: 'Accountant',
-    name: 'Finance & Treasury Accountant',
-    badge: '💳 Finance & Audit',
-    color: '#059669',
-    description: 'AI 3-Way Match engine, supplier invoice processing, treasury payments & cashflow forecasting.'
+    description: 'Handles supplier RFQs, POs, site GRNs, inventory stock, AI 3-Way Matching, invoices & treasury cashflow.',
+    tasks: [
+      'Sourcing Supplier RFQs, raising Purchase Orders (PO) & Store Stock Requisitions',
+      'Logging Goods Received Notes (GRN) & verified site material receipts',
+      'Running AI 3-Way Match Verification (PO vs GRN vs Invoice)',
+      'Processing Supplier Invoices, Treasury Accounts & 30/60/90-Day Cashflow Analytics'
+    ]
   }
 }
 
 export const RoleProvider = ({ children }) => {
-  const [currentRole, setCurrentRole] = useState('Admin') // Default: Executive Administrator
+  const [currentRole, setCurrentRole] = useState('Admin')
 
-  const getRoleDetails = () => {
-    return Object.values(ROLES).find(r => r.id === currentRole) || ROLES.ADMIN
+  const getRoleDetails = (roleId = currentRole) => {
+    return Object.values(ROLES).find(r => r.id === roleId) || ROLES.ADMIN
   }
 
   const canAccessModule = (moduleName) => {
     if (currentRole === 'Admin') return true
-    if (moduleName === 'tenders' && (currentRole === 'Tenders_Manager' || currentRole === 'Site_Engineer')) return true
-    if (moduleName === 'procurement' && (currentRole === 'Procurement_Officer' || currentRole === 'Accountant')) return true
-    if (moduleName === 'finances' && currentRole === 'Accountant') return true
-    if (moduleName === 'corporate' && (currentRole === 'Tenders_Manager' || currentRole === 'Procurement_Officer')) return true
+    if (moduleName === 'tenders' && (currentRole === 'Operations')) return true
+    if (moduleName === 'procurement' && (currentRole === 'Procurement_Finance')) return true
+    if (moduleName === 'finances' && (currentRole === 'Procurement_Finance')) return true
+    if (moduleName === 'corporate' && (currentRole === 'Operations' || currentRole === 'Procurement_Finance')) return true
     return false
   }
 

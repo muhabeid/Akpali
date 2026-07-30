@@ -106,59 +106,6 @@ export default function Dashboard({ setGlobalDrawer }) {
         <SalesQuoteForm />
       </Drawer>
 
-      {/* ACTIVE ROLE PERSONA & TASK ALLOCATION SHOWCASE WIDGET */}
-      <div className="card" style={{ padding: '1.25rem 1.5rem', background: 'hsla(var(--primary), 0.04)', borderLeft: `6px solid ${activeRole.color}`, borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: activeRole.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-              <UserCheck size={22} />
-            </div>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '800', color: '#0f172a' }}>
-                  {activeRole.name} Persona
-                </h3>
-                <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: activeRole.color, color: '#fff', fontWeight: '800' }}>
-                  {activeRole.badge}
-                </span>
-              </div>
-              <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.825rem', color: '#475569' }}>
-                {activeRole.description}
-              </p>
-            </div>
-          </div>
-
-          {/* Quick Role Switcher Selector */}
-          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-            <span style={{ fontSize: '0.725rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase' }}>Simulate System Role:</span>
-            <select 
-              value={currentRole} 
-              onChange={(e) => setCurrentRole(e.target.value)}
-              style={{ fontSize: '0.825rem', fontWeight: '700', padding: '0.4rem 0.75rem', borderRadius: '6px', border: `1px solid ${activeRole.color}`, background: '#ffffff', color: '#0f172a', cursor: 'pointer', outline: 'none' }}
-            >
-              {Object.values(ROLES).map(r => (
-                <option key={r.id} value={r.id}>{r.badge} — {r.name}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* ROLE TASKS & CAPABILITIES GRID */}
-        <div style={{ borderTop: '1px solid #cbd5e1', paddingTop: '0.85rem' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em', color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <ShieldCheck size={16} color={activeRole.color} /> Authorized Tasks & Responsibilities Allocation:
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem 1.5rem' }}>
-            {currentTasks.map((task, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.825rem', color: '#334155', fontWeight: '600' }}>
-                <CheckCircle2 size={16} color={activeRole.color} style={{ flexShrink: 0 }} />
-                <span>{task}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <div className="card" style={{ padding: '1.5rem', marginBottom: '1rem', borderTop: '4px solid hsl(var(--primary))' }}>
         <h3 style={{ margin: '0 0 1.25rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Zap size={20} color="hsl(var(--primary))" /> Project Pipeline & Actions

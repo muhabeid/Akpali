@@ -45,11 +45,9 @@ const Sidebar = ({ companyProfile }) => {
           <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'hsl(var(--text-primary))', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={companyProfile?.legal_name || 'AKPALI COMPANY LIMITED'}>
             {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
           </span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem' }}>
-            <span style={{ fontSize: '0.625rem', padding: '0.15rem 0.4rem', borderRadius: '4px', background: activeRole.color, color: '#ffffff', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-              {activeRole.badge}
-            </span>
-          </div>
+          <span style={{ fontSize: '0.65rem', color: 'hsl(var(--text-secondary))', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.1rem' }}>
+            Corporate Portal
+          </span>
         </div>
       </div>
       <nav className="nav-menu">
@@ -128,50 +126,25 @@ const Topbar = ({ setGlobalDrawer }) => {
           )}
         </div>
         
-        {/* Active Role Indicator Badge */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'hsla(var(--primary), 0.1)', padding: '0.35rem 0.65rem', borderRadius: 'var(--radius-md)', border: '1px solid hsla(var(--primary), 0.2)' }}>
-          <UserCheck size={16} color={activeRole.color} />
-          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: activeRole.color }}>Role: {activeRole.badge}</span>
-        </div>
-
-        {/* Profile - Hover Dropdown with Role Switcher Simulator */}
+        {/* Profile - Hover Dropdown */}
         <div 
           style={{ position: 'relative' }}
           onMouseEnter={() => setProfileOpen(true)}
           onMouseLeave={() => setProfileOpen(false)}
         >
-          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'hsl(var(--bg-card))', display: 'flex', alignItems: 'center', justifyContent: 'center', border: `2px solid ${activeRole.color}`, cursor: 'pointer', background: profileOpen ? 'hsla(var(--primary), 0.2)' : 'hsl(var(--bg-card))', transition: 'all 0.2s ease' }}>
-            <span style={{ color: activeRole.color, fontWeight: 'bold' }}>JD</span>
+          <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'hsl(var(--bg-card))', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: profileOpen ? 'hsla(var(--primary), 0.2)' : 'hsl(var(--bg-card))', transition: 'all 0.2s ease' }}>
+            <span style={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}>JD</span>
           </div>
 
           {profileOpen && (
-            <div style={{ position: 'absolute', top: '100%', right: '0', paddingTop: '0.5rem', width: '290px', zIndex: 100 }}>
-              <div style={{ background: 'hsl(var(--bg-card))', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <div style={{ paddingBottom: '0.5rem', borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
-                  <strong style={{ fontSize: '0.9rem' }}>John Doe</strong>
-                  <div style={{ fontSize: '0.75rem', color: activeRole.color, fontWeight: '700', marginTop: '0.1rem' }}>
-                    {activeRole.name}
-                  </div>
+            <div style={{ position: 'absolute', top: '100%', right: '0', paddingTop: '0.5rem', width: '240px', zIndex: 100 }}>
+              <div style={{ background: 'hsl(var(--bg-card))', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid hsla(var(--border), 0.5)', marginBottom: '0.25rem' }}>
+                  <strong>John Doe</strong>
+                  <p style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', margin: '0.1rem 0 0 0' }}>Executive Administrator</p>
                 </div>
-
-                {/* ROLE SWITCHER SELECTOR */}
-                <div style={{ background: 'hsla(var(--border), 0.2)', padding: '0.5rem', borderRadius: '6px' }}>
-                  <label style={{ fontSize: '0.72rem', fontWeight: '700', color: 'hsl(var(--text-secondary))', display: 'block', marginBottom: '0.3rem' }}>
-                    🎭 Switch Role Persona (Simulator):
-                  </label>
-                  <select 
-                    value={currentRole} 
-                    onChange={(e) => setCurrentRole(e.target.value)}
-                    style={{ width: '100%', fontSize: '0.78rem', fontWeight: '700', padding: '0.35rem', borderRadius: '4px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--bg-card))', color: 'hsl(var(--text-primary))', cursor: 'pointer' }}
-                  >
-                    {Object.values(ROLES).map(r => (
-                      <option key={r.id} value={r.id}>{r.badge} — {r.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('profile'); setProfileOpen(false); }}><User size={18}/> Edit Profile & Role</button>
-                <div style={{ height: '1px', background: 'hsl(var(--border))', margin: '0.1rem 0' }} />
+                <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('profile'); setProfileOpen(false); }}><User size={18}/> Edit Profile</button>
+                <div style={{ height: '1px', background: 'hsl(var(--border))', margin: '0.25rem 0' }} />
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--danger))' }} onClick={() => alert('Logging out...')}><LogOut size={18}/> Log Out</button>
               </div>
             </div>
