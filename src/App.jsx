@@ -277,6 +277,66 @@ function App() {
         </div>
       </Drawer>
 
+      <Drawer isOpen={globalDrawer === 'help'} onClose={() => setGlobalDrawer(null)} title="Contextual Help & Corporate SOPs" width="750px">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', fontSize: '0.875rem' }}>
+          
+          <div style={{ background: 'hsla(var(--primary), 0.1)', padding: '1rem', borderRadius: 'var(--radius-md)', borderLeft: '4px solid hsl(var(--primary))' }}>
+            <h4 style={{ margin: '0 0 0.3rem 0', color: 'hsl(var(--primary))' }}>📖 Corporate Platform Operating Manual & Guidelines</h4>
+            <p style={{ margin: 0, fontSize: '0.825rem', color: 'hsl(var(--text-secondary))' }}>
+              Welcome to the Akpali Corporate Management Portal. Below are the Standard Operating Procedures (SOPs) for key platform workflows.
+            </p>
+          </div>
+
+          {/* SOP SECTION 1: TENDERS & SALES */}
+          <div className="card" style={{ padding: '1rem', border: '1px solid hsl(var(--border))' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'hsl(var(--primary))' }}>
+              <FileText size={18} /> 1. Tenders, Quotations & Client LPOs
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.6', color: 'hsl(var(--text-secondary))' }}>
+              <li><strong>Creating Tenders:</strong> Navigate to <em>Tenders & Projects</em> and click <code>+ New Tender</code> to record client reference numbers and target budgets.</li>
+              <li><strong>Issuing Quotations & Delivery Notes:</strong> Expand any tender to preview and print official Sales Quotations and Delivery Notes with company logo and stamp.</li>
+              <li><strong>Client LPOs:</strong> Record incoming Client Local Purchase Orders to lock in contractual commitments.</li>
+            </ul>
+          </div>
+
+          {/* SOP SECTION 2: PROCUREMENT & 3-WAY MATCHING */}
+          <div className="card" style={{ padding: '1rem', border: '1px solid hsl(var(--border))' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'hsl(var(--primary))' }}>
+              <ShoppingCart size={18} /> 2. Procurement, AI OCR & 3-Way Matching
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.6', color: 'hsl(var(--text-secondary))' }}>
+              <li><strong>Raising Supplier POs:</strong> Issue Purchase Orders to registered suppliers under competitive pricing.</li>
+              <li><strong>Goods Received Notes (GRN):</strong> Record site delivery receipts to verify item quantities against POs.</li>
+              <li><strong>AI Vision OCR:</strong> Upload supplier invoices to automatically extract data via TenderPro AI Vision.</li>
+              <li><strong>3-Way Matching:</strong> System verifies PO value vs. GRN delivery vs. Invoice amount before payment authorization.</li>
+            </ul>
+          </div>
+
+          {/* SOP SECTION 3: CORPORATE HUB & DOSSIER EXPORT */}
+          <div className="card" style={{ padding: '1rem', border: '1px solid hsl(var(--border))' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'hsl(var(--primary))' }}>
+              <ShieldAlert size={18} /> 3. Corporate Hub & Qualification Dossiers
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.6', color: 'hsl(var(--text-secondary))' }}>
+              <li><strong>Company Profile:</strong> Manage legal name, address, tax PIN, bank accounts, and upload official logo/stamp files.</li>
+              <li><strong>Statutory Licenses:</strong> Upload compliance certificates, tax clearance, and track expiry alerts.</li>
+              <li><strong>Dossier Generator:</strong> Click <code>View Live Profile Dossier</code> in Corporate Hub to generate and print pre-qualification dossiers with watermark, logo, and seal.</li>
+            </ul>
+          </div>
+
+          {/* SOP SECTION 4: OPERATIONAL DOCUMENTS */}
+          <div className="card" style={{ padding: '1rem', border: '1px solid hsl(var(--border))' }}>
+            <h4 style={{ margin: '0 0 0.5rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'hsl(var(--primary))' }}>
+              <FileText size={18} /> 4. Operational Documents Generator
+            </h4>
+            <ul style={{ margin: 0, paddingLeft: '1.2rem', lineHeight: '1.6', color: 'hsl(var(--text-secondary))' }}>
+              <li>Click <code>+ Operational Documents</code> in the top navigation bar to generate subcontracts, site diaries, QA/QC inspection reports, and variation orders instantly.</li>
+            </ul>
+          </div>
+
+        </div>
+      </Drawer>
+
       <Drawer isOpen={globalDrawer === 'profile'} onClose={() => setGlobalDrawer(null)} title="Edit Profile" submitText="Save Changes" onSubmit={() => { alert('Profile Updated!'); setGlobalDrawer(null) }}>
         <div className="form-group">
           <label>Full Name</label>
