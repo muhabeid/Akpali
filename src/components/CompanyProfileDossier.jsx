@@ -38,8 +38,9 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
 
   const currency = profile.base_currency || 'USD'
 
-  const getCleanUrl = (url) => {
-    if (!url) return ''
+  const getCleanUrl = (url, fallback = '') => {
+    if (!url) return fallback
+    if (url === '/logo.png' || url === '/stamp.png') return url
     if (url.startsWith('http://') || url.startsWith('https://')) return url
     if (url.startsWith('/')) return `http://localhost:5000${url}`
     return `http://localhost:5000/${url}`
@@ -122,10 +123,10 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
       <div style={{ borderBottom: '3px solid hsl(var(--primary))', paddingBottom: '1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 2 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
           <img 
-            src={getCleanUrl(profile.logo_url) || '/logo.png'} 
+            src={getCleanUrl(profile.logo_url, '/logo.png')} 
             alt="Company Logo" 
             style={{ height: '160px', maxWidth: '320px', objectFit: 'contain' }} 
-            onError={(e) => e.target.style.display = 'none'} 
+            onError={(e) => { e.target.src = '/logo.png'; e.target.onerror = null; }} 
           />
           <h1 style={{ margin: '0.4rem 0 0 0', fontSize: '1.5rem', color: 'hsl(var(--primary))', fontWeight: '800', textTransform: 'uppercase' }}>
             {profile.legal_name || 'AKPALI COMPANY LIMITED'}
@@ -587,10 +588,10 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
         <div style={{ textAlign: 'center', minWidth: '220px' }}>
           <div style={{ minHeight: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.25rem' }}>
             <img 
-              src={getCleanUrl(profile.seal_url) || '/stamp.png'} 
+              src={getCleanUrl(profile.seal_url, '/stamp.png')} 
               alt="Official Stamp" 
               style={{ height: '90px', objectFit: 'contain', opacity: 0.9 }} 
-              onError={(e) => e.target.style.display = 'none'} 
+              onError={(e) => { e.target.src = '/stamp.png'; e.target.onerror = null; }} 
             />
           </div>
           <div style={{ borderBottom: '1px dashed #475569', width: '100%', marginBottom: '0.35rem' }}></div>

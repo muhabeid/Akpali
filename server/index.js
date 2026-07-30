@@ -20,6 +20,7 @@ app.use(express.json());
 
 // Expose the uploads directory publicly so the frontend can load images/files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // ---------------------------------------------------------
 // MULTER SETUP (FILE UPLOADS)
