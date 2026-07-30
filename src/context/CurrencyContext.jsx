@@ -10,7 +10,7 @@ const DEFAULT_RATES = {
 }
 
 export const CurrencyProvider = ({ children }) => {
-  const [currency, setCurrency] = useState('USD')
+  const [currency, setCurrency] = useState('KES')
   const [rates, setRates] = useState(DEFAULT_RATES)
   const [isLive, setIsLive] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString())
