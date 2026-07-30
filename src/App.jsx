@@ -89,19 +89,7 @@ const Topbar = ({ setGlobalDrawer }) => {
           <FileText size={16} /> + Operational Documents
         </button>
 
-        {/* Role Simulator Toggle */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'hsla(var(--primary), 0.1)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-md)' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>Simulate Role:</span>
-          <select 
-            value={currentRole} 
-            onChange={(e) => setCurrentRole(e.target.value)}
-            style={{ fontSize: '0.75rem', background: 'transparent', border: 'none', color: 'hsl(var(--text-primary))', fontWeight: '600', cursor: 'pointer', outline: 'none' }}
-          >
-            <option value="Admin">Administrator</option>
-            <option value="Manager">Finance/Procurement Manager</option>
-            <option value="Staff">Junior Staff (Maker)</option>
-          </select>
-        </div>
+
 
         {/* Global Utilities - Hover Dropdown */}
         <div 
