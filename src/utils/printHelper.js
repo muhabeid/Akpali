@@ -66,8 +66,15 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
       : '';
       
     const isDossier = cleanSelector.includes('dossier') || element.classList.contains('dossier-container');
-    const bodyContent = isDossier 
-      ? element.outerHTML
+    const hasEmbeddedHeader = element.innerHTML.includes('Company Logo') || element.innerHTML.includes('AKPALI') || element.querySelector('img') !== null;
+    
+    const bodyContent = (isDossier || hasEmbeddedHeader) 
+      ? `
+          <div class="print-only">
+            ${element.innerHTML}
+          </div>
+          ${footerHtml}
+        `
       : `
           <div class="print-only">
             ${headerHtml}
@@ -146,6 +153,10 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
               margin: 2rem 0 !important;
             }
             @media print {
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
               .no-print-toolbar { display: none !important; }
               body { background: white !important; padding: 0 !important; margin: 0 !important; }
               .dossier-container, .print-only { 

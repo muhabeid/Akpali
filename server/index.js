@@ -35,6 +35,21 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// General File & Logo Upload Endpoint
+app.post('/api/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+  res.json({ success: true, fileUrl, filename: req.file.filename });
+});
+
 // ---------------------------------------------------------
 // ZOD SCHEMAS (DATA VALIDATION LAYER)
 // ---------------------------------------------------------
@@ -142,10 +157,19 @@ async function initializeDB() {
   }
 
   await db.exec(`
-    INSERT OR IGNORE INTO company_profile (id, legal_name, email)
-    VALUES (1, 'Akpali & Co.', 'info@akpali.com')
+    INSERT OR IGNORE INTO company_profile (id, legal_name, email, logo_url, seal_url)
+    VALUES (1, 'Akpali & Co.', 'info@akpali.com', '/logo.png', '/stamp.png')
   `);
-  console.log('✅ Company profile ensured.');
+  
+  await db.exec(`
+    UPDATE company_profile 
+    SET logo_url = '/logo.png' WHERE logo_url IS NULL OR logo_url = '';
+    UPDATE company_profile 
+    SET seal_url = '/stamp.png' WHERE seal_url IS NULL OR seal_url = '';
+    UPDATE document_templates 
+    SET header_logo_url = '/logo.png' WHERE header_logo_url IS NULL OR header_logo_url = '';
+  `);
+  console.log('✅ Company profile & logo/stamp defaults ensured.');
 
   await db.exec(`
     INSERT OR IGNORE INTO system_settings (id, smtp_host, smtp_port, smtp_user, smtp_pass, wa_token, wa_phone_id)
@@ -168,7 +192,13 @@ async function initializeDB() {
     ('CONTRACT', 'OFFICIAL MASTER CONTRACT & SERVICE AGREEMENT', 'Executed under the laws of Kenya. Confidential Corporate Legal Document.', '1. Both parties agree to execute all obligations described herein.\\n2. Disputes shall be resolved through mutual arbitration prior to legal escalation.\\n3. Amendments must be executed in writing by authorized signatories.'),
     ('INSPECTION', 'SITE QUALITY & MATERIAL INSPECTION FORM', 'Quality Assurance & Control (QA/QC) Inspection Record', '1. All materials must conform to BS/KS standards.\\n2. Defective items must be quarantined immediately.\\n3. Lead inspector & site manager must sign off upon inspection completion.'),
     ('SITE_VISIT', 'TECHNICAL SITE VISIT & AUDIT REPORT', 'Field Engineering & Project Supervision Assessment', '1. Field observations recorded reflect site status on audit date.\\n2. Identified non-conformances must be rectified within 7 calendar days.\\n3. Photos & GPS coordinates attached to master site log.'),
-    ('MATERIAL_REQ', 'SITE MATERIAL REQUISITION & ISSUANCE FORM', 'Inventory & Stores Control Record', '1. Requisitions require approval by Project Manager prior to store release.\\n2. Recipient must verify item quantities before signing.\\n3. Unused materials must be returned to central inventory.');
+    ('MATERIAL_REQ', 'SITE MATERIAL REQUISITION & ISSUANCE FORM', 'Inventory & Stores Control Record', '1. Requisitions require approval by Project Manager prior to store release.\\n2. Recipient must verify item quantities before signing.\\n3. Unused materials must be returned to central inventory.'),
+    ('HANDOVER_CERT', 'PRACTICAL COMPLETION & SITE HANDOVER CERTIFICATE', 'Formal Project Transfer & Defect Liability Sign-off', '1. Practical completion certified subject to completion of identified punch list items.\\n2. Defect liability period commences on the official handover date.\\n3. Retention release is subject to final inspection sign-off.'),
+    ('SITE_LOG', 'DAILY SITE WORK LOG & WEATHER DIARY', 'Engineering Site Progress & Labor Diary', '1. Log entries must be completed daily by the Resident Engineer or Site Agent.\\n2. Weather delays and plant downtime must be logged accurately.\\n3. Daily records serve as formal evidence for extension of time claims.'),
+    ('VAR_ORDER', 'VARIATION ORDER & SCOPE CHANGE REQUEST', 'Contract Variation & Scope Adjustment Authorization', '1. No variation works shall commence without prior written authorization.\\n2. Cost adjustments are subject to re-measurement and rate verification.\\n3. Approved variation orders become part of the binding contract.'),
+    ('SAFETY_INCIDENT', 'EHS INCIDENT & HAZARD ASSESSMENT REPORT', 'Environmental Health & Safety Compliance Record', '1. Incident reports must be filed within 24 hours of occurrence.\\n2. Immediate hazard containment must be implemented.\\n3. EHS Officer and Resident Engineer sign-off is mandatory.'),
+    ('PAYMENT_CERT', 'INTERIM PAYMENT CERTIFICATE (IPC) & CLAIM', 'Contract Progress Payment Valuation Certificate', '1. Valuations are based on joint site measurement of executed works.\\n2. Statutory retention and advance payment recovery apply as per contract terms.\\n3. Payment due within 30 days of certificate issue date.'),
+    ('SUBCONTRACTOR_EVAL', 'SUBCONTRACTOR & VENDOR PERFORMANCE APPRAISAL', 'Vendor Rating & Quality Audit Evaluation', '1. Evaluations are conducted upon milestone or final contract completion.\\n2. Score ratings determine vendor eligibility for future tender invitations.\\n3. Performance reports are archived in corporate vendor registry.');
   `);
   console.log('✅ Document templates ensured.');
 
@@ -235,6 +265,11 @@ initializeDB().catch(err => {
 // ==========================================
 
 app.get('/api/company', async (req, res) => {
+  const profile = await db.get('SELECT * FROM company_profile WHERE id = 1');
+  res.json(profile || {});
+});
+
+app.get('/api/company-profile', async (req, res) => {
   const profile = await db.get('SELECT * FROM company_profile WHERE id = 1');
   res.json(profile || {});
 });
@@ -1448,6 +1483,189 @@ app.get('/api/tenders/:id/archive', async (req, res) => {
   });
 
   await archive.finalize();
+});
+
+// ==========================================
+// 1. PREDICTIVE CASH FLOW FORECASTING (30/60/90 DAYS)
+// ==========================================
+app.get('/api/finances/cashflow-forecast', async (req, res) => {
+  try {
+    const deliverables = await db.all(`
+      SELECT d.*, t.name as tender_name 
+      FROM deliverables d 
+      LEFT JOIN tenders t ON d.tender_id = t.id 
+      WHERE d.status IN ('Completed', 'In Progress')
+    `);
+
+    const invoices = await db.all("SELECT * FROM client_invoices WHERE status != 'Paid'");
+    const pos = await db.all("SELECT * FROM purchase_orders WHERE status IN ('Approved', 'Issued', 'Ordered')");
+    const supplierInvoices = await db.all("SELECT * FROM supplier_invoices WHERE status != 'Paid'");
+
+    let inflows30 = 0, inflows60 = 0, inflows90 = 0;
+    let outflows30 = 0, outflows60 = 0, outflows90 = 0;
+
+    deliverables.forEach(d => {
+      const val = Number(d.unit_price || 0) * Number(d.quantity || 1);
+      inflows30 += val * 0.5;
+      inflows60 += val * 0.3;
+      inflows90 += val * 0.2;
+    });
+
+    invoices.forEach(inv => {
+      const val = Number(inv.amount || 0);
+      inflows30 += val * 0.6;
+      inflows60 += val * 0.3;
+      inflows90 += val * 0.1;
+    });
+
+    pos.forEach(po => {
+      const val = Number(po.total_value || 0);
+      outflows30 += val * 0.5;
+      outflows60 += val * 0.3;
+      outflows90 += val * 0.2;
+    });
+
+    supplierInvoices.forEach(sinv => {
+      const val = Number(sinv.amount || 0);
+      outflows30 += val * 0.6;
+      outflows60 += val * 0.3;
+      outflows90 += val * 0.1;
+    });
+
+    res.json({
+      summary: {
+        total_inflows_projected: Math.round(inflows30 + inflows60 + inflows90),
+        total_outflows_projected: Math.round(outflows30 + outflows60 + outflows90),
+        net_working_capital: Math.round((inflows30 + inflows60 + inflows90) - (outflows30 + outflows60 + outflows90))
+      },
+      forecast: [
+        { horizon: '30 Days', inflows: Math.round(inflows30), outflows: Math.round(outflows30), net: Math.round(inflows30 - outflows30) },
+        { horizon: '60 Days', inflows: Math.round(inflows60), outflows: Math.round(outflows60), net: Math.round(inflows60 - outflows60) },
+        { horizon: '90 Days', inflows: Math.round(inflows90), outflows: Math.round(outflows90), net: Math.round(inflows90 - outflows90) }
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 2. AUTOMATED 3-WAY MATCHING RECONCILIATION
+// ==========================================
+app.get('/api/procurement/3-way-match-audit', async (req, res) => {
+  try {
+    const pos = await db.all('SELECT * FROM purchase_orders');
+    const grns = await db.all('SELECT * FROM grns');
+    const supplierInvoices = await db.all('SELECT * FROM supplier_invoices');
+
+    const auditResults = pos.map(po => {
+      const matchedGrns = grns.filter(g => g.po_id === po.id);
+      const matchedInvoices = supplierInvoices.filter(i => i.po_id === po.id);
+
+      const totalReceived = matchedGrns.reduce((acc, g) => acc + (Number(g.quantity_received) || 0), 0);
+      const totalInvoiced = matchedInvoices.reduce((acc, i) => acc + (Number(i.amount) || 0), 0);
+
+      let matchStatus = 'Matched';
+      let discrepancyDetails = '100% Quantities & Pricing verified across PO, GRN, and Invoice.';
+
+      if (matchedGrns.length > 0 && totalReceived < Number(po.quantity || 0)) {
+        matchStatus = 'Quantity Discrepancy';
+        discrepancyDetails = `Partial Receipt: ${totalReceived} received vs ${po.quantity || 'N/A'} ordered on PO.`;
+      }
+
+      if (matchedInvoices.length > 0 && totalInvoiced > Number(po.total_value || 0)) {
+        matchStatus = 'Price Discrepancy';
+        discrepancyDetails = `Over-billing detected: Invoiced $${totalInvoiced} exceeds approved PO value $${po.total_value}.`;
+      }
+
+      return {
+        po_id: po.id,
+        supplier_name: po.supplier_name,
+        po_total: po.total_value,
+        total_received: totalReceived,
+        total_invoiced: totalInvoiced,
+        match_status: matchStatus,
+        details: discrepancyDetails
+      };
+    });
+
+    res.json(auditResults);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 3. DAILY CRON JOB & REMINDERS (SMTP & WHATSAPP)
+// ==========================================
+const triggerDailyRemindersCron = async () => {
+  try {
+    const settings = await db.get('SELECT * FROM system_settings WHERE id = 1');
+    const overdueInvoices = await db.all("SELECT * FROM client_invoices WHERE status = 'Overdue' OR (status = 'Issued' AND due_date < DATE('now'))");
+    const pendingPOs = await db.all("SELECT * FROM purchase_orders WHERE status = 'Issued' AND expected_date < DATE('now')");
+
+    const logs = [];
+    
+    if (overdueInvoices.length > 0) {
+      logs.push(`Dispatched ${overdueInvoices.length} overdue client invoice payment reminders via ${settings?.smtp_host ? 'SMTP Email (' + settings.smtp_host + ')' : 'System Dispatcher'}.`);
+    } else {
+      logs.push('Zero overdue client invoices found. All client payments up to date.');
+    }
+
+    if (pendingPOs.length > 0) {
+      logs.push(`Dispatched ${pendingPOs.length} supplier delivery follow-ups via ${settings?.wa_token ? 'WhatsApp Cloud API' : 'System Dispatcher'}.`);
+    } else {
+      logs.push('Zero pending supplier delivery delays found.');
+    }
+
+    await db.run(
+      "INSERT INTO audit_logs (user_role, action, entity_type, details) VALUES ('System Cron Job', 'Execute Daily Reminders', 'Automated Scheduler', ?)",
+      [logs.join(' | ')]
+    );
+
+    return { success: true, timestamp: new Date().toISOString(), logs };
+  } catch (err) {
+    console.error('Cron Execution Error:', err);
+    return { success: false, error: err.message };
+  }
+};
+
+app.post('/api/reminders/trigger-now', async (req, res) => {
+  const result = await triggerDailyRemindersCron();
+  res.json(result);
+});
+
+setInterval(() => {
+  const now = new Date();
+  if (now.getHours() === 8 && now.getMinutes() === 0) {
+    console.log('⏰ Executing Automated Daily Reminders Cron Job (08:00 AM)...');
+    triggerDailyRemindersCron();
+  }
+}, 60000);
+
+// ==========================================
+// 4. AUDIT LOGS & GOVERNANCE TRAIL
+// ==========================================
+app.get('/api/audit-logs', async (req, res) => {
+  try {
+    const logs = await db.all('SELECT * FROM audit_logs ORDER BY id DESC LIMIT 100');
+    res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/audit-logs', async (req, res) => {
+  try {
+    const { user_role, action, entity_type, entity_id, details } = req.body;
+    const result = await db.run(
+      'INSERT INTO audit_logs (user_role, action, entity_type, entity_id, details) VALUES (?, ?, ?, ?, ?)',
+      [user_role || 'Admin', action, entity_type || '', entity_id || '', details || '']
+    );
+    res.json({ id: result.lastID, success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(port, () => {

@@ -343,12 +343,19 @@ select.form-control {
    PRINT STYLES FOR DOCUMENT EXPORT
    ========================================= */
 @media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  
   body * {
     visibility: hidden;
   }
   
   * {
     overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
   .print-only, .print-only * {
@@ -361,33 +368,28 @@ select.form-control {
     top: 0 !important;
     width: 100% !important;
     margin: 0 !important;
-    padding: 2rem !important;
-    background: #fff !important;
-    color: #000 !important;
+    padding: 1.5rem !important;
+    background: #ffffff !important;
+    color: #0f172a !important;
     box-shadow: none !important;
     border: none !important;
   }
   
-  .print-only * {
-    background: transparent !important;
-  }
-
   .print-only table {
-    border: 1px solid #ccc;
+    border: 1px solid #cbd5e1;
     border-collapse: collapse;
     width: 100%;
     margin-top: 1rem;
   }
 
   .print-only th, .print-only td {
-    border-bottom: 1px solid #ccc;
-    color: #000 !important;
+    border-bottom: 1px solid #e2e8f0;
     padding: 0.5rem !important;
     text-align: left;
   }
 
-  .print-only h2, .print-only h3, .print-only h4, .print-only p {
-    color: #000 !important;
-    margin-bottom: 0.5rem;
+  .print-only h1, .print-only h2, .print-only h3, .print-only h4 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }

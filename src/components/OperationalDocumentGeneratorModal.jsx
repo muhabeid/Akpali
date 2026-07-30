@@ -1,9 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { FileText, Printer, CheckCircle2, AlertTriangle, XCircle, Plus, Trash2 } from 'lucide-react'
 import { printElement } from '../utils/printHelper'
 
 export default function OperationalDocumentGeneratorModal({ onClose, documentTemplates = {} }) {
-  const [docType, setDocType] = useState('CONTRACT') // 'CONTRACT', 'INSPECTION', 'SITE_VISIT', 'MATERIAL_REQ'
+  const [docType, setDocType] = useState('CONTRACT') // 10 Types: CONTRACT, INSPECTION, SITE_VISIT, MATERIAL_REQ, HANDOVER_CERT, SITE_LOG, VAR_ORDER, SAFETY_INCIDENT, PAYMENT_CERT, SUBCONTRACTOR_EVAL
   
   // Generic Common Fields
   const [title, setTitle] = useState('Master Service Agreement')
@@ -13,50 +13,153 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
   const [docDate, setDocDate] = useState(new Date().toISOString().split('T')[0])
 
   // Custom Specific Fields
-  // Inspection Checklist
+  const [logoUrl, setLogoUrl] = useState('/logo.png')
+  const [logoSize, setLogoSize] = useState('160px') // Default 160px for prominent visibility
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false)
+  const [sealUrl, setSealUrl] = useState('/stamp.png')
+  const [stampSize, setStampSize] = useState('90px') // Options: '50px', '70px', '90px', '120px', '150px'
+  const [isUploadingSeal, setIsUploadingSeal] = useState(false)
+
+  const [companyProfile, setCompanyProfile] = useState(null)
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/company-profile')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) {
+          setCompanyProfile(data)
+          if (data.logo_url) setLogoUrl(data.logo_url)
+          if (data.seal_url) setSealUrl(data.seal_url)
+        }
+      })
+      .catch(err => console.error('Error fetching company profile:', err))
+  }, [])
+
+  const handleLogoFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    setIsUploadingLogo(true)
+    try {
+      const res = await fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      const data = await res.json()
+      if (data.fileUrl) {
+        setLogoUrl(data.fileUrl)
+      }
+    } catch (err) {
+      console.error('Logo upload error:', err)
+      alert('Failed to upload logo image')
+    } finally {
+      setIsUploadingLogo(false)
+    }
+  }
+
+  const handleSealFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    setIsUploadingSeal(true)
+    try {
+      const res = await fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      const data = await res.json()
+      if (data.fileUrl) {
+        setSealUrl(data.fileUrl)
+      }
+    } catch (err) {
+      console.error('Seal upload error:', err)
+      alert('Failed to upload stamp image')
+    } finally {
+      setIsUploadingSeal(false)
+    }
+  }
+
+  // 1. Inspection Checklist
   const [checklist, setChecklist] = useState([
     { id: 1, item: 'Reinforcement Steel Bar Diameter & Grade Verification', status: 'Passed', notes: 'Grade 500B verified.' },
     { id: 2, item: 'Concrete Slump & Cube Strength Test Samples', status: 'Passed', notes: '7-day test passed.' },
     { id: 3, item: 'MEP Conduit Routing & Wall Chasing Inspection', status: 'Needs Action', notes: 'Chasing depth requires 10mm correction.' }
   ])
 
-  // Site Visit Details
-  const [weather, setWeather] = useState('Clear / Dry')
+  // 2. Site Visit Details
+  const [weather, setWeather] = useState('Sunny / Dry (28°C)')
   const [siteProgress, setSiteProgress] = useState('75% Completed')
   const [observations, setObservations] = useState('Main structural column casting complete. MEP first-fix in progress. Subcontractor workforce on site is 18 personnel.')
   const [actionItems, setActionItems] = useState('1. Contractor to complete plastering of East Wing by Friday.\n2. Submit structural engineer sign-off certificate.')
 
-  // Material Requisition Line Items
+  // 3. Material Requisition Line Items
   const [materialItems, setMaterialItems] = useState([
     { id: 1, name: 'TMT Steel Bars 12mm (12m length)', unit: 'Pcs', requested: 150, approved: 150 },
     { id: 2, name: 'Ordinary Portland Cement (50kg Bags)', unit: 'Bags', requested: 200, approved: 200 },
     { id: 3, name: 'PVC Electrical Conduit Pipes 25mm', unit: 'Pcs', requested: 80, approved: 80 }
   ])
 
-  // Contract Specific
+  // 4. Contract Specific
   const [contractValue, setContractValue] = useState('150000')
   const [contractDuration, setContractDuration] = useState('12 Months (Renewable)')
   const [contractScope, setContractScope] = useState('The Contractor shall provide complete civil works, structural construction, and MEP installation as per approved architectural blueprints.')
 
+  // 5. Handover & Practical Completion
+  const [defectPeriod, setDefectPeriod] = useState('6 Months (Expiring 25 Jan 2027)')
+  const [snagStatus, setSnagStatus] = useState('Minor Snag List Attached (3 touch-up items remaining)')
+  const [retentionRelease, setRetentionRelease] = useState('50% Released ($12,500), 50% Withheld until Defect Period Expiry')
+
+  // 6. Daily Site Log & Diary
+  const [laborForce, setLaborForce] = useState('38 Personnel (4 Engineers, 24 Technicians, 10 General Labor)')
+  const [equipmentStatus, setEquipmentStatus] = useState('CAT Excavator (8 Hrs), Tower Crane (6.5 Hrs), Cement Mixer (Active)')
+
+  // 7. Variation Order
+  const [variationRef, setVariationRef] = useState('VO-2026-004')
+  const [reasonForChange, setReasonForChange] = useState('Client requested upgrading ground floor tiling to heavy-duty porcelain tiles & structural re-bar reinforcement.')
+  const [costAdjustment, setCostAdjustment] = useState('14500')
+  const [timeExtension, setTimeExtension] = useState('7 Calendar Days')
+
+  // 8. Safety & EHS Incident Report
+  const [incidentType, setIncidentType] = useState('Near-Miss / Unsafe Scaffolding Assembly')
+  const [severity, setSeverity] = useState('Medium Risk - Corrective Action Required')
+  const [correctiveAction, setCorrectiveAction] = useState('Scaffolding dismantled & re-erected with certified safety tags. Site safety toolbox talk conducted for all workers.')
+  const [ehsOfficer, setEhsOfficer] = useState('Eng. Peter Mutua (EHS Lead Officer)')
+
+  // 9. Interim Payment Certificate (IPC)
+  const [ipcRef, setIpcRef] = useState('IPC-003')
+  const [valuationPeriod, setValuationPeriod] = useState('01 June 2026 - 30 June 2026')
+  const [grossValue, setGrossValue] = useState('125000')
+  const [retentionAmt, setRetentionAmt] = useState('12500')
+  const [netPayable, setNetPayable] = useState('112500')
+
+  // 10. Subcontractor Performance Appraisal
+  const [tradeCategory, setTradeCategory] = useState('HVAC & Mechanical Ducting Work')
+  const [qualityScore, setQualityScore] = useState('4.8 / 5.0 (Excellent)')
+  const [timelinessScore, setTimelinessScore] = useState('100% On Schedule')
+  const [recommendation, setRecommendation] = useState('Highly Recommended for Future Enterprise Tenders & Multi-Story Commercial Projects.')
+
   // Update defaults when docType changes
   const handleDocTypeChange = (type) => {
     setDocType(type)
-    if (type === 'CONTRACT') {
-      setTitle('Master Construction & Service Agreement')
-    } else if (type === 'INSPECTION') {
-      setTitle('Site Material & Quality Inspection Form')
-    } else if (type === 'SITE_VISIT') {
-      setTitle('Technical Site Visit & Engineering Progress Report')
-    } else if (type === 'MATERIAL_REQ') {
-      setTitle('Site Material Requisition & Store Issuance Form')
-    }
+    if (type === 'CONTRACT') setTitle('Master Construction & Service Agreement')
+    else if (type === 'INSPECTION') setTitle('Site Material & Quality Inspection Form')
+    else if (type === 'SITE_VISIT') setTitle('Technical Site Visit & Engineering Progress Report')
+    else if (type === 'MATERIAL_REQ') setTitle('Site Material Requisition & Store Issuance Form')
+    else if (type === 'HANDOVER_CERT') setTitle('Certificate of Practical Completion & Site Handover')
+    else if (type === 'SITE_LOG') setTitle('Daily Site Work Log & Weather Engineering Diary')
+    else if (type === 'VAR_ORDER') setTitle('Variation Order & Scope Change Request Authorization')
+    else if (type === 'SAFETY_INCIDENT') setTitle('EHS Incident & Hazard Assessment Compliance Report')
+    else if (type === 'PAYMENT_CERT') setTitle('Interim Payment Certificate (IPC) & Milestone Valuation')
+    else if (type === 'SUBCONTRACTOR_EVAL') setTitle('Subcontractor & Vendor Performance Audit Appraisal')
   }
 
   const currentTemplate = documentTemplates[docType] || {}
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.75)', backdropFilter: 'blur(5px)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 99999, padding: '1.5rem' }}>
-      <div style={{ background: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '1000px', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+      <div style={{ background: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '1080px', maxHeight: '92vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
         
         {/* MODAL HEADER */}
         <div style={{ background: '#0f172a', color: '#ffffff', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -64,31 +167,91 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
             <FileText color="#38bdf8" size={24} />
             <div>
               <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: '#fff' }}>Operational Document & Template Generator</h3>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Generate printable A4 Contracts, Inspection Forms, Site Reports, and Requisitions</div>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Generate 10 printable A4 Contracts, Inspection Forms, Site Logs, Handover Certs, Variation Orders & IPCs</div>
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '1.25rem', cursor: 'pointer', fontWeight: '700' }}>✕</button>
         </div>
 
         {/* MODAL BODY (TWO PANELS: FORM vs LIVE A4 PREVIEW) */}
-        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '420px 1fr', overflow: 'hidden', background: '#f8fafc' }}>
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '430px 1fr', overflow: 'hidden', background: '#f8fafc' }}>
           
           {/* LEFT PANEL: INPUT FORM */}
           <div style={{ padding: '1.25rem', borderRight: '1px solid #cbd5e1', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#ffffff' }}>
             
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Document Template Type *</label>
-              <select className="form-control" style={{ fontWeight: '600', borderColor: 'hsl(var(--primary))' }} value={docType} onChange={e => handleDocTypeChange(e.target.value)}>
+              <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Select Document Template Type *</label>
+              <select className="form-control" style={{ fontWeight: '600', borderColor: 'hsl(var(--primary))', padding: '0.45rem' }} value={docType} onChange={e => handleDocTypeChange(e.target.value)}>
                 <option value="CONTRACT">📜 Contract Agreement Template</option>
                 <option value="INSPECTION">🔍 Inspection Form (QA/QC)</option>
                 <option value="SITE_VISIT">🏗️ Site Visit & Progress Report</option>
                 <option value="MATERIAL_REQ">📦 Material Request Form</option>
+                <option value="HANDOVER_CERT">🔑 Handover & Completion Certificate</option>
+                <option value="SITE_LOG">📅 Daily Site Work Log & Diary</option>
+                <option value="VAR_ORDER">⚠️ Variation Order & Scope Change</option>
+                <option value="SAFETY_INCIDENT">🦺 EHS Incident & Hazard Report</option>
+                <option value="PAYMENT_CERT">💳 Interim Payment Certificate (IPC)</option>
+                <option value="SUBCONTRACTOR_EVAL">⭐ Subcontractor Performance Appraisal</option>
               </select>
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontSize: '0.8rem' }}>Document Title</label>
               <input type="text" className="form-control" value={title} onChange={e => setTitle(e.target.value)} />
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.8rem', margin: 0 }}>Header Logo (URL or Upload)</label>
+                <select style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem', borderRadius: '4px', borderColor: '#cbd5e1' }} value={logoSize} onChange={e => setLogoSize(e.target.value)}>
+                  <option value="80px">Size: Small (80px)</option>
+                  <option value="120px">Size: Medium (120px)</option>
+                  <option value="160px">Size: Large (160px - Default)</option>
+                  <option value="200px">Size: XL (200px)</option>
+                  <option value="240px">Size: XXL (240px)</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="http://... or upload image" 
+                  style={{ fontSize: '0.78rem' }}
+                  value={logoUrl} 
+                  onChange={e => setLogoUrl(e.target.value)} 
+                />
+                <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>
+                  {isUploadingLogo ? 'Uploading...' : '📁 Upload'}
+                  <input type="file" accept="image/*" onChange={handleLogoFileUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.8rem', margin: 0 }}>Official Stamp / Seal</label>
+                <select style={{ fontSize: '0.75rem', padding: '0.1rem 0.4rem', borderRadius: '4px', borderColor: '#cbd5e1' }} value={stampSize} onChange={e => setStampSize(e.target.value)}>
+                  <option value="50px">Size: Small (50px)</option>
+                  <option value="70px">Size: Medium (70px)</option>
+                  <option value="90px">Size: Large (90px - Default)</option>
+                  <option value="120px">Size: XL (120px)</option>
+                  <option value="150px">Size: XXL (150px)</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="http://... or upload stamp" 
+                  style={{ fontSize: '0.78rem' }}
+                  value={sealUrl} 
+                  onChange={e => setSealUrl(e.target.value)} 
+                />
+                <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>
+                  {isUploadingSeal ? 'Uploading...' : '📁 Upload'}
+                  <input type="file" accept="image/*" onChange={handleSealFileUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -225,6 +388,149 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
               </div>
             )}
 
+            {docType === 'HANDOVER_CERT' && (
+              <>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Defect Liability Period</label>
+                  <input type="text" className="form-control" value={defectPeriod} onChange={e => setDefectPeriod(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Snag List Status</label>
+                  <input type="text" className="form-control" value={snagStatus} onChange={e => setSnagStatus(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Retention Money Release Terms</label>
+                  <input type="text" className="form-control" value={retentionRelease} onChange={e => setRetentionRelease(e.target.value)} />
+                </div>
+              </>
+            )}
+
+            {docType === 'SITE_LOG' && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Weather Conditions</label>
+                    <input type="text" className="form-control" value={weather} onChange={e => setWeather(e.target.value)} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Labor Headcount</label>
+                    <input type="text" className="form-control" value={laborForce} onChange={e => setLaborForce(e.target.value)} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Plant & Heavy Machinery Status</label>
+                  <input type="text" className="form-control" value={equipmentStatus} onChange={e => setEquipmentStatus(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Daily Works Accomplished</label>
+                  <textarea className="form-control" rows={3} value={siteProgress} onChange={e => setSiteProgress(e.target.value)} />
+                </div>
+              </>
+            )}
+
+            {docType === 'VAR_ORDER' && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Variation Ref #</label>
+                    <input type="text" className="form-control" value={variationRef} onChange={e => setVariationRef(e.target.value)} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Cost Adjustment ($)</label>
+                    <input type="text" className="form-control" value={costAdjustment} onChange={e => setCostAdjustment(e.target.value)} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Extension of Time</label>
+                  <input type="text" className="form-control" value={timeExtension} onChange={e => setTimeExtension(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Reason for Scope Change</label>
+                  <textarea className="form-control" rows={3} value={reasonForChange} onChange={e => setReasonForChange(e.target.value)} />
+                </div>
+              </>
+            )}
+
+            {docType === 'SAFETY_INCIDENT' && (
+              <>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Incident Type / Category</label>
+                  <input type="text" className="form-control" value={incidentType} onChange={e => setIncidentType(e.target.value)} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Severity Level</label>
+                    <input type="text" className="form-control" value={severity} onChange={e => setSeverity(e.target.value)} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>EHS Lead Officer</label>
+                    <input type="text" className="form-control" value={ehsOfficer} onChange={e => setEhsOfficer(e.target.value)} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Immediate Corrective Action Taken</label>
+                  <textarea className="form-control" rows={3} value={correctiveAction} onChange={e => setCorrectiveAction(e.target.value)} />
+                </div>
+              </>
+            )}
+
+            {docType === 'PAYMENT_CERT' && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>IPC Ref #</label>
+                    <input type="text" className="form-control" value={ipcRef} onChange={e => setIpcRef(e.target.value)} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Valuation Period</label>
+                    <input type="text" className="form-control" value={valuationPeriod} onChange={e => setValuationPeriod(e.target.value)} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Gross Work ($)</label>
+                    <input type="number" className="form-control" value={grossValue} onChange={e => {
+                      setGrossValue(e.target.value)
+                      const ret = Number(e.target.value) * 0.1
+                      setRetentionAmt(ret.toString())
+                      setNetPayable((Number(e.target.value) - ret).toString())
+                    }} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Retention (10%)</label>
+                    <input type="number" className="form-control" value={retentionAmt} onChange={e => setRetentionAmt(e.target.value)} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Net Payable ($)</label>
+                    <input type="number" className="form-control" value={netPayable} onChange={e => setNetPayable(e.target.value)} />
+                  </div>
+                </div>
+              </>
+            )}
+
+            {docType === 'SUBCONTRACTOR_EVAL' && (
+              <>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Subcontractor Trade Category</label>
+                  <input type="text" className="form-control" value={tradeCategory} onChange={e => setTradeCategory(e.target.value)} />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Quality Score</label>
+                    <input type="text" className="form-control" value={qualityScore} onChange={e => setQualityScore(e.target.value)} />
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.8rem' }}>Schedule Rating</label>
+                    <input type="text" className="form-control" value={timelinessScore} onChange={e => setTimelinessScore(e.target.value)} />
+                  </div>
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.8rem' }}>Overall Recommendation</label>
+                  <textarea className="form-control" rows={3} value={recommendation} onChange={e => setRecommendation(e.target.value)} />
+                </div>
+              </>
+            )}
+
             <button 
               type="button" 
               className="btn btn-primary" 
@@ -240,21 +546,38 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
             
             <div id="operational-doc-preview" style={{ background: '#ffffff', color: '#0f172a', padding: '2.5rem', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', maxWidth: '750px', margin: '0 auto', fontFamily: 'Inter, system-ui, sans-serif' }}>
               
-              {/* HEADER BANNER */}
-              <div style={{ borderBottom: '3px solid #0f172a', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: '#0f172a' }}>AKPALI ENTERPRISES & CONTRACTORS LTD</h1>
-                  <div style={{ fontSize: '0.8rem', color: '#475569', marginTop: '0.2rem' }}>Akpali Plaza, Upper Hill Road, Nairobi &bull; Email: info@akpali.com &bull; Tel: +254 712 345 678</div>
+              {/* SINGLE UNIFIED HEADER BANNER */}
+              <div style={{ borderBottom: `3px solid ${currentTemplate?.primary_color || '#0f172a'}`, paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                {/* CENTERED LOGO & COMPANY DETAILS */}
+                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
+                  <img 
+                    src={logoUrl || companyProfile?.logo_url || '/logo.png'} 
+                    alt="Logo" 
+                    style={{ height: logoSize || '140px', maxWidth: '320px', objectFit: 'contain' }} 
+                    onError={(e) => e.target.style.display = 'none'} 
+                  />
+                  <h1 style={{ margin: '0.3rem 0 0 0', fontSize: '1.5rem', fontWeight: '800', color: currentTemplate?.primary_color || '#0f172a', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                    {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
+                  </h1>
+                  <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+                    <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
+                    <div style={{ fontWeight: '500' }}>
+                      Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
+                    </div>
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right', fontSize: '0.75rem', background: '#f1f5f9', padding: '0.5rem 0.8rem', borderRadius: '6px' }}>
-                  <div><strong>Doc Ref #:</strong> {docType}-{Math.floor(Math.random() * 9000 + 1000)}</div>
-                  <div><strong>Date:</strong> {docDate}</div>
-                </div>
-              </div>
 
-              {/* DOCUMENT TITLE */}
-              <div style={{ background: '#0f172a', color: '#ffffff', padding: '0.6rem 1rem', textAlign: 'center', borderRadius: '6px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.5rem', fontSize: '1rem' }}>
-                {title || currentTemplate.header_text}
+                {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT ABOVE LINE BREAK) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                  <div style={{ fontSize: '0.95rem', fontWeight: '800', color: currentTemplate?.primary_color || '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {title || currentTemplate?.header_text || 'OFFICIAL DOCUMENT'}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    <span><strong>Doc Ref #:</strong> {docType}-{Math.floor(Math.random() * 9000 + 1000)}</span>
+                    <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
+                    <span><strong>Date Generated:</strong> {docDate}</span>
+                  </div>
+                </div>
               </div>
 
               {/* METADATA SUMMARY GRID */}
@@ -349,6 +672,107 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                 </div>
               )}
 
+              {/* 5. HANDOVER CERTIFICATE CONTENT */}
+              {docType === 'HANDOVER_CERT' && (
+                <div style={{ marginBottom: '1.5rem', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                  <h4 style={{ color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem' }}>1. Practical Completion & Handover Certification</h4>
+                  <p>This document certifies that the project <strong>{projectName}</strong> has achieved Practical Completion in accordance with the contract specifications and is hereby handed over to <strong>{partyName}</strong>.</p>
+                  
+                  <h4 style={{ color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem', marginTop: '1rem' }}>2. Defect Liability & Retention Terms</h4>
+                  <div><strong>Defect Liability Period:</strong> {defectPeriod}</div>
+                  <div><strong>Snag List Status:</strong> {snagStatus}</div>
+                  <div><strong>Retention Money Terms:</strong> {retentionRelease}</div>
+                </div>
+              )}
+
+              {/* 6. DAILY SITE LOG CONTENT */}
+              {docType === 'SITE_LOG' && (
+                <div style={{ marginBottom: '1.5rem', fontSize: '0.85rem', lineHeight: '1.5' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f1f5f9', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.8rem' }}>
+                    <div><strong>Weather & Temp:</strong> {weather}</div>
+                    <div><strong>Workforce Headcount:</strong> {laborForce}</div>
+                  </div>
+
+                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.2rem' }}>Heavy Equipment & Machinery Status</h4>
+                  <p style={{ color: '#334155' }}>{equipmentStatus}</p>
+
+                  <h4 style={{ fontSize: '0.9rem', color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.2rem', marginTop: '1rem' }}>Daily Works & Milestone Accomplishments</h4>
+                  <p style={{ whiteSpace: 'pre-wrap', color: '#0f172a' }}>{siteProgress}</p>
+                </div>
+              )}
+
+              {/* 7. VARIATION ORDER CONTENT */}
+              {docType === 'VAR_ORDER' && (
+                <div style={{ marginBottom: '1.5rem', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', background: '#fef3c7', border: '1px solid #f59e0b', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.825rem', color: '#b45309' }}>
+                    <div><strong>Variation Order Ref:</strong> {variationRef}</div>
+                    <div><strong>Cost Impact:</strong> +USD ${Number(costAdjustment).toLocaleString()}</div>
+                    <div><strong>Extension of Time:</strong> {timeExtension}</div>
+                  </div>
+
+                  <h4 style={{ color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem' }}>Justification & Reason for Change</h4>
+                  <p style={{ whiteSpace: 'pre-wrap', color: '#334155' }}>{reasonForChange}</p>
+                </div>
+              )}
+
+              {/* 8. SAFETY INCIDENT CONTENT */}
+              {docType === 'SAFETY_INCIDENT' && (
+                <div style={{ marginBottom: '1.5rem', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#fee2e2', border: '1px solid #f87171', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.825rem', color: '#991b1b' }}>
+                    <div><strong>Incident Category:</strong> {incidentType}</div>
+                    <div><strong>Severity Level:</strong> {severity}</div>
+                  </div>
+
+                  <h4 style={{ color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem' }}>Immediate Corrective Actions & Containment</h4>
+                  <p style={{ whiteSpace: 'pre-wrap', color: '#334155' }}>{correctiveAction}</p>
+
+                  <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#475569' }}>
+                    <strong>Reporting EHS Officer:</strong> {ehsOfficer}
+                  </div>
+                </div>
+              )}
+
+              {/* 9. PAYMENT CERTIFICATE CONTENT */}
+              {docType === 'PAYMENT_CERT' && (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', background: '#f1f5f9', padding: '0.6rem 1rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.8rem' }}>
+                    <div><strong>IPC Ref #:</strong> {ipcRef}</div>
+                    <div><strong>Valuation Period:</strong> {valuationPeriod}</div>
+                  </div>
+
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginBottom: '1rem' }}>
+                    <tbody>
+                      <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '0.6rem', fontWeight: '600' }}>Gross Executed Work Value to Date:</td>
+                        <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: '700' }}>USD ${Number(grossValue).toLocaleString()}</td>
+                      </tr>
+                      <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#b91c1c' }}>
+                        <td style={{ padding: '0.6rem' }}>Less: Contract Statutory Retention Deduction (10%):</td>
+                        <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: '700' }}>-USD ${Number(retentionAmt).toLocaleString()}</td>
+                      </tr>
+                      <tr style={{ background: '#dcfce7', color: '#15803d', fontWeight: '800' }}>
+                        <td style={{ padding: '0.75rem', fontSize: '0.95rem' }}>NET PAYABLE CLAIM AMOUNT:</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '1.05rem' }}>USD ${Number(netPayable).toLocaleString()}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* 10. SUBCONTRACTOR APPRAISAL CONTENT */}
+              {docType === 'SUBCONTRACTOR_EVAL' && (
+                <div style={{ marginBottom: '1.5rem', fontSize: '0.85rem', lineHeight: '1.6' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', background: '#f1f5f9', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', fontSize: '0.8rem' }}>
+                    <div><strong>Trade:</strong> {tradeCategory}</div>
+                    <div><strong>Quality Rating:</strong> <span style={{ color: '#15803d', fontWeight: '700' }}>{qualityScore}</span></div>
+                    <div><strong>Timeliness:</strong> {timelinessScore}</div>
+                  </div>
+
+                  <h4 style={{ color: '#0f172a', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.3rem' }}>Engineering Performance Audit & Recommendation</h4>
+                  <p style={{ whiteSpace: 'pre-wrap', color: '#334155' }}>{recommendation}</p>
+                </div>
+              )}
+
               {/* TERMS & CONDITIONS FOOTER */}
               <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px stroke #cbd5e1', fontSize: '0.75rem', color: '#64748b', whiteSpace: 'pre-wrap' }}>
                 <strong>Field Guidelines & Terms:</strong><br/>
@@ -362,8 +786,17 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                   <div><strong>Prepared / Inspected By:</strong></div>
                   <div>{personInCharge}</div>
                 </div>
-                <div style={{ textAlign: 'center', width: '200px' }}>
-                  <div style={{ borderBottom: '1px solid #0f172a', marginBottom: '0.3rem', height: '30px' }}></div>
+                <div style={{ textAlign: 'center', width: '220px' }}>
+                  <div style={{ borderBottom: '1px solid #0f172a', marginBottom: '0.3rem', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {sealUrl && (
+                      <img 
+                        src={sealUrl} 
+                        alt="Stamp / Seal" 
+                        style={{ height: stampSize || '90px', objectFit: 'contain', opacity: 0.88 }} 
+                        onError={(e) => e.target.style.display = 'none'} 
+                      />
+                    )}
+                  </div>
                   <div><strong>Approved By (Sign & Stamp):</strong></div>
                   <div>Project Manager / QA Director</div>
                 </div>

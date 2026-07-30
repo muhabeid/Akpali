@@ -9,6 +9,16 @@ export default function Tenders({ setGlobalDrawer }) {
   const [tenders, setTenders] = useState([])
   const [loading, setLoading] = useState(true)
   const [usingMockData, setUsingMockData] = useState(false)
+  const [companyProfile, setCompanyProfile] = useState(null)
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/company-profile')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) setCompanyProfile(data)
+      })
+      .catch(err => console.error('Company profile error:', err))
+  }, [])
 
   const renderItems = (itemsString) => {
     if (!itemsString) return <span style={{ color: 'hsl(var(--text-secondary))' }}>No items listed.</span>;
@@ -140,8 +150,41 @@ export default function Tenders({ setGlobalDrawer }) {
                       {expandedSQ === sq.id && (
                         <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
                           <td colSpan="3" style={{ padding: '1rem' }}>
-                            <div className="print-only" style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-                              <h2 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Sales Quotation: {sq.id}</h2>
+                            <div className="print-only" style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
+                              {/* SINGLE UNIFIED HEADER BANNER */}
+                              <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                                {/* CENTERED LOGO & COMPANY DETAILS */}
+                                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
+                                  <img 
+                                    src={companyProfile?.logo_url || '/logo.png'} 
+                                    alt="Company Logo" 
+                                    style={{ height: '140px', maxWidth: '320px', objectFit: 'contain' }} 
+                                    onError={(e) => e.target.style.display = 'none'} 
+                                  />
+                                  <h2 style={{ margin: '0.3rem 0 0 0', color: '#0f172a', fontSize: '1.5rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                    {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
+                                  </h2>
+                                  <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+                                    <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
+                                    <div style={{ fontWeight: '500' }}>
+                                      Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT) */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                                  <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    OFFICIAL SALES QUOTATION
+                                  </div>
+                                  <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                    <span><strong>Doc Ref #:</strong> {sq.id}</span>
+                                    <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
+                                    <span><strong>Date Generated:</strong> {sq.issue_date || new Date().toISOString().split('T')[0]}</span>
+                                  </div>
+                                </div>
+                              </div>
+
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
                                 <div>
                                   <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Tender / Project</p>
@@ -167,6 +210,21 @@ export default function Tenders({ setGlobalDrawer }) {
                                 </div>
                               </div>
                               {renderItems(sq.items)}
+
+                              {/* AUTHORIZED SIGNATURE & STAMP BLOCK */}
+                              <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid hsl(var(--border))', paddingTop: '1.5rem' }}>
+                                <div>
+                                  <p style={{ color: 'hsl(var(--text-secondary))', margin: '0 0 0.5rem 0', fontSize: '0.8rem' }}>Terms & Validity:</p>
+                                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>1. Valid for 30 days from issue date.<br/>2. Prices inclusive of applicable statutory taxes.</p>
+                                </div>
+                                <div style={{ textAlign: 'center', width: '220px' }}>
+                                  <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <img src="/stamp.png" alt="Official Stamp" style={{ height: '90px', objectFit: 'contain', opacity: 0.88 }} onError={(e) => e.target.style.display = 'none'} />
+                                  </div>
+                                  <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.3rem' }}></div>
+                                  <strong style={{ fontSize: '0.85rem' }}>Authorized Signatory & Stamp</strong>
+                                </div>
+                              </div>
                             </div>
                           </td>
                         </tr>
@@ -211,33 +269,82 @@ export default function Tenders({ setGlobalDrawer }) {
                     {expandedLPO === lpo.id && (
                       <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
                         <td colSpan="3" style={{ padding: '1rem' }}>
-                          <div className="print-only" style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-                            <h2 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Client Local Purchase Order: {lpo.id}</h2>
+                          <div className="print-only" style={{ background: '#ffffff', color: '#0f172a', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
+                            {/* SINGLE UNIFIED HEADER BANNER */}
+                            <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                              {/* CENTERED LOGO & COMPANY DETAILS */}
+                              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
+                                <img 
+                                  src={companyProfile?.logo_url || '/logo.png'} 
+                                  alt="Company Logo" 
+                                  style={{ height: '140px', maxWidth: '320px', objectFit: 'contain' }} 
+                                  onError={(e) => e.target.style.display = 'none'} 
+                                />
+                                <h2 style={{ margin: '0.3rem 0 0 0', color: '#0f172a', fontSize: '1.5rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                  {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
+                                </h2>
+                                <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+                                  <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
+                                  <div style={{ fontWeight: '500' }}>
+                                    Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT) */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                                <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                  CLIENT LOCAL PURCHASE ORDER: {lpo.id}
+                                </div>
+                                <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                  <span><strong>Doc Ref #:</strong> {lpo.id}</span>
+                                  <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
+                                  <span><strong>Date Generated:</strong> {lpo.issue_date || new Date().toISOString().split('T')[0]}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* HIGH-CONTRAST METADATA GRID */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
                               <div>
-                                <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Tender / Project</p>
-                                <strong style={{ fontSize: '1rem' }}>{selectedTender.name} ({selectedTender.id})</strong>
+                                <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Tender / Project</p>
+                                <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{selectedTender.name} ({selectedTender.id})</strong>
                               </div>
                               <div>
-                                <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Client Name</p>
-                                <strong style={{ fontSize: '1rem' }}>{selectedTender.client}</strong>
+                                <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Client Name</p>
+                                <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{selectedTender.client}</strong>
                               </div>
                               <div>
-                                <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Due Date</p>
-                                <strong style={{ fontSize: '1rem' }}>{lpo.due_date}</strong>
+                                <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Due Date</p>
+                                <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{lpo.due_date}</strong>
                               </div>
                               {lpo.client_reference && (
                                 <div>
-                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Client LPO Ref</p>
-                                  <strong style={{ fontSize: '1rem', color: 'hsl(var(--primary))' }}>{lpo.client_reference}</strong>
+                                  <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Client LPO Ref</p>
+                                  <strong style={{ fontSize: '1rem', color: '#0284c7' }}>{lpo.client_reference}</strong>
                                 </div>
                               )}
                               <div>
-                                <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Total Value</p>
-                                <strong style={{ fontSize: '1rem' }}>${Number(lpo.total_value).toLocaleString()}</strong>
+                                <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Total Value</p>
+                                <strong style={{ fontSize: '1rem', color: '#16a34a' }}>${Number(lpo.total_value).toLocaleString()}</strong>
                               </div>
                             </div>
                             {renderItems(lpo.items)}
+
+                            {/* AUTHORIZED SIGNATURE & STAMP BLOCK */}
+                            <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #cbd5e1', paddingTop: '1.5rem' }}>
+                              <div>
+                                <p style={{ color: '#475569', margin: '0 0 0.5rem 0', fontSize: '0.8rem' }}>Order Confirmation:</p>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>1. Local Purchase Order accepted under corporate terms.<br/>2. Subject to delivery and milestone acceptance criteria.</p>
+                              </div>
+                              <div style={{ textAlign: 'center', width: '220px' }}>
+                                <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <img src="/stamp.png" alt="Official Stamp" style={{ height: '90px', objectFit: 'contain', opacity: 0.88 }} onError={(e) => e.target.style.display = 'none'} />
+                                </div>
+                                <div style={{ borderBottom: '1px solid #cbd5e1', width: '100%', marginBottom: '0.3rem' }}></div>
+                                <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>Authorized Signatory & Stamp</strong>
+                              </div>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -377,9 +484,41 @@ export default function Tenders({ setGlobalDrawer }) {
                           </div>
 
                           <div className="print-only" style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
-                            <h1 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '2rem', textAlign: 'center' }}>DELIVERY NOTE</h1>
+                            {/* SINGLE UNIFIED HEADER BANNER */}
+                            <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                              {/* CENTERED LOGO & COMPANY DETAILS */}
+                              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
+                                <img 
+                                  src={companyProfile?.logo_url || '/logo.png'} 
+                                  alt="Company Logo" 
+                                  style={{ height: '140px', maxWidth: '320px', objectFit: 'contain' }} 
+                                  onError={(e) => e.target.style.display = 'none'} 
+                                />
+                                <h2 style={{ margin: '0.3rem 0 0 0', color: '#0f172a', fontSize: '1.5rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                  {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
+                                </h2>
+                                <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+                                  <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
+                                  <div style={{ fontWeight: '500' }}>
+                                    Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT) */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                                <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                  GOODS DELIVERY NOTE
+                                </div>
+                                <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                  <span><strong>Doc Ref #:</strong> {dlv.id}</span>
+                                  <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
+                                  <span><strong>Date Generated:</strong> {dlv.date_submitted || new Date().toISOString().split('T')[0]}</span>
+                                </div>
+                              </div>
+                            </div>
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '3rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
                               <div>
                                 <h4 style={{ margin: '0 0 0.5rem 0', color: 'hsl(var(--text-secondary))' }}>To Client:</h4>
                                 <strong style={{ fontSize: '1.25rem' }}>{selectedTender.client}</strong>
@@ -417,11 +556,13 @@ export default function Tenders({ setGlobalDrawer }) {
                               </tbody>
                             </table>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', marginTop: '4rem' }}>
-                              <div>
-                                <p style={{ color: 'hsl(var(--text-secondary))', marginBottom: '2rem' }}>Authorized Dispatch By:</p>
-                                <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.5rem', height: '2rem' }}></div>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}>Name & Signature</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', marginTop: '3rem', borderTop: '1px solid hsl(var(--border))', paddingTop: '2rem' }}>
+                              <div style={{ textAlign: 'center' }}>
+                                <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <img src="/stamp.png" alt="Official Stamp" style={{ height: '90px', objectFit: 'contain', opacity: 0.88 }} onError={(e) => e.target.style.display = 'none'} />
+                                </div>
+                                <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.5rem' }}></div>
+                                <p style={{ margin: 0, fontSize: '0.875rem' }}><strong>Authorized Dispatcher & Stamp</strong></p>
                               </div>
                               <div>
                                 <p style={{ color: 'hsl(var(--text-secondary))', marginBottom: '2rem' }}>Received in Good Condition By (Client):</p>

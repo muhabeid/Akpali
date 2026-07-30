@@ -69,7 +69,7 @@ export default function Dashboard({ setGlobalDrawer }) {
         <h3 style={{ margin: '0 0 1.25rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Zap size={20} color="hsl(var(--primary))" /> Project Pipeline & Actions
         </h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
           
           <button className="btn" onClick={() => setGlobalDrawer('tender')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--primary), 0.05)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.2)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <PlusCircle size={22} style={{ opacity: 0.8 }} />
@@ -119,6 +119,11 @@ export default function Dashboard({ setGlobalDrawer }) {
           <button className="btn" onClick={() => setOpenDrawer('invoice')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--success), 0.8)', color: '#fff', border: 'none', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             <HandCoins size={22} style={{ opacity: 0.9 }} />
             <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>10. Gen. Invoice</span>
+          </button>
+
+          <button className="btn" onClick={() => setGlobalDrawer('op_doc')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.4)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+            <FileText size={22} style={{ opacity: 0.9 }} />
+            <span style={{ fontWeight: '700', fontSize: '0.75rem', textAlign: 'center' }}>11. Op. Documents</span>
           </button>
         </div>
       </div>

@@ -41,6 +41,8 @@ export default function CorporateHub({ setGlobalDrawer }) {
   const [selectedDocType, setSelectedDocType] = useState('SQ')
   const [approvalWorkflows, setApprovalWorkflows] = useState([])
   const [legalContracts, setLegalContracts] = useState([])
+  const [auditLogs, setAuditLogs] = useState([])
+  const [isRunningCron, setIsRunningCron] = useState(false)
   const [dossierData, setDossierData] = useState(null)
   const [dossierOptions, setDossierOptions] = useState({
     showFinancials: true,
@@ -97,10 +99,32 @@ export default function CorporateHub({ setGlobalDrawer }) {
       if (wfRes.ok) setApprovalWorkflows(await wfRes.json())
       if (lcRes.ok) setLegalContracts(await lcRes.json())
       if (dossierRes.ok) setDossierData(await dossierRes.json())
+      
+      const auditRes = await fetch('http://localhost:5000/api/audit-logs')
+      if (auditRes.ok) setAuditLogs(await auditRes.json())
     } catch (err) {
       console.error('Failed to fetch corporate data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleTriggerCron = async () => {
+    try {
+      setIsRunningCron(true)
+      const res = await fetch('http://localhost:5000/api/reminders/trigger-now', { method: 'POST' })
+      const data = await res.json()
+      if (data.success) {
+        alert('⏰ Daily Reminder Cron Job Executed Successfully!\n\nLogs:\n' + data.logs.join('\n'))
+        fetchData()
+      } else {
+        alert('Cron job execution error: ' + data.error)
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Failed to trigger cron job.')
+    } finally {
+      setIsRunningCron(false)
     }
   }
 
@@ -830,7 +854,10 @@ Managing Director / Authorized Corporate Signatory`
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button type="button" className="btn" style={{ background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', fontWeight: '700' }} onClick={handleTriggerCron} disabled={isRunningCron}>
+                    {isRunningCron ? 'Running Cron...' : '⏰ Test Daily Reminder Cron Job Now'}
+                  </button>
                   <button type="submit" className="btn btn-primary" disabled={isSavingSettings}>
                     {isSavingSettings ? 'Saving Settings...' : 'Save Communication Credentials'}
                   </button>
@@ -859,6 +886,12 @@ Managing Director / Authorized Corporate Signatory`
                     <option value="INSPECTION">Inspection Form (QA/QC)</option>
                     <option value="SITE_VISIT">Site Visit Report</option>
                     <option value="MATERIAL_REQ">Material Request Form</option>
+                    <option value="HANDOVER_CERT">Handover & Completion Certificate</option>
+                    <option value="SITE_LOG">Daily Site Work Log & Diary</option>
+                    <option value="VAR_ORDER">Variation Order & Scope Change</option>
+                    <option value="SAFETY_INCIDENT">EHS Incident & Hazard Report</option>
+                    <option value="PAYMENT_CERT">Interim Payment Certificate (IPC)</option>
+                    <option value="SUBCONTRACTOR_EVAL">Subcontractor Performance Appraisal</option>
                   </select>
                 </div>
               </div>
@@ -890,41 +923,51 @@ Managing Director / Authorized Corporate Signatory`
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Header Logo URL</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="/uploads/logo.png" 
-                      value={documentTemplates[selectedDocType]?.header_logo_url || ''} 
-                      onChange={e => setDocumentTemplates({
-                        ...documentTemplates,
-                        [selectedDocType]: { ...documentTemplates[selectedDocType], header_logo_url: e.target.value }
-                      })} 
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Primary Brand Color (Hex)</label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <input 
-                        type="color" 
-                        style={{ width: '40px', height: '38px', padding: '0.2rem', border: '1px solid #cbd5e1', borderRadius: '4px' }} 
-                        value={documentTemplates[selectedDocType]?.primary_color || '#0f172a'} 
-                        onChange={e => setDocumentTemplates({
-                          ...documentTemplates,
-                          [selectedDocType]: { ...documentTemplates[selectedDocType], primary_color: e.target.value }
-                        })} 
-                      />
+                    <label>Header Logo (URL or Upload)</label>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
                       <input 
                         type="text" 
                         className="form-control" 
-                        placeholder="#0f172a" 
-                        value={documentTemplates[selectedDocType]?.primary_color || '#0f172a'} 
+                        placeholder="/uploads/logo.png" 
+                        value={documentTemplates[selectedDocType]?.header_logo_url || ''} 
                         onChange={e => setDocumentTemplates({
                           ...documentTemplates,
-                          [selectedDocType]: { ...documentTemplates[selectedDocType], primary_color: e.target.value }
+                          [selectedDocType]: { ...documentTemplates[selectedDocType], header_logo_url: e.target.value }
                         })} 
                       />
+                      <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>
+                        📁 Upload
+                        <input type="file" accept="image/*" onChange={async (e) => {
+                          const file = e.target.files[0]
+                          if (!file) return
+                          const formData = new FormData()
+                          formData.append('file', file)
+                          try {
+                            const res = await fetch('http://localhost:5000/api/upload', { method: 'POST', body: formData })
+                            const data = await res.json()
+                            if (data.fileUrl) {
+                              setDocumentTemplates({
+                                ...documentTemplates,
+                                [selectedDocType]: { ...documentTemplates[selectedDocType], header_logo_url: data.fileUrl }
+                              })
+                            }
+                          } catch (err) { alert('Failed to upload logo') }
+                        }} style={{ display: 'none' }} />
+                      </label>
                     </div>
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Primary Theme Hex Color</label>
+                    <input 
+                      type="color" 
+                      className="form-control" 
+                      style={{ height: '38px', padding: '0.2rem' }}
+                      value={documentTemplates[selectedDocType]?.primary_color || '#0f172a'} 
+                      onChange={e => setDocumentTemplates({
+                        ...documentTemplates,
+                        [selectedDocType]: { ...documentTemplates[selectedDocType], primary_color: e.target.value }
+                      })} 
+                    />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label>Header Banner Title</label>
@@ -976,6 +1019,50 @@ Managing Director / Authorized Corporate Signatory`
                   </button>
                 </div>
               </form>
+            </div>
+
+            {/* 3. SYSTEM AUDIT TRAIL & GOVERNANCE LOGS */}
+            <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Shield color="hsl(var(--primary))" size={20} />
+                  <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>System Audit Trail & Governance Logs</h4>
+                </div>
+                <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '10px', background: '#38bdf822', color: '#38bdf8', fontWeight: '700' }}>
+                  {auditLogs.length} Audit Records
+                </span>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ background: '#0f172a', textAlign: 'left', borderBottom: '2px solid #334155', color: '#94a3b8' }}>
+                      <th style={{ padding: '0.6rem' }}>Timestamp</th>
+                      <th style={{ padding: '0.6rem' }}>Role</th>
+                      <th style={{ padding: '0.6rem' }}>Action</th>
+                      <th style={{ padding: '0.6rem' }}>Entity Type</th>
+                      <th style={{ padding: '0.6rem' }}>Event Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>No audit records logged yet.</td>
+                      </tr>
+                    ) : (
+                      auditLogs.map((log) => (
+                        <tr key={log.id} style={{ borderBottom: '1px solid #1e293b' }}>
+                          <td style={{ padding: '0.6rem', color: '#94a3b8' }}>{new Date(log.created_at).toLocaleString()}</td>
+                          <td style={{ padding: '0.6rem', fontWeight: '700', color: '#38bdf8' }}>{log.user_role}</td>
+                          <td style={{ padding: '0.6rem', fontWeight: '600', color: '#fff' }}>{log.action}</td>
+                          <td style={{ padding: '0.6rem', color: '#4ade80' }}>{log.entity_type || '—'}</td>
+                          <td style={{ padding: '0.6rem', color: '#cbd5e1' }}>{log.details || '—'}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
           </div>

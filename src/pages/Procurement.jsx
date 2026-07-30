@@ -13,10 +13,21 @@ export default function Procurement({ setGlobalDrawer }) {
   const [rfqs, setRfqs] = useState([])
   const [inventory, setInventory] = useState([])
   const [requisitions, setRequisitions] = useState([])
+  const [matchAudit, setMatchAudit] = useState([])
   const [isGRNDrawerOpen, setGRNDrawerOpen] = useState(false)
   const [isRFQDrawerOpen, setRFQDrawerOpen] = useState(false)
   const [expandedRFQ, setExpandedRFQ] = useState(null)
   const [expandedPO, setExpandedPO] = useState(null)
+  const [companyProfile, setCompanyProfile] = useState(null)
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/company-profile')
+      .then(res => res.json())
+      .then(data => {
+        if (data && !data.error) setCompanyProfile(data)
+      })
+      .catch(err => console.error('Company profile error:', err))
+  }, [])
 
   const renderItems = (itemsString, isRfq = false) => {
     if (!itemsString) return <span style={{ color: 'hsl(var(--text-secondary))' }}>No items listed.</span>;
@@ -67,23 +78,28 @@ export default function Procurement({ setGlobalDrawer }) {
   useEffect(() => {
     fetch('http://localhost:5000/api/pos')
       .then(res => res.json())
-      .then(data => setPos(data))
+      .then(data => setPos(Array.isArray(data) ? data : []))
       .catch(err => console.error("Could not fetch POs:", err))
 
     fetch('http://localhost:5000/api/rfqs')
       .then(res => res.json())
-      .then(data => setRfqs(data))
+      .then(data => setRfqs(Array.isArray(data) ? data : []))
       .catch(err => console.error("Could not fetch RFQs:", err))
 
     fetch('http://localhost:5000/api/inventory')
       .then(res => res.json())
-      .then(data => setInventory(data))
+      .then(data => setInventory(Array.isArray(data) ? data : []))
       .catch(err => console.error("Could not fetch inventory:", err))
 
     fetch('http://localhost:5000/api/stock_requisitions')
       .then(res => res.json())
-      .then(data => setRequisitions(data))
+      .then(data => setRequisitions(Array.isArray(data) ? data : []))
       .catch(err => console.error("Could not fetch requisitions:", err))
+
+    fetch('http://localhost:5000/api/procurement/3-way-match-audit')
+      .then(res => res.json())
+      .then(data => setMatchAudit(Array.isArray(data) ? data : []))
+      .catch(err => console.error("Could not fetch match audit:", err))
   }, [])
 
   const handleApproveReq = async (id) => {
@@ -234,8 +250,41 @@ export default function Procurement({ setGlobalDrawer }) {
                   {expandedRFQ === rfq.id && (
                     <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
                       <td colSpan="6" style={{ padding: '1rem' }}>
-                        <div className="print-only" style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-                          <h2 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Request for Quotation: {rfq.id}</h2>
+                        <div className="print-only" style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
+                          {/* SINGLE UNIFIED HEADER BANNER */}
+                          <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                            {/* CENTERED LOGO & COMPANY DETAILS */}
+                            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
+                              <img 
+                                src={companyProfile?.logo_url || '/logo.png'} 
+                                alt="Company Logo" 
+                                style={{ height: '140px', maxWidth: '320px', objectFit: 'contain' }} 
+                                onError={(e) => e.target.style.display = 'none'} 
+                              />
+                              <h2 style={{ margin: '0.3rem 0 0 0', color: '#0f172a', fontSize: '1.5rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
+                              </h2>
+                              <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+                                <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
+                                <div style={{ fontWeight: '500' }}>
+                                  Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT) */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                              <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                REQUEST FOR QUOTATION (RFQ)
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <span><strong>Doc Ref #:</strong> {rfq.id}</span>
+                                <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
+                                <span><strong>Date Generated:</strong> {rfq.issue_date || new Date().toISOString().split('T')[0]}</span>
+                              </div>
+                            </div>
+                          </div>
+
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
                             <div>
                               <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Tender Reference</p>
@@ -255,6 +304,17 @@ export default function Procurement({ setGlobalDrawer }) {
                             </div>
                           </div>
                           {renderItems(rfq.items, true)}
+
+                          {/* AUTHORIZED SIGNATURE & STAMP BLOCK */}
+                          <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid hsl(var(--border))', paddingTop: '1.5rem' }}>
+                            <div style={{ textAlign: 'center', width: '220px' }}>
+                              <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <img src="/stamp.png" alt="Official Stamp" style={{ height: '90px', objectFit: 'contain', opacity: 0.88 }} onError={(e) => e.target.style.display = 'none'} />
+                              </div>
+                              <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.3rem' }}></div>
+                              <strong style={{ fontSize: '0.85rem' }}>Procurement Officer & Stamp</strong>
+                            </div>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -270,7 +330,55 @@ export default function Procurement({ setGlobalDrawer }) {
         </div>
 
         <div style={{ display: 'flex', gap: '1.5rem', flexDirection: 'column' }}>
-          {/* PO Tracking Table */}
+          {/* AUTOMATED 3-WAY MATCHING RECONCILIATION LEDGER */}
+      {matchAudit && matchAudit.length > 0 && (
+        <div className="card" style={{ padding: '1.5rem', background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.15rem' }}>⚖️ Automated 3-Way Matching Reconciliation Engine</h3>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem' }}>Automated ledger audit verifying Purchase Orders (PO) vs Goods Receipt Notes (GRN) vs Supplier Invoices</div>
+            </div>
+            <span style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem', borderRadius: '12px', background: '#38bdf822', color: '#38bdf8', fontWeight: '700' }}>
+              {matchAudit.filter(m => m.match_status === 'Matched').length} / {matchAudit.length} POs Fully Reconciled
+            </span>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+              <thead>
+                <tr style={{ background: '#0f172a', textAlign: 'left', borderBottom: '2px solid #334155', color: '#94a3b8' }}>
+                  <th style={{ padding: '0.6rem 0.8rem' }}>PO Ref #</th>
+                  <th style={{ padding: '0.6rem 0.8rem' }}>Supplier</th>
+                  <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>PO Value ($)</th>
+                  <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>GRN Recv Qty</th>
+                  <th style={{ padding: '0.6rem 0.8rem', textAlign: 'right' }}>Invoiced ($)</th>
+                  <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>Match Status</th>
+                  <th style={{ padding: '0.6rem 0.8rem' }}>Audit Findings</th>
+                </tr>
+              </thead>
+              <tbody>
+                {matchAudit.map((m, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #1e293b' }}>
+                    <td style={{ padding: '0.6rem 0.8rem', fontWeight: '700', color: '#38bdf8' }}>{m.po_id}</td>
+                    <td style={{ padding: '0.6rem 0.8rem', color: '#fff' }}>{m.supplier_name}</td>
+                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', fontWeight: '600' }}>${Number(m.po_total || 0).toLocaleString()}</td>
+                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#94a3b8' }}>{m.total_received}</td>
+                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', color: '#94a3b8' }}>${Number(m.total_invoiced || 0).toLocaleString()}</td>
+                    <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', fontWeight: '700', background: m.match_status === 'Matched' ? '#dcfce7' : '#fee2e2', color: m.match_status === 'Matched' ? '#15803d' : '#b91c1c' }}>
+                        {m.match_status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.6rem 0.8rem', color: '#cbd5e1', fontSize: '0.78rem' }}>{m.details}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 2: PURCHASE ORDERS (POS) */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
@@ -355,8 +463,41 @@ export default function Procurement({ setGlobalDrawer }) {
                   {expandedPO === po.id && (
                     <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
                       <td colSpan="5" style={{ padding: '1rem' }}>
-                        <div className="print-only" style={{ background: 'var(--bg-card)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-                          <h2 style={{ borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem', marginBottom: '1rem' }}>Purchase Order: {po.id}</h2>
+                        <div className="print-only" style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
+                          {/* SINGLE UNIFIED HEADER BANNER */}
+                          <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                            {/* CENTERED LOGO & COMPANY DETAILS */}
+                            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
+                              <img 
+                                src={companyProfile?.logo_url || '/logo.png'} 
+                                alt="Company Logo" 
+                                style={{ height: '140px', maxWidth: '320px', objectFit: 'contain' }} 
+                                onError={(e) => e.target.style.display = 'none'} 
+                              />
+                              <h2 style={{ margin: '0.3rem 0 0 0', color: '#0f172a', fontSize: '1.5rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                                {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
+                              </h2>
+                              <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
+                                <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
+                                <div style={{ fontWeight: '500' }}>
+                                  Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT) */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+                              <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                PURCHASE ORDER (PO)
+                              </div>
+                              <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                                <span><strong>Doc Ref #:</strong> {po.id}</span>
+                                <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
+                                <span><strong>Date Generated:</strong> {po.issue_date || new Date().toISOString().split('T')[0]}</span>
+                              </div>
+                            </div>
+                          </div>
+
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
                             <div>
                               <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Supplier Details</p>
@@ -376,6 +517,17 @@ export default function Procurement({ setGlobalDrawer }) {
                             </div>
                           </div>
                           {renderItems(po.items)}
+
+                          {/* AUTHORIZED SIGNATURE & STAMP BLOCK */}
+                          <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid hsl(var(--border))', paddingTop: '1.5rem' }}>
+                            <div style={{ textAlign: 'center', width: '220px' }}>
+                              <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <img src="/stamp.png" alt="Official Stamp" style={{ height: '90px', objectFit: 'contain', opacity: 0.88 }} onError={(e) => e.target.style.display = 'none'} />
+                              </div>
+                              <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.3rem' }}></div>
+                              <strong style={{ fontSize: '0.85rem' }}>Approved Signatory & Stamp</strong>
+                            </div>
+                          </div>
                         </div>
                       </td>
                     </tr>

@@ -10,6 +10,7 @@ export default function Finances({ setGlobalDrawer }) {
   const [grns, setGrns] = useState([])
   const [invoices, setInvoices] = useState([])
   const [cashflow, setCashflow] = useState([])
+  const [forecastEngine, setForecastEngine] = useState(null)
   const [isInvoiceDrawerOpen, setInvoiceDrawerOpen] = useState(false)
 
   useEffect(() => {
@@ -36,6 +37,11 @@ export default function Finances({ setGlobalDrawer }) {
     fetch('http://localhost:5000/api/analytics/cashflow')
       .then(res => res.json())
       .then(data => setCashflow(data))
+      .catch(err => console.error(err))
+
+    fetch('http://localhost:5000/api/finances/cashflow-forecast')
+      .then(res => res.json())
+      .then(data => setForecastEngine(data))
       .catch(err => console.error(err))
   }, [])
 
@@ -83,12 +89,50 @@ export default function Finances({ setGlobalDrawer }) {
             treasury.accounts.map(acc => (
               <div key={acc.id} className="card stat-card" style={{ borderTop: `4px solid ${acc.type === 'Bank' ? 'hsl(var(--primary))' : acc.type === 'Mobile Money' ? 'hsl(var(--success))' : 'hsl(var(--warning))'}` }}>
                 <span className="stat-label">{acc.name} ({acc.type})</span>
-                <span className="stat-value" style={{ fontSize: '1.75rem' }}>${acc.current_balance.toLocaleString()}</span>
+                <span className="stat-value" style={{ fontSize: '1.75rem' }}>${Number(acc?.current_balance || 0).toLocaleString()}</span>
               </div>
             ))
           )}
         </div>
       </div>
+
+      {/* 30, 60 & 90-DAY PREDICTIVE CASH FLOW FORECASTING ENGINE */}
+      {forecastEngine && forecastEngine.summary && Array.isArray(forecastEngine.forecast) && (
+        <div className="card" style={{ padding: '1.5rem', background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <div>
+              <h3 style={{ margin: 0, color: '#fff', fontSize: '1.15rem' }}>📊 30, 60 & 90-Day Predictive Cash Flow Engine</h3>
+              <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '0.2rem' }}>Real-time cash flow forecasting (Inflows: Unbilled Deliverables + Unpaid Invoices vs Outflows: Approved POs + Supplier Bills)</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '0.75rem', color: '#94a3b8', textTransform: 'uppercase' }}>Projected Net Working Capital</div>
+              <div style={{ fontSize: '1.5rem', fontWeight: '800', color: Number(forecastEngine.summary.net_working_capital || 0) >= 0 ? '#4ade80' : '#f87171' }}>
+                ${Number(forecastEngine.summary.net_working_capital || 0).toLocaleString()}
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+            {forecastEngine.forecast.map((item, i) => (
+              <div key={i} style={{ background: '#0f172a', border: '1px solid #1e293b', padding: '1rem', borderRadius: '8px' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#38bdf8', marginBottom: '0.5rem' }}>{item.horizon} Horizon</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.3rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Expected Inflows:</span>
+                  <span style={{ color: '#4ade80', fontWeight: '700' }}>+${Number(item?.inflows || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+                  <span style={{ color: '#94a3b8' }}>Expected Outflows:</span>
+                  <span style={{ color: '#f87171', fontWeight: '700' }}>-${Number(item?.outflows || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ borderTop: '1px solid #334155', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', fontWeight: '700' }}>
+                  <span style={{ color: '#fff' }}>Net Position:</span>
+                  <span style={{ color: Number(item?.net || 0) >= 0 ? '#4ade80' : '#f87171' }}>${Number(item?.net || 0).toLocaleString()}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* CASH FLOW FORECASTING */}
       <div className="card" style={{ padding: '1.5rem', overflow: 'hidden' }}>
@@ -142,7 +186,7 @@ export default function Finances({ setGlobalDrawer }) {
                   <td style={{ padding: '1rem' }}>{tx.purpose}</td>
                   <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>{tx.tender_name || '-'}</td>
                   <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold', color: tx.type === 'Income' ? 'hsl(var(--success))' : 'hsl(var(--danger))' }}>
-                    {tx.type === 'Income' ? '+' : '-'}${tx.amount.toLocaleString()}
+                    {tx.type === 'Income' ? '+' : '-'}${Number(tx?.amount || 0).toLocaleString()}
                   </td>
                 </tr>
               ))
@@ -183,7 +227,7 @@ export default function Finances({ setGlobalDrawer }) {
                   <td style={{ padding: '1rem' }}>{grn.po_id}</td>
                   <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>{grn.tender_name || '-'}</td>
                   <td style={{ padding: '1rem', fontSize: '0.875rem' }}>{grn.details}</td>
-                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>${grn.received_value.toLocaleString()}</td>
+                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>${Number(grn?.received_value || 0).toLocaleString()}</td>
                 </tr>
               ))
             )}
@@ -225,18 +269,18 @@ export default function Finances({ setGlobalDrawer }) {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--text-secondary))' }}>Billed Amount</p>
-                    <h3 style={{ margin: 0, color: 'hsl(var(--danger))' }}>${inv.amount.toLocaleString()}</h3>
+                    <h3 style={{ margin: 0, color: 'hsl(var(--danger))' }}>${Number(inv?.amount || 0).toLocaleString()}</h3>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '1rem', background: 'var(--bg-app)', borderRadius: 'var(--radius-sm)' }}>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Purchase Order Limit</span>
-                    <strong style={{ display: 'block' }}>${(inv.po_value || 0).toLocaleString()}</strong>
+                    <strong style={{ display: 'block' }}>${Number(inv?.po_value || 0).toLocaleString()}</strong>
                   </div>
                   <div>
                     <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Verified GRN Total</span>
-                    <strong style={{ display: 'block', color: 'hsl(var(--success))' }}>${(inv.total_grn_value || 0).toLocaleString()}</strong>
+                    <strong style={{ display: 'block', color: 'hsl(var(--success))' }}>${Number(inv?.total_grn_value || 0).toLocaleString()}</strong>
                   </div>
                 </div>
 
@@ -261,7 +305,7 @@ export default function Finances({ setGlobalDrawer }) {
                       <p style={{ marginTop: '0.25rem' }}>Cleared for payment.</p>
                     </div>
                     <button className="btn" onClick={() => payInvoice(inv)} style={{ background: 'hsl(var(--success))', color: '#fff', padding: '1rem', fontWeight: 'bold' }}>
-                      Pay ${inv.amount.toLocaleString()}
+                      Pay ${Number(inv?.amount || 0).toLocaleString()}
                     </button>
                   </div>
                 )}

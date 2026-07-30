@@ -120,14 +120,16 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
 
       {/* COVER BANNER */}
       <div style={{ borderBottom: '3px solid hsl(var(--primary))', paddingBottom: '1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 2 }}>
-        <div>
-          {profile.logo_url ? (
-            <img src={profile.logo_url} alt="Company Logo" style={{ maxHeight: '70px', marginBottom: '0.75rem', objectFit: 'contain' }} />
-          ) : (
-            <h1 style={{ margin: '0 0 0.25rem 0', fontSize: '2rem', color: 'hsl(var(--primary))', fontWeight: '800' }}>
-              {profile.legal_name || 'AKPALI & CO.'}
-            </h1>
-          )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+          <img 
+            src={getCleanUrl(profile.logo_url) || '/logo.png'} 
+            alt="Company Logo" 
+            style={{ height: '160px', maxWidth: '320px', objectFit: 'contain' }} 
+            onError={(e) => e.target.style.display = 'none'} 
+          />
+          <h1 style={{ margin: '0.4rem 0 0 0', fontSize: '1.5rem', color: 'hsl(var(--primary))', fontWeight: '800', textTransform: 'uppercase' }}>
+            {profile.legal_name || 'AKPALI COMPANY LIMITED'}
+          </h1>
           {profile.trading_name && <div style={{ fontSize: '0.9rem', color: '#64748b', fontWeight: '600' }}>Trading As: {profile.trading_name}</div>}
           <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.5', marginTop: '0.4rem' }}>
             <div><strong>Head Office:</strong> {profile.address || 'Nairobi, Kenya'} {profile.postal_address && `| P.O. Box ${profile.postal_address}`}</div>

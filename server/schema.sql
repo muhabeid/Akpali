@@ -37,6 +37,16 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_role TEXT DEFAULT 'Admin',
+    action TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id TEXT,
+    details TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS document_templates (
     id TEXT PRIMARY KEY, -- E.g. 'GLOBAL', 'SQ', 'LPO', 'PO', 'DELIVERY', 'LETTERHEAD'
     header_logo_url TEXT,

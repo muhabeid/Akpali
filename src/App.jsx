@@ -19,6 +19,8 @@ import BankAccountForm from './components/BankAccountForm'
 import ApprovalWorkflowForm from './components/ApprovalWorkflowForm'
 import LegalContractForm from './components/LegalContractForm'
 
+import OperationalDocumentGeneratorModal from './components/OperationalDocumentGeneratorModal'
+
 export const RoleContext = createContext();
 
 const Sidebar = () => {
@@ -74,8 +76,19 @@ const Topbar = ({ setGlobalDrawer }) => {
   return (
     <header className="topbar">
       <h2>{getPageTitle(location.pathname)}</h2>
-      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
         
+        {/* Global Operational Document Generator Shortcut */}
+        <button 
+          type="button"
+          className="btn btn-primary" 
+          style={{ fontSize: '0.78rem', padding: '0.4rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontWeight: '700', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+          onClick={() => setGlobalDrawer('op_doc')}
+          title="Generate Contract, QA/QC Inspection, Site Visit Report, or Material Request Form"
+        >
+          <FileText size={16} /> + Operational Documents
+        </button>
+
         {/* Role Simulator Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'hsla(var(--primary), 0.1)', padding: '0.25rem 0.5rem', borderRadius: 'var(--radius-md)' }}>
           <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>Simulate Role:</span>
@@ -166,6 +179,11 @@ function App() {
           </Routes>
         </div>
       </main>
+
+      {/* Operational Document Generator Modal */}
+      {globalDrawer === 'op_doc' && (
+        <OperationalDocumentGeneratorModal onClose={() => setGlobalDrawer(null)} />
+      )}
 
       {/* Global Drawers */}
       <Drawer isOpen={globalDrawer === 'tender'} onClose={() => setGlobalDrawer(null)} title="Create New Tender" onSubmit={() => { setGlobalDrawer(null) }} width="800px">
