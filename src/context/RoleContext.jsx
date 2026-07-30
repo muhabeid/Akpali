@@ -1,8 +1,8 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 
 export const RoleContext = createContext()
 
-export const ROLES = {
+export const STANDARD_ROLES = {
   ADMIN: {
     id: 'Admin',
     name: 'Executive Administrator',
@@ -46,9 +46,41 @@ export const ROLES = {
 
 export const RoleProvider = ({ children }) => {
   const [currentRole, setCurrentRole] = useState('Admin')
+  const [allRoles, setAllRoles] = useState(() => {
+    const saved = localStorage.getItem('akpali_custom_roles')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        return { ...STANDARD_ROLES, ...parsed }
+      } catch (e) {
+        return STANDARD_ROLES
+      }
+    }
+    return STANDARD_ROLES
+  })
+
+  useEffect(() => {
+    // Persist custom roles
+    const customOnly = {}
+    Object.keys(allRoles).forEach(key => {
+      if (!STANDARD_ROLES[key]) {
+        customOnly[key] = allRoles[key]
+      }
+    })
+    localStorage.setItem('akpali_custom_roles', JSON.stringify(customOnly))
+  }, [allRoles])
+
+  const addCustomRole = (newRole) => {
+    const key = newRole.id.toUpperCase()
+    setAllRoles(prev => ({
+      ...prev,
+      [key]: newRole
+    }))
+  }
 
   const getRoleDetails = (roleId = currentRole) => {
-    return Object.values(ROLES).find(r => r.id === roleId) || ROLES.ADMIN
+    const found = Object.values(allRoles).find(r => r.id.toLowerCase() === roleId.toLowerCase())
+    return found || STANDARD_ROLES.ADMIN
   }
 
   const canAccessModule = (moduleName) => {
@@ -57,7 +89,7 @@ export const RoleProvider = ({ children }) => {
     if (moduleName === 'procurement' && (currentRole === 'Procurement_Finance')) return true
     if (moduleName === 'finances' && (currentRole === 'Procurement_Finance')) return true
     if (moduleName === 'corporate' && (currentRole === 'Operations' || currentRole === 'Procurement_Finance')) return true
-    return false
+    return true // Default open for custom roles
   }
 
   return (
@@ -66,7 +98,8 @@ export const RoleProvider = ({ children }) => {
       setCurrentRole,
       getRoleDetails,
       canAccessModule,
-      ROLES
+      addCustomRole,
+      ROLES: allRoles
     }}>
       {children}
     </RoleContext.Provider>
