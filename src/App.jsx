@@ -9,6 +9,7 @@ import Tenders from './pages/Tenders'
 import Procurement from './pages/Procurement'
 import Finances from './pages/Finances'
 import CorporateHub from './pages/CorporateHub'
+import LoginPage from './pages/LoginPage'
 import Drawer from './components/Drawer'
 import NewClientForm from './components/NewClientForm'
 import NewSupplierForm from './components/NewSupplierForm'
@@ -73,7 +74,7 @@ const Sidebar = ({ companyProfile }) => {
   )
 }
 
-const Topbar = ({ setGlobalDrawer }) => {
+const Topbar = ({ setGlobalDrawer, onLogout, userSession }) => {
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -83,33 +84,31 @@ const Topbar = ({ setGlobalDrawer }) => {
       case '/': return 'Dashboard Overview'
       case '/tenders': return 'Tenders & Projects'
       case '/procurement': return 'Procurement & Inventory'
-      case '/finances': return 'Finance'
-      case '/corporate': return 'Corporate Management & Admin'
-      default: return 'TenderPro'
+      case '/finances': return 'Finance & Cashflow'
+      case '/corporate': return 'Corporate Hub & Dossiers'
+      default: return 'Akpali System'
     }
   }
 
   return (
     <header className="topbar">
       <h2>{getPageTitle(location.pathname)}</h2>
-      <div style={{ display: 'flex', gap: '0.85rem', alignItems: 'center' }}>
-
-        {/* Global Utilities - Hover Dropdown */}
-        <div 
-          style={{ position: 'relative' }}
-          onMouseEnter={() => setMenuOpen(true)}
-          onMouseLeave={() => setMenuOpen(false)}
-        >
+      
+      <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        
+        {/* Hamburger Menu Dropdown */}
+        <div style={{ position: 'relative' }}>
           <button 
-            className="btn" 
-            style={{ padding: '0.5rem', background: menuOpen ? 'hsla(var(--primary), 0.2)' : 'transparent', color: menuOpen ? 'hsl(var(--primary))' : 'hsl(var(--text-primary))' }} 
-            title="Global Utilities"
+            className="btn btn-primary" 
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            <Menu size={24} />
+            <Menu size={18} />
+            <span>Menu</span>
           </button>
-          
+
           {menuOpen && (
-            <div style={{ position: 'absolute', top: '100%', right: '0', paddingTop: '0.5rem', width: '280px', zIndex: 100 }}>
+            <div style={{ position: 'absolute', top: '100%', right: 0, paddingTop: '0.5rem', width: '240px', zIndex: 100 }}>
               <div style={{ background: 'hsl(var(--bg-card))', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('inbox'); setMenuOpen(false); }}><Inbox size={18}/> My Inbox (2 Pending)</button>
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('search'); setMenuOpen(false); }}><Search size={18}/> Global Search</button>
@@ -120,7 +119,7 @@ const Topbar = ({ setGlobalDrawer }) => {
             </div>
           )}
         </div>
-        
+
         {/* Profile - Hover Dropdown */}
         <div 
           style={{ position: 'relative' }}
@@ -128,19 +127,21 @@ const Topbar = ({ setGlobalDrawer }) => {
           onMouseLeave={() => setProfileOpen(false)}
         >
           <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'hsl(var(--bg-card))', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: profileOpen ? 'hsla(var(--primary), 0.2)' : 'hsl(var(--bg-card))', transition: 'all 0.2s ease' }}>
-            <span style={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}>JD</span>
+            <span style={{ color: 'hsl(var(--primary))', fontWeight: 'bold' }}>
+              {userSession?.name ? userSession.name.split(' ').map(n=>n[0]).join('') : 'JD'}
+            </span>
           </div>
 
           {profileOpen && (
             <div style={{ position: 'absolute', top: '100%', right: '0', paddingTop: '0.5rem', width: '240px', zIndex: 100 }}>
               <div style={{ background: 'hsl(var(--bg-card))', border: '1px solid var(--glass-border)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--shadow-lg)', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid hsla(var(--border), 0.5)', marginBottom: '0.25rem' }}>
-                  <strong>John Doe</strong>
-                  <p style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', margin: '0.1rem 0 0 0' }}>Executive Administrator</p>
+                  <strong>{userSession?.name || 'Eng. John Akpali'}</strong>
+                  <p style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', margin: '0.1rem 0 0 0' }}>{userSession?.title || 'Executive Administrator'}</p>
                 </div>
                 <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--text-primary))' }} onClick={() => { setGlobalDrawer('profile'); setProfileOpen(false); }}><User size={18}/> Edit Profile</button>
                 <div style={{ height: '1px', background: 'hsl(var(--border))', margin: '0.25rem 0' }} />
-                <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--danger))' }} onClick={() => alert('Logging out...')}><LogOut size={18}/> Log Out</button>
+                <button className="btn" style={{ justifyContent: 'flex-start', background: 'transparent', width: '100%', color: 'hsl(var(--danger))' }} onClick={onLogout}><LogOut size={18}/> Log Out</button>
               </div>
             </div>
           )}
@@ -152,8 +153,11 @@ const Topbar = ({ setGlobalDrawer }) => {
 
 function App() {
   const [globalDrawer, setGlobalDrawer] = useState(null)
-  const [currentRole, setCurrentRole] = useState('Admin')
   const [companyProfile, setCompanyProfile] = useState(null)
+  const [userSession, setUserSession] = useState(() => {
+    const saved = localStorage.getItem('akpali_user_session')
+    return saved ? JSON.parse(saved) : null
+  })
 
   useEffect(() => {
     fetch('http://localhost:5000/api/company')
@@ -164,13 +168,26 @@ function App() {
       .catch(() => {})
   }, [])
 
+  const handleLogout = () => {
+    localStorage.removeItem('akpali_user_session')
+    setUserSession(null)
+  }
+
+  if (!userSession) {
+    return (
+      <RoleProvider>
+        <LoginPage onLoginSuccess={setUserSession} companyProfile={companyProfile} />
+      </RoleProvider>
+    )
+  }
+
   return (
     <CurrencyProvider>
       <RoleProvider>
         <div className="app-container">
           <Sidebar companyProfile={companyProfile} />
           <main className="main-content">
-            <Topbar setGlobalDrawer={setGlobalDrawer} />
+            <Topbar setGlobalDrawer={setGlobalDrawer} onLogout={handleLogout} userSession={userSession} />
           <div className="page-container">
           <Routes>
             <Route path="/" element={<Dashboard setGlobalDrawer={setGlobalDrawer} />} />
