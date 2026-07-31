@@ -161,6 +161,11 @@ export default function Procurement({ setGlobalDrawer }) {
     return matchesSearch && matchesStatus
   })
 
+  // Dynamic stat card calculations
+  const totalSpend = pos.filter(p => p.status !== 'Rejected').reduce((sum, p) => sum + (Number(p.total_value) || 0), 0)
+  const pendingDeliveries = pos.filter(p => p.status === 'Approved' || p.status === 'Pending Delivery' || p.status === 'Dispatched').length
+  const posAwaitingApproval = pos.filter(p => p.status === 'Pending Approval' || p.status === 'Draft' || p.status === 'Pending').length
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <Drawer isOpen={isGRNDrawerOpen} onClose={() => setGRNDrawerOpen(false)} title="Record Goods Receipt Note (GRN)">
@@ -171,18 +176,19 @@ export default function Procurement({ setGlobalDrawer }) {
         <GenerateRFQForm />
       </Drawer>
 
-      <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+      {/* DYNAMIC STAT CARDS WITH RESPONSIVE AUTO-FIT GRID */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
         <div className="card stat-card">
           <span className="stat-label">Total Spend (Active Tenders)</span>
-          <span className="stat-value">{formatAmount(65500)}</span>
+          <span className="stat-value">{formatAmount(totalSpend)}</span>
         </div>
         <div className="card stat-card">
           <span className="stat-label">Pending Deliveries</span>
-          <span className="stat-value" style={{ color: 'hsl(var(--warning))' }}>1</span>
+          <span className="stat-value" style={{ color: 'hsl(var(--warning))' }}>{pendingDeliveries}</span>
         </div>
         <div className="card stat-card">
           <span className="stat-label">POs Awaiting Approval</span>
-          <span className="stat-value" style={{ color: 'hsl(var(--danger))' }}>1</span>
+          <span className="stat-value" style={{ color: 'hsl(var(--danger))' }}>{posAwaitingApproval}</span>
         </div>
       </div>
 
@@ -190,8 +196,8 @@ export default function Procurement({ setGlobalDrawer }) {
         
         {/* RFQs Table */}
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
               <div>
                 <h3 style={{ margin: 0 }}>Requests for Quotation (RFQs)</h3>
                 <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginTop: '0.25rem' }}>Active sourcing requests sent to suppliers.</p>
@@ -382,27 +388,27 @@ export default function Procurement({ setGlobalDrawer }) {
 
       {/* SECTION 2: PURCHASE ORDERS (POS) */}
           <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1rem' }}>
               <div>
                 <h3 style={{ margin: 0 }}>Supplier Purchase Orders (POs)</h3>
                 <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginTop: '0.25rem' }}>Track all material orders raised to suppliers.</p>
               </div>
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                 <button className="btn" onClick={() => setGRNDrawerOpen(true)} style={{ background: 'hsla(var(--success), 0.2)', color: 'hsl(var(--success))' }}>+ Record GRN (Delivery)</button>
                 <button className="btn btn-primary" onClick={() => setGlobalDrawer('new_po')}>+ Raise PO</button>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
               <input 
                 type="text" 
                 placeholder="Search PO, Supplier, or Tender..." 
                 className="form-control" 
-                style={{ flex: 1 }}
+                style={{ flex: '1 1 200px' }}
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
-              <select className="form-control" style={{ width: '200px' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <select className="form-control" style={{ flex: '0 1 180px', minWidth: '150px' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                 <option value="All">All Statuses</option>
                 <option value="Pending Delivery">Pending Delivery</option>
                 <option value="Delivered">Delivered</option>
@@ -544,7 +550,7 @@ export default function Procurement({ setGlobalDrawer }) {
           </table>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: '1.5rem' }}>
             {/* Inventory Quick View */}
             <div className="card">
               <h3>Live Inventory</h3>
