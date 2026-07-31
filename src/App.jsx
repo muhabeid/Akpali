@@ -25,56 +25,69 @@ import EditProfileForm from './components/EditProfileForm'
 
 import OperationalDocumentGeneratorModal from './components/OperationalDocumentGeneratorModal'
 
-const Sidebar = ({ companyProfile }) => {
+const Sidebar = ({ companyProfile, isMobileOpen, onCloseMobile }) => {
   const logoUrl = companyProfile?.logo_url ? (
     companyProfile.logo_url.startsWith('http') ? companyProfile.logo_url : `http://localhost:5000${companyProfile.logo_url}`
   ) : '/logo.png'
 
   return (
-    <aside className="sidebar">
-      <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem 1.25rem 1.25rem 1.25rem', borderBottom: '1px solid hsla(var(--border), 0.5)', marginBottom: '1rem' }}>
-        <img 
-          src={logoUrl} 
-          alt="Company Logo" 
-          style={{ height: '36px', width: '36px', objectFit: 'contain', borderRadius: '6px' }}
-          onError={(e) => { e.target.src = '/logo.png'; e.target.onerror = null; }}
-        />
-        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'hsl(var(--text-primary))', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={companyProfile?.legal_name || 'AKPALI COMPANY LIMITED'}>
-            {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
-          </span>
-          <span style={{ fontSize: '0.65rem', color: 'hsl(var(--text-secondary))', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.1rem' }}>
-            Corporate Portal
-          </span>
+    <>
+      <div 
+        className={`sidebar-overlay ${isMobileOpen ? 'open' : ''}`} 
+        onClick={onCloseMobile}
+      />
+      <aside className={`sidebar ${isMobileOpen ? 'mobile-open' : ''}`}>
+        <div className="brand" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1.25rem', borderBottom: '1px solid hsla(var(--border), 0.5)', marginBottom: '1rem', position: 'relative' }}>
+          <img 
+            src={logoUrl} 
+            alt="Company Logo" 
+            style={{ height: '36px', width: '36px', objectFit: 'contain', borderRadius: '6px' }}
+            onError={(e) => { e.target.src = '/logo.png'; e.target.onerror = null; }}
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1 }}>
+            <span style={{ fontWeight: '800', fontSize: '0.9rem', color: 'hsl(var(--text-primary))', lineHeight: '1.2', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={companyProfile?.legal_name || 'AKPALI COMPANY LIMITED'}>
+              {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
+            </span>
+            <span style={{ fontSize: '0.65rem', color: 'hsl(var(--text-secondary))', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '0.1rem' }}>
+              Corporate Portal
+            </span>
+          </div>
+          <button 
+            className="mobile-close-btn"
+            onClick={onCloseMobile}
+            aria-label="Close navigation"
+          >
+            ✕
+          </button>
         </div>
-      </div>
-      <nav className="nav-menu">
-        <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end>
-          <LayoutDashboard size={20} />
-          Dashboard
-        </NavLink>
-        <NavLink to="/tenders" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <FileText size={20} />
-          Tenders & Projects
-        </NavLink>
-        <NavLink to="/procurement" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <ShoppingCart size={20} />
-          Procurement
-        </NavLink>
-        <NavLink to="/finances" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <Landmark size={20} />
-          Finance
-        </NavLink>
-        <NavLink to="/corporate" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-          <ShieldAlert size={20} />
-          Corporate Hub
-        </NavLink>
-      </nav>
-    </aside>
+        <nav className="nav-menu">
+          <NavLink to="/" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile} end>
+            <LayoutDashboard size={20} />
+            Dashboard
+          </NavLink>
+          <NavLink to="/tenders" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <FileText size={20} />
+            Tenders & Projects
+          </NavLink>
+          <NavLink to="/procurement" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <ShoppingCart size={20} />
+            Procurement
+          </NavLink>
+          <NavLink to="/finances" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <Landmark size={20} />
+            Finance
+          </NavLink>
+          <NavLink to="/corporate" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} onClick={onCloseMobile}>
+            <ShieldAlert size={20} />
+            Corporate Hub
+          </NavLink>
+        </nav>
+      </aside>
+    </>
   )
 }
 
-const Topbar = ({ setGlobalDrawer, onLogout, userSession }) => {
+const Topbar = ({ setGlobalDrawer, onLogout, userSession, onOpenMobileNav }) => {
   const location = useLocation()
   const [menuOpen, setMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -92,7 +105,16 @@ const Topbar = ({ setGlobalDrawer, onLogout, userSession }) => {
 
   return (
     <header className="topbar">
-      <h2>{getPageTitle(location.pathname)}</h2>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <button 
+          className="mobile-nav-toggle btn" 
+          onClick={onOpenMobileNav}
+          title="Open Navigation Menu"
+        >
+          <Menu size={22} />
+        </button>
+        <h2 className="topbar-title" style={{ margin: 0 }}>{getPageTitle(location.pathname)}</h2>
+      </div>
       
       <div className="topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         
@@ -154,6 +176,7 @@ const Topbar = ({ setGlobalDrawer, onLogout, userSession }) => {
 function App() {
   const [globalDrawer, setGlobalDrawer] = useState(null)
   const [companyProfile, setCompanyProfile] = useState(null)
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const [userSession, setUserSession] = useState(() => {
     const saved = localStorage.getItem('akpali_user_session')
     return saved ? JSON.parse(saved) : null
@@ -196,9 +219,18 @@ function App() {
     <CurrencyProvider>
       <RoleProvider>
         <div className="app-container">
-          <Sidebar companyProfile={companyProfile} />
+          <Sidebar 
+            companyProfile={companyProfile} 
+            isMobileOpen={isMobileNavOpen}
+            onCloseMobile={() => setIsMobileNavOpen(false)}
+          />
           <main className="main-content">
-            <Topbar setGlobalDrawer={setGlobalDrawer} onLogout={handleLogout} userSession={userSession} />
+            <Topbar 
+              setGlobalDrawer={setGlobalDrawer} 
+              onLogout={handleLogout} 
+              userSession={userSession} 
+              onOpenMobileNav={() => setIsMobileNavOpen(true)}
+            />
           <div className="page-container">
           <Routes>
             <Route path="/" element={<Dashboard setGlobalDrawer={setGlobalDrawer} />} />
