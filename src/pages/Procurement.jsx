@@ -15,7 +15,7 @@ export default function Procurement({ setGlobalDrawer }) {
   const [rfqs, setRfqs] = useState([])
   const [inventory, setInventory] = useState([])
   const [requisitions, setRequisitions] = useState([])
-  const [matchAudit, setMatchAudit] = useState([])
+  const [suppliers, setSuppliers] = useState([])
   const [isGRNDrawerOpen, setGRNDrawerOpen] = useState(false)
   const [isRFQDrawerOpen, setRFQDrawerOpen] = useState(false)
   const [expandedRFQ, setExpandedRFQ] = useState(null)
@@ -77,6 +77,8 @@ export default function Procurement({ setGlobalDrawer }) {
     }
   }
 
+  const [matchAudit, setMatchAudit] = useState([])
+
   useEffect(() => {
     fetch('http://localhost:5000/api/pos')
       .then(res => res.json())
@@ -102,6 +104,11 @@ export default function Procurement({ setGlobalDrawer }) {
       .then(res => res.json())
       .then(data => setMatchAudit(Array.isArray(data) ? data : []))
       .catch(err => console.error("Could not fetch match audit:", err))
+
+    fetch('http://localhost:5000/api/suppliers')
+      .then(res => res.json())
+      .then(data => setSuppliers(Array.isArray(data) ? data : []))
+      .catch(err => console.error("Could not fetch suppliers:", err))
   }, [])
 
   const handleApproveReq = async (id) => {
@@ -640,23 +647,27 @@ export default function Procurement({ setGlobalDrawer }) {
             </tr>
           </thead>
           <tbody>
-            {[
-              { name: 'BuildMat Ltd', contact: 'john@buildmat.com', pin: 'P051234567Z', rating: 4.8 },
-              { name: 'Steel & Timber Co.', contact: 'sales@steeltimber.co', pin: 'P059876543A', rating: 4.2 },
-              { name: 'Nairobi Cement Providers', contact: 'dispatch@ncp.co.ke', pin: 'P051122334X', rating: 3.9 }
-            ].map((s, i) => (
-              <tr key={i} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                <td style={{ padding: '1rem 1.5rem', fontWeight: '500' }}>{s.name}</td>
-                <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>{s.contact}</td>
-                <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>{s.pin}</td>
-                <td style={{ padding: '1rem' }}>
-                  <span style={{ color: s.rating > 4 ? 'hsl(var(--success))' : 'hsl(var(--warning))' }}>★ {s.rating}</span>
-                </td>
-                <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
-                  <button className="btn" style={{ padding: '0.25rem 0.75rem', background: 'transparent', color: 'hsl(var(--primary))', border: '1px solid hsl(var(--border))' }}>Edit</button>
+            {suppliers.length === 0 ? (
+              <tr>
+                <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>
+                  No suppliers registered in system yet. Click "+ Add Supplier" to register suppliers.
                 </td>
               </tr>
-            ))}
+            ) : (
+              suppliers.map((s, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                  <td style={{ padding: '1rem 1.5rem', fontWeight: '600' }}>{s.name}</td>
+                  <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>{s.email || s.phone || '-'}</td>
+                  <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>{s.kra_pin || 'N/A'}</td>
+                  <td style={{ padding: '1rem' }}>
+                    <span style={{ color: 'hsl(var(--success))', fontWeight: '700' }}>★ 5.0</span>
+                  </td>
+                  <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                    <button className="btn" style={{ padding: '0.25rem 0.75rem', background: 'transparent', color: 'hsl(var(--primary))', border: '1px solid hsl(var(--border))' }}>Edit</button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
