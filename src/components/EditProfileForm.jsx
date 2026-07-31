@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRole, ROLES } from '../context/RoleContext'
 import { User, Mail, Phone, Briefcase, ShieldCheck, CheckCircle2, Key, Award, FileSignature } from 'lucide-react'
 
@@ -6,21 +6,78 @@ export default function EditProfileForm({ onClose }) {
   const { currentRole, setCurrentRole, getRoleDetails } = useRole()
   const activeRole = getRoleDetails()
 
+  const [userSession, setUserSession] = useState(() => {
+    const saved = localStorage.getItem('akpali_user_session')
+    return saved ? JSON.parse(saved) : null
+  })
+
   const [profile, setProfile] = useState({
-    name: 'Eng. John Doe',
-    email: 'admin@akpali.com',
+    name: userSession?.name || 'Eng. John Akpali',
+    email: userSession?.email || 'admin@akpali.com',
     phone: '+254 705 365996',
-    designation: 'Managing Director / Lead Engineer',
+    designation: userSession?.title || 'Managing Director / Lead Engineer',
     department: 'Executive Management',
     role: currentRole
   })
 
+  useEffect(() => {
+    const saved = localStorage.getItem('akpali_user_session')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      setProfile(prev => ({
+        ...prev,
+        name: parsed.name || prev.name,
+        email: parsed.email || prev.email,
+        designation: parsed.title || prev.designation
+      }))
+    }
+  }, [])
+
   const [activeTab, setActiveTab] = useState('profile') // 'profile' | 'tasks' | 'security'
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault()
+    if (!profile.name || !profile.name.trim()) {
+      alert('Please enter a valid full name.')
+      return
+    }
+
+    const trimmedName = profile.name.trim()
+    const trimmedEmail = profile.email.trim()
+
     setCurrentRole(profile.role)
-    alert('Profile and System Role updated successfully!')
+
+    // Save profile update to backend database
+    try {
+      const userId = userSession?.id || 'USR-ADMIN'
+      await fetch(`http://localhost:5000/api/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: userId,
+          name: trimmedName,
+          email: trimmedEmail,
+          role: profile.role
+        })
+      })
+    } catch(err) {
+      console.warn('Backend update skipped, updating local session.', err)
+    }
+
+    const updatedSession = {
+      ...(userSession || {}),
+      id: userSession?.id || 'USR-ADMIN',
+      name: trimmedName,
+      email: trimmedEmail,
+      role: profile.role,
+      title: profile.designation
+    }
+
+    localStorage.setItem('akpali_user_session', JSON.stringify(updatedSession))
+    setUserSession(updatedSession)
+    window.dispatchEvent(new Event('userSessionUpdated'))
+    window.dispatchEvent(new Event('refreshCorporateHub'))
+    alert(`✅ User profile updated successfully to: ${trimmedName}`)
     if (onClose) onClose()
   }
 
@@ -30,7 +87,7 @@ export default function EditProfileForm({ onClose }) {
       {/* PROFILE HEADER BADGE */}
       <div style={{ background: 'hsla(var(--primary), 0.05)', padding: '1rem', borderRadius: '10px', border: `1.5px solid ${activeRole.color}`, display: 'flex', alignItems: 'center', gap: '1rem' }}>
         <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: activeRole.color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '1.2rem', fontWeight: '800' }}>
-          JD
+          {profile.name ? profile.name.split(' ').map(n=>n[0]).join('') : 'JD'}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -74,31 +131,58 @@ export default function EditProfileForm({ onClose }) {
       {activeTab === 'profile' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Full Name</label>
-            <input type="text" className="form-control" required value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} />
+            <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Full Name *</label>
+            <input 
+              type="text" 
+              className="form-control" 
+              required 
+              value={profile.name} 
+              onChange={e => setProfile({...profile, name: e.target.value})} 
+            />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Email Address</label>
-              <input type="email" className="form-control" required value={profile.email} onChange={e => setProfile({...profile, email: e.target.value})} />
+              <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Work Email Address *</label>
+              <input 
+                type="email" 
+                className="form-control" 
+                required 
+                value={profile.email} 
+                onChange={e => setProfile({...profile, email: e.target.value})} 
+              />
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Phone Number</label>
-              <input type="text" className="form-control" required value={profile.phone} onChange={e => setProfile({...profile, phone: e.target.value})} />
+              <input 
+                type="text" 
+                className="form-control" 
+                value={profile.phone} 
+                onChange={e => setProfile({...profile, phone: e.target.value})} 
+              />
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Designation / Job Title</label>
-              <input type="text" className="form-control" value={profile.designation} onChange={e => setProfile({...profile, designation: e.target.value})} />
+              <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Official Title / Designation</label>
+              <input 
+                type="text" 
+                className="form-control" 
+                value={profile.designation} 
+                onChange={e => setProfile({...profile, designation: e.target.value})} 
+              />
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Department</label>
-              <input type="text" className="form-control" value={profile.department} onChange={e => setProfile({...profile, department: e.target.value})} />
+              <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Corporate Department</label>
+              <input 
+                type="text" 
+                className="form-control" 
+                value={profile.department} 
+                onChange={e => setProfile({...profile, department: e.target.value})} 
+              />
             </div>
           </div>
         </div>
@@ -106,60 +190,33 @@ export default function EditProfileForm({ onClose }) {
 
       {/* TAB 2: ROLE & ALLOCATED TASKS */}
       {activeTab === 'tasks' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Assigned System Role</label>
-            <select
-              className="form-control"
+            <label style={{ fontWeight: '700', fontSize: '0.85rem' }}>Select Assigned System Role</label>
+            <select 
+              className="form-control" 
               style={{ fontWeight: '700' }}
-              value={profile.role}
+              value={profile.role} 
               onChange={e => setProfile({...profile, role: e.target.value})}
             >
-              {Object.values(ROLES).map(r => (
-                <option key={r.id} value={r.id}>{r.badge} — {r.name}</option>
-              ))}
+              <option value="Admin">👑 Administrator (Full Executive Access)</option>
+              <option value="Operations">🏗️ Operations Manager (Tenders, Sales & Site Works)</option>
+              <option value="Procurement_Finance">💳 Procurement & Finance Manager (Supply Chain & Audit)</option>
             </select>
           </div>
 
-          {/* DYNAMIC ROLE TASKS BOX */}
-          <div style={{ background: 'hsla(var(--primary), 0.03)', borderLeft: `5px solid ${activeRole.color}`, border: '1px solid #cbd5e1', padding: '1rem', borderRadius: '8px' }}>
-            <div style={{ fontSize: '0.875rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <div style={{ background: 'hsla(var(--primary), 0.04)', borderLeft: `4px solid ${activeRole.color}`, border: '1px solid #cbd5e1', padding: '1rem', borderRadius: '8px' }}>
+            <div style={{ fontSize: '0.85rem', fontWeight: '800', color: '#0f172a', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
               <ShieldCheck size={18} color={activeRole.color} />
-              Authorized System Responsibilities for {activeRole.name}:
+              Authorized System Capabilities ({activeRole.name}):
             </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
               {activeRole.tasks.map((task, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.825rem', color: '#334155', lineHeight: '1.4' }}>
-                  <CheckCircle2 size={16} color={activeRole.color} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
-                  <span style={{ fontWeight: '600' }}>{task}</span>
+                <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.4rem', fontSize: '0.8rem', color: '#334155', lineHeight: '1.4' }}>
+                  <CheckCircle2 size={15} color={activeRole.color} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
+                  <span>{task}</span>
                 </div>
               ))}
-            </div>
-          </div>
-
-          {/* MODULE PERMISSIONS MATRIX */}
-          <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', color: '#64748b', marginBottom: '0.5rem', display: 'block' }}>
-              Module Access Permissions:
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
-              <div style={{ padding: '0.6rem 0.85rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                <span>📊 Tenders & Bidding</span>
-                <span className="badge badge-success">Full Access</span>
-              </div>
-              <div style={{ padding: '0.6rem 0.85rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                <span>📦 Procurement & Stores</span>
-                <span className="badge badge-success">Full Access</span>
-              </div>
-              <div style={{ padding: '0.6rem 0.85rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                <span>💳 Finance & Treasury</span>
-                <span className="badge badge-success">Full Access</span>
-              </div>
-              <div style={{ padding: '0.6rem 0.85rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                <span>🛡️ Corporate Administration</span>
-                <span className="badge badge-success">Admin Only</span>
-              </div>
             </div>
           </div>
         </div>
@@ -169,8 +226,8 @@ export default function EditProfileForm({ onClose }) {
       {activeTab === 'security' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', padding: '1rem', borderRadius: '8px' }}>
-            <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Key size={16} /> Security & Password
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Key size={16} /> Account Password Management
             </h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>

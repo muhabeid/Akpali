@@ -166,6 +166,17 @@ function App() {
         if (data && !data.error) setCompanyProfile(data)
       })
       .catch(() => {})
+
+    const handleSessionUpdate = () => {
+      const saved = localStorage.getItem('akpali_user_session')
+      if (saved) setUserSession(JSON.parse(saved))
+    }
+    window.addEventListener('userSessionUpdated', handleSessionUpdate)
+    window.addEventListener('storage', handleSessionUpdate)
+    return () => {
+      window.removeEventListener('userSessionUpdated', handleSessionUpdate)
+      window.removeEventListener('storage', handleSessionUpdate)
+    }
   }, [])
 
   const handleLogout = () => {

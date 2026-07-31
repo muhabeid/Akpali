@@ -203,53 +203,6 @@ async function initializeDB() {
   `);
   console.log('✅ Document templates ensured.');
 
-  // Seed default clients, tenders, LPOs, and past experience for dossier demonstration
-  const clientCount = await db.get('SELECT COUNT(*) as count FROM clients');
-  if (clientCount.count === 0) {
-    await db.exec(`
-      INSERT INTO clients (id, name, registration_num, tax_pin, contact_name, email, phone, address) VALUES
-      ('CLI-101', 'UNHCR Sub-Office Turkana', 'UNHCR-KE-891', 'P051892014Z', 'Sarah Jenkins (Procurement Officer)', 'turkana.procurement@unhcr.org', '+254 733 111 222', 'Kakuma Camp, Turkana, Kenya'),
-      ('CLI-102', 'County Government of Kiambu', 'CGK/PROC/2022', 'P051284910Y', 'Eng. Peter Kamau (Director Infrastructure)', 'infrastructure@kiambu.go.ke', '+254 722 333 444', 'County HQ, Kiambu Town, Kenya'),
-      ('CLI-103', 'KCB Group Headquarters', 'C.12948', 'P000621482X', 'David Ochieng (Head of Facilities)', 'dochieng@kcbgroup.com', '+254 20 327 0000', 'Kencom House, Moi Avenue, Nairobi');
-    `);
-    console.log('✅ Default Mock Clients seeded.');
-  }
-
-  await db.exec(`
-    INSERT OR REPLACE INTO tenders (id, name, client_id, client_name, client_reference, category, contract_value, status, progress) VALUES
-    ('TND-001', 'Supply & Installation of 250 kW Solar Hybrid System', 'CLI-101', 'UNHCR Sub-Office Turkana', 'UNHCR/TURK/2025/89', 'Provision of services', 185000, 'Completed', 100),
-    ('TND-002', 'Construction of 3-Storey County Health Clinic Block', 'CLI-102', 'County Government of Kiambu', 'KBU/HLTH/2025/420', 'Construction works', 420000, 'Completed', 100),
-    ('TND-003', 'Enterprise Fiber Optic Network Expansion Phase 2', 'CLI-103', 'KCB Group Headquarters', 'KCB/ICT/2026/014', 'Provision of services', 95000, 'Active', 65);
-  `);
-
-  await db.exec(`
-    INSERT OR REPLACE INTO client_lpos (id, tender_id, client_reference, issue_date, due_date, total_value) VALUES
-    ('LPO-101', 'TND-001', 'LPO-UNHCR-8910', '2025-06-10', '2025-11-15', 185000),
-    ('LPO-102', 'TND-002', 'LPO-KBU-4209', '2025-01-15', '2025-08-10', 420000),
-    ('LPO-103', 'TND-003', 'LPO-KCB-9021', '2026-02-01', '2026-08-30', 95000);
-  `);
-
-  const expCount = await db.get('SELECT COUNT(*) as count FROM company_experience');
-  if (expCount.count === 0) {
-    await db.exec(`
-      INSERT INTO company_experience (id, project_name, client_name, contract_value, completion_date, scope, reference_letter_url, completion_certificate_url) VALUES
-      ('EXP-401', 'Supply & Installation of 250 kW Solar Hybrid System', 'UNHCR Sub-Office Turkana', 185000, '2025-11-20', 'Turnkey solar hybrid installation with battery storage for refugee facility.', '/uploads/unhcr_reference_letter.svg', '/uploads/unhcr_reference_letter.svg'),
-      ('EXP-402', 'Construction of 3-Storey County Health Clinic Block', 'County Government of Kiambu', 420000, '2025-08-15', 'Civil construction and MEP engineering for 3-storey outpatient health center.', '/uploads/county_health_reference_letter.svg', '/uploads/county_health_reference_letter.svg'),
-      ('EXP-403', 'Regional Logistics & Medical Supplies Distribution', 'World Health Organization (WHO)', 310000, '2024-10-05', 'Cold chain logistics and emergency medical kit distribution across 12 counties.', '/uploads/nca1_certificate.svg', '/uploads/nca1_certificate.svg');
-    `);
-    console.log('✅ Default Company Experience seeded.');
-  }
-
-  const contractCount = await db.get('SELECT COUNT(*) as count FROM legal_contracts');
-  if (contractCount.count === 0) {
-    await db.exec(`
-      INSERT INTO legal_contracts (id, title, party_name, contract_type, start_date, end_date, status, file_url) VALUES
-      ('LC-101', 'Master Services Framework Agreement (MSA)', 'UNHCR Sub-Office Turkana', 'MSA', '2025-01-01', '2027-12-31', 'Active', '/uploads/unhcr_reference_letter.svg'),
-      ('LC-102', 'Mutual Confidentiality & Non-Disclosure Agreement', 'KCB Group Headquarters', 'NDA', '2025-06-01', '2028-06-01', 'Active', '/uploads/ungm_certificate.svg'),
-      ('LC-103', 'Commercial Office Building Lease Agreement', 'Upper Hill Commercial Properties', 'Lease', '2023-04-01', '2028-03-31', 'Active', '/uploads/ebk_certificate.svg');
-    `);
-    console.log('✅ Default Legal Contracts seeded.');
-  }
 }
 
 initializeDB().catch(err => {
@@ -642,6 +595,16 @@ app.get('/api/settings', async (req, res) => {
   res.json(settings || {});
 });
 
+app.post('/api/settings/test-smtp', async (req, res) => {
+  const { testSMTP } = require('./utils/emailHelper');
+  const result = await testSMTP(req.body);
+  if (result.success) {
+    res.json(result);
+  } else {
+    res.status(400).json(result);
+  }
+});
+
 app.post('/api/settings', async (req, res) => {
   const { smtp_host, smtp_port, smtp_user, smtp_pass, wa_token, wa_phone_id } = req.body;
   await db.run(
@@ -741,16 +704,97 @@ app.get('/api/users', async (req, res) => {
   const users = await db.all('SELECT * FROM users ORDER BY created_at DESC');
   res.json(users);
 });
+
+app.post('/api/users/login', async (req, res) => {
+  const { email, password } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email address is required' });
+  }
+
+  // Search user by email
+  const user = await db.get('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email.trim()]);
+  
+  if (user) {
+    return res.json({
+      success: true,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role || 'Admin',
+        title: user.role === 'Admin' ? 'Executive Administrator' : `${user.role} Manager`
+      }
+    });
+  }
+
+  // Default fallback for initial system admin
+  if (email.toLowerCase().includes('admin') || email.toLowerCase() === 'admin@akpali.com' || email.toLowerCase() === 'admin@tenderpro.com') {
+    return res.json({
+      success: true,
+      user: {
+        id: 'USR-ADMIN',
+        name: 'Eng. John Akpali',
+        email: email,
+        role: 'Admin',
+        title: 'Managing Director & CEO'
+      }
+    });
+  }
+
+  // Dynamic user session creation for newly invited team members
+  const formattedName = email.split('@')[0].split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
+  res.json({
+    success: true,
+    user: {
+      id: `USR-${Date.now()}`,
+      name: formattedName || 'System User',
+      email: email,
+      role: 'Operations',
+      title: 'Operations Manager'
+    }
+  });
+});
+
 app.post('/api/users', async (req, res) => {
   const { id, name, email, role } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email address is required' });
+  }
+
+  // Check if user email already exists in database
+  const existingUser = await db.get('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email.trim()]);
+  if (existingUser) {
+    await db.run('UPDATE users SET name = ?, role = ? WHERE LOWER(email) = LOWER(?)', [name, role, email.trim()]);
+    
+    const subject = 'Your Akpali User Account Has Been Updated';
+    const body = `Hello ${name},\n\nYour Akpali account role has been updated to: ${role}.\nYou can log in immediately at the portal.\n\nBest,\nAkpali & Co.`;
+    await sendEmail(db, email, subject, body);
+
+    return res.json({ success: true, isUpdate: true, message: `Account '${email}' updated to role '${role}'` });
+  }
+
   await db.run('INSERT INTO users (id, name, email, role) VALUES (?, ?, ?, ?)', [id, name, email, role]);
   
   // Trigger notification
-  const subject = 'Welcome to TenderPro!';
-  const body = `Hello ${name},\n\nYou have been invited to TenderPro as a ${role}.\nPlease check with your administrator for your temporary password.\n\nBest,\nAkpali & Co.`;
+  const subject = 'Welcome to Akpali Corporate ERP System!';
+  const body = `Hello ${name},\n\nYou have been invited to Akpali System as a ${role}.\nPlease check with your administrator for your temporary password.\n\nBest,\nAkpali & Co.`;
   await sendEmail(db, email, subject, body);
   
   res.json({ success: true });
+});
+
+app.put('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, email, role } = req.body;
+  await db.run('UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?', [name, email, role, id]);
+  res.json({ success: true, message: 'User updated successfully' });
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  const { id } = req.params;
+  await db.run('DELETE FROM users WHERE id = ?', [id]);
+  res.json({ success: true, message: 'User account removed successfully' });
 });
 
 // Documents

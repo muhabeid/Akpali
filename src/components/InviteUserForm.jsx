@@ -25,7 +25,7 @@ export default function InviteUserForm({ onSuccess }) {
       });
 
       if (res.ok) {
-        alert('User invited successfully!');
+        alert(`✅ User Account '${formData.name}' Created & Activated Successfully!\n\nEmail: ${formData.email}\nAssigned Role: ${formData.role}\n\nNote: The user can log in immediately on the login screen. To deliver physical email invitations to real inboxes, configure your SMTP server credentials under Corporate Hub -> System Settings.`);
         window.dispatchEvent(new Event('refreshCorporateHub'));
         if (onSuccess) onSuccess();
       } else {

@@ -44,6 +44,8 @@ export const STANDARD_ROLES = {
   }
 }
 
+export const ROLES = STANDARD_ROLES
+
 export const RoleProvider = ({ children }) => {
   const [currentRole, setCurrentRole] = useState('Admin')
   const [allRoles, setAllRoles] = useState(() => {

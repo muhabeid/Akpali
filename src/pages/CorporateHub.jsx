@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Building2, Shield, Settings, Users, Landmark, FileText, Briefcase, Download, Upload, GitMerge, HardDrive, Database, Scale, PlusCircle, Printer, Eye, Award, CheckSquare, UserCheck, Scroll, Compass, FileCheck, Mail, ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { Building2, Shield, Settings, Users, Landmark, FileText, Briefcase, Download, Upload, GitMerge, HardDrive, Database, Scale, PlusCircle, Printer, Eye, Award, CheckSquare, UserCheck, Scroll, Compass, FileCheck, Mail, ShieldCheck, CheckCircle2, Trash2, Edit3 } from 'lucide-react'
 import CompanyProfileDossier from '../components/CompanyProfileDossier'
 import DirectorForm from '../components/DirectorForm'
 import TenderRegistrationForm from '../components/TenderRegistrationForm'
@@ -7,6 +7,7 @@ import CompanyPolicyForm from '../components/CompanyPolicyForm'
 import CompanyExperienceForm from '../components/CompanyExperienceForm'
 import OperationalDocumentGeneratorModal from '../components/OperationalDocumentGeneratorModal'
 import CreateRoleModal from '../components/CreateRoleModal'
+import EditUserModal from '../components/EditUserModal'
 import Drawer from '../components/Drawer'
 import { printElement } from '../utils/printHelper'
 import { useRole } from '../context/RoleContext'
@@ -17,6 +18,7 @@ export default function CorporateHub({ setGlobalDrawer }) {
   const [profileSubTab, setProfileSubTab] = useState('info')
   const [showDocGenModal, setShowDocGenModal] = useState(false)
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
 
   const [companyData, setCompanyData] = useState({
     legal_name: '', trading_name: '', registration_num: '', registration_date: '',
@@ -130,6 +132,22 @@ export default function CorporateHub({ setGlobalDrawer }) {
       alert('Failed to trigger cron job.')
     } finally {
       setIsRunningCron(false)
+    }
+  }
+
+  const handleDeleteUser = async (userId, userName) => {
+    if (!window.confirm(`Are you sure you want to remove user account '${userName}' (${userId})? This user will no longer be able to log into the system.`)) return
+    try {
+      const res = await fetch(`http://localhost:5000/api/users/${userId}`, { method: 'DELETE' })
+      if (res.ok) {
+        alert(`User account '${userName}' removed successfully.`)
+        fetchData()
+      } else {
+        alert('Failed to remove user account.')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Error removing user account.')
     }
   }
 
@@ -857,6 +875,105 @@ Managing Director / Authorized Corporate Signatory`
               </div>
             </div>
 
+            {/* EDIT USER DRAWER */}
+            {editingUser && (
+              <Drawer isOpen={!!editingUser} onClose={() => setEditingUser(null)} title={`Edit User Account: ${editingUser.name}`}>
+                <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSuccess={() => fetchData()} />
+              </Drawer>
+            )}
+
+            {/* USER ACCOUNTS & TEAM MANAGEMENT PANEL */}
+            <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Users color="hsl(var(--primary))" size={20} />
+                  <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>User Accounts & Team Access Control</h4>
+                </div>
+                <button className="btn btn-primary" style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }} onClick={() => setGlobalDrawer('invite_user')}>
+                  <PlusCircle size={16} /> + Invite / Add User
+                </button>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                  <thead>
+                    <tr style={{ background: '#0f172a', textAlign: 'left', borderBottom: '2px solid #334155', color: '#94a3b8' }}>
+                      <th style={{ padding: '0.6rem 0.8rem' }}>User ID</th>
+                      <th style={{ padding: '0.6rem 0.8rem' }}>Full Name</th>
+                      <th style={{ padding: '0.6rem 0.8rem' }}>Email Address</th>
+                      <th style={{ padding: '0.6rem 0.8rem' }}>Assigned System Role</th>
+                      <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>Account Status</th>
+                      <th style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.length > 0 ? users.map((u, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #1e293b' }}>
+                        <td style={{ padding: '0.6rem 0.8rem', fontWeight: '700', color: '#38bdf8' }}>{u.id}</td>
+                        <td style={{ padding: '0.6rem 0.8rem', fontWeight: '700', color: '#f8fafc' }}>{u.name}</td>
+                        <td style={{ padding: '0.6rem 0.8rem', color: '#cbd5e1' }}>{u.email}</td>
+                        <td style={{ padding: '0.6rem 0.8rem' }}>
+                          <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: u.role === 'Admin' ? '#0284c7' : u.role === 'Operations' ? '#16a34a' : '#d97706', color: '#fff', fontWeight: '700' }}>
+                            {u.role === 'Admin' ? '👑 Administrator' : u.role === 'Operations' ? '🏗️ Operations Manager' : u.role === 'Procurement_Finance' ? '💳 Procurement & Finance' : u.role}
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
+                          <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', background: '#dcfce7', color: '#15803d', fontWeight: '700' }}>
+                            ✓ Active User
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
+                          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem' }}>
+                            <button 
+                              className="btn btn-sm" 
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                              onClick={() => setEditingUser(u)}
+                              title="Edit User Role & Details"
+                            >
+                              <Edit3 size={13} /> Edit
+                            </button>
+                            <button 
+                              className="btn btn-sm" 
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#ef4444', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                              onClick={() => handleDeleteUser(u.id, u.name)}
+                              title="Delete / Remove User Account"
+                            >
+                              <Trash2 size={13} /> Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )) : (
+                      <tr style={{ borderBottom: '1px solid #1e293b' }}>
+                        <td style={{ padding: '0.6rem 0.8rem', fontWeight: '700', color: '#38bdf8' }}>USR-ADMIN</td>
+                        <td style={{ padding: '0.6rem 0.8rem', fontWeight: '700', color: '#f8fafc' }}>Eng. John Akpali</td>
+                        <td style={{ padding: '0.6rem 0.8rem', color: '#cbd5e1' }}>admin@akpali.com</td>
+                        <td style={{ padding: '0.6rem 0.8rem' }}>
+                          <span style={{ fontSize: '0.72rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: '#0284c7', color: '#fff', fontWeight: '700' }}>
+                            👑 Executive Administrator
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
+                          <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '10px', background: '#dcfce7', color: '#15803d', fontWeight: '700' }}>
+                            ✓ Active System Admin
+                          </span>
+                        </td>
+                        <td style={{ padding: '0.6rem 0.8rem', textAlign: 'center' }}>
+                          <button 
+                            className="btn btn-sm" 
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#3b82f6', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                            onClick={() => setEditingUser({ id: 'USR-ADMIN', name: 'Eng. John Akpali', email: 'admin@akpali.com', role: 'Admin' })}
+                          >
+                            <Edit3 size={13} /> Edit
+                          </button>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
             {/* 1. SMTP EMAIL CONFIGURATION */}
             <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
@@ -907,6 +1024,25 @@ Managing Director / Authorized Corporate Signatory`
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '0.5rem' }}>
+                  <button type="button" className="btn" style={{ background: '#0284c7', color: '#fff', fontWeight: '700' }} onClick={async () => {
+                    try {
+                      const res = await fetch('http://localhost:5000/api/settings/test-smtp', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(systemSettings)
+                      });
+                      const data = await res.json();
+                      if (res.ok && data.success) {
+                        alert('✅ SMTP Server Connection Verified Successfully!');
+                      } else {
+                        alert(`❌ SMTP Test Failed:\n\n${data.error}`);
+                      }
+                    } catch(err) {
+                      alert('Could not connect to server for SMTP test.');
+                    }
+                  }}>
+                    ⚡ Test SMTP Connection
+                  </button>
                   <button type="button" className="btn" style={{ background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', fontWeight: '700' }} onClick={handleTriggerCron} disabled={isRunningCron}>
                     {isRunningCron ? 'Running Cron...' : '⏰ Test Daily Reminder Cron Job Now'}
                   </button>
