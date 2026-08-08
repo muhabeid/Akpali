@@ -4,9 +4,9 @@ export const CurrencyContext = createContext()
 
 // Fallback rates if offline or API delay
 const DEFAULT_RATES = {
-  USD: 1,
-  KES: 129.50,
-  TZS: 2680.00
+  KES: 1,
+  USD: 1 / 129.50,
+  TZS: 2680.00 / 129.50
 }
 
 export const CurrencyProvider = ({ children }) => {
@@ -22,10 +22,12 @@ export const CurrencyProvider = ({ children }) => {
         const res = await fetch('https://open.er-api.com/v6/latest/USD')
         const data = await res.json()
         if (data && data.rates && data.rates.KES && data.rates.TZS) {
+          const kesRate = Number(data.rates.KES) || 129.50
+          const tzsRate = Number(data.rates.TZS) || 2680.00
           setRates({
-            USD: 1,
-            KES: Number(data.rates.KES) || 129.50,
-            TZS: Number(data.rates.TZS) || 2680.00
+            KES: 1,
+            USD: 1 / kesRate,
+            TZS: tzsRate / kesRate
           })
           setIsLive(true)
           setLastUpdated(new Date().toLocaleTimeString())
@@ -40,16 +42,17 @@ export const CurrencyProvider = ({ children }) => {
     return () => clearInterval(interval)
   }, [])
 
-  // Convert USD base amount to selected currency
-  const convertAmount = (amountInUSD) => {
-    const numeric = Number(amountInUSD) || 0
+  // Convert base KES amount to selected target currency (1 KES = 1 KES)
+  const convertAmount = (amountInKES) => {
+    const numeric = Number(amountInKES) || 0
+    if (currency === 'KES') return numeric
     const rate = rates[currency] || 1
-    return Math.round(numeric * rate)
+    return numeric * rate
   }
 
   // Format currency with symbol & locale formatting
-  const formatAmount = (amountInUSD, customDecimals = 0) => {
-    const converted = convertAmount(amountInUSD)
+  const formatAmount = (amountInKES, customDecimals = 0) => {
+    const converted = convertAmount(amountInKES)
     const formatted = converted.toLocaleString(undefined, {
       minimumFractionDigits: customDecimals,
       maximumFractionDigits: customDecimals

@@ -259,7 +259,7 @@ h1, h2, h3, h4, h5, h6 {
 .drawer-content {
   background: hsl(var(--bg-main));
   width: 100%;
-  max-width: 600px;
+  max-width: 850px;
   height: 100%;
   max-height: 100%;
   box-shadow: -5px 0 25px rgba(0,0,0,0.5);

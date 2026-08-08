@@ -422,3 +422,49 @@ BEGIN
         updated_at = CURRENT_TIMESTAMP
     WHERE id = NEW.tender_id;
 END;
+
+-- =========================================================
+-- BOOKKEEPING & GENERAL LEDGER MODULE TABLES
+-- =========================================================
+CREATE TABLE IF NOT EXISTS chart_of_accounts (
+    id TEXT PRIMARY KEY,
+    account_code TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL, -- 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'
+    category TEXT,      -- E.g. 'Current Asset', 'Fixed Asset', 'Current Liability', 'Direct Cost', 'Overhead'
+    current_balance REAL DEFAULT 0.00,
+    is_active INTEGER DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS journal_entries (
+    id TEXT PRIMARY KEY,
+    entry_date TEXT NOT NULL,
+    reference TEXT,
+    description TEXT NOT NULL,
+    created_by TEXT DEFAULT 'System Admin',
+    status TEXT DEFAULT 'Posted', -- 'Draft' or 'Posted'
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS journal_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    journal_id TEXT NOT NULL,
+    account_code TEXT NOT NULL,
+    debit REAL DEFAULT 0.00,
+    credit REAL DEFAULT 0.00,
+    memo TEXT,
+    FOREIGN KEY (journal_id) REFERENCES journal_entries(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS vat_ledger (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    invoice_ref TEXT NOT NULL,
+    transaction_type TEXT NOT NULL, -- 'OUTPUT_VAT' or 'INPUT_VAT'
+    party_name TEXT NOT NULL,
+    taxable_amount REAL DEFAULT 0.00,
+    vat_amount REAL DEFAULT 0.00,
+    tax_period TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+

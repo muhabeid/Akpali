@@ -31,15 +31,15 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
       .map(style => style.outerHTML)
       .join('\n');
 
-    const primaryColor = globalBrand.primary_color || '#0f172a';
+    const primaryColor = '#4A8BCE';
     
     const logoHtml = globalBrand.header_logo_url 
-      ? `<div style="margin-bottom: 0.5rem;"><img src="${globalBrand.header_logo_url}" alt="Logo" style="max-height: 80px;" /></div>`
+      ? `<div style="margin-bottom: 0.5rem;"><img src="${globalBrand.header_logo_url}" alt="Akpali Logo" style="max-height: 80px;" /></div>`
       : '';
 
     const companyInfoHtml = `
       <div style="font-size: 0.875rem; color: #555; line-height: 1.4;">
-        ${company.legal_name ? `<div style="color: ${primaryColor}; font-size: ${globalBrand.header_logo_url ? '1.25rem' : '1.75rem'}; font-weight: bold; margin-bottom: 0.25rem;">${company.legal_name}</div>` : ''}
+        <div style="color: ${primaryColor}; font-size: 1.75rem; font-weight: bold; margin-bottom: 0.25rem;">${company.legal_name || 'AKPALI LTD'}</div>
         ${company.address ? `${company.address.replace(/\\n/g, '<br/>')}<br/>` : ''}
         ${company.email ? `Email: ${company.email}` : ''}
         ${company.email && company.phone_number ? ' | ' : ''}
@@ -61,9 +61,7 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
       ? `<div style="margin-top: 3rem; padding-top: 1rem; border-top: 1px solid #ccc; font-size: 0.8rem; color: #555;"><strong>Terms & Conditions:</strong><br/>${moduleTpl.terms_conditions_text.replace(/\\n/g, '<br/>')}</div>`
       : '';
 
-    const footerHtml = moduleTpl.footer_text 
-      ? `<div style="position: fixed; bottom: 0; width: 100%; text-align: center; font-size: 0.75rem; color: #777; padding: 1rem 0; background: white;">${moduleTpl.footer_text}</div>`
-      : '';
+    const footerHtml = `<div style="position: fixed; bottom: 0; width: 100%; text-align: center; font-size: 0.8rem; color: #4A8BCE; font-weight: bold; padding: 1rem 0; background: white; border-top: 1px solid #e2e8f0;">AKPALI LTD thanks you for your business.</div>`;
       
     const isDossier = cleanSelector.includes('dossier') || element.classList.contains('dossier-container');
     const hasEmbeddedHeader = element.innerHTML.includes('Company Logo') || element.innerHTML.includes('AKPALI') || element.querySelector('img') !== null;

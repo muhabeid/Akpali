@@ -8,17 +8,21 @@ import CompanyExperienceForm from '../components/CompanyExperienceForm'
 import OperationalDocumentGeneratorModal from '../components/OperationalDocumentGeneratorModal'
 import CreateRoleModal from '../components/CreateRoleModal'
 import EditUserModal from '../components/EditUserModal'
+import BankAccountForm from '../components/BankAccountForm'
 import Drawer from '../components/Drawer'
 import { printElement } from '../utils/printHelper'
 import { useRole } from '../context/RoleContext'
+import { useCurrency } from '../context/CurrencyContext'
 
 export default function CorporateHub({ setGlobalDrawer }) {
   const { ROLES } = useRole()
+  const { formatAmount } = useCurrency()
   const [activeTab, setActiveTab] = useState('profile')
   const [profileSubTab, setProfileSubTab] = useState('info')
   const [showDocGenModal, setShowDocGenModal] = useState(false)
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
+  const [editingAccount, setEditingAccount] = useState(null)
 
   const [companyData, setCompanyData] = useState({
     legal_name: '', trading_name: '', registration_num: '', registration_date: '',
@@ -696,8 +700,8 @@ Managing Director / Authorized Corporate Signatory`
         {!loading && activeTab === 'banks' && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>Official Bank Accounts</h3>
-              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem' }} onClick={() => setGlobalDrawer('bank_account')}>+ Add Account</button>
+              <h3 style={{ margin: 0 }}>Official Corporate Bank & Treasury Accounts</h3>
+              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: '#4A8BCE', border: 'none', fontWeight: 'bold' }} onClick={() => setEditingAccount({ isNew: true, id: `ACC-${Math.floor(Math.random() * 10000)}`, name: '', type: 'Bank', current_balance: 0 })}>+ Add Account</button>
             </div>
             
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -705,17 +709,50 @@ Managing Director / Authorized Corporate Signatory`
                 <tr style={{ background: 'hsla(var(--border), 0.3)', textAlign: 'left' }}>
                   <th style={{ padding: '0.75rem 1rem' }}>Account ID</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Account Name</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Type</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Account Type</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Current Balance</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center', width: '150px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {accounts.map(acc => (
+                {accounts.length === 0 ? (
+                  <tr><td colSpan="5" style={{ padding: '1.5rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No bank accounts registered yet. Click "+ Add Account" to create one.</td></tr>
+                ) : accounts.map(acc => (
                   <tr key={acc.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '500' }}>{acc.id}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}>{acc.name}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: '700', color: '#4A8BCE' }}>{acc.id}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: '600' }}>{acc.name}</td>
                     <td style={{ padding: '0.75rem 1rem' }}><span className="badge badge-info">{acc.type}</span></td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 'bold' }}>${Number(acc.current_balance).toLocaleString()}</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 'bold' }}>{formatAmount(acc.current_balance || 0)}</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                        <button 
+                          type="button" 
+                          className="btn" 
+                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', background: '#0284c7', color: '#fff' }}
+                          onClick={() => setEditingAccount(acc)}
+                        >
+                          ✏️ Edit
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn" 
+                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', background: '#f43f5e', color: '#fff' }}
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to remove bank account '${acc.name}' (${acc.id})?`)) {
+                              try {
+                                const res = await fetch(`http://localhost:5000/api/accounts/${acc.id}`, { method: 'DELETE' });
+                                if (res.ok) {
+                                  alert(`Bank account '${acc.name}' removed!`);
+                                  fetchData();
+                                }
+                              } catch(err) { alert('Failed to delete bank account'); }
+                            }
+                          }}
+                        >
+                          🗑️ Remove
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1055,15 +1092,15 @@ Managing Director / Authorized Corporate Signatory`
 
             {/* 2. DOCUMENT BRANDING & TEMPLATES */}
             <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <FileText color="hsl(var(--primary))" size={20} />
-                  <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Master Document Templates & Branding</h4>
+                  <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Master Document Templates & Module Branding</h4>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'hsl(var(--primary))' }}>Select Module Template:</label>
-                  <select className="form-control" style={{ width: 'auto', fontSize: '0.8rem', padding: '0.2rem 0.6rem' }} value={selectedDocType} onChange={e => setSelectedDocType(e.target.value)}>
-                    <option value="GLOBAL">Global Master Branding</option>
+                  <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'hsl(var(--primary))' }}>Select Module Template:</label>
+                  <select className="form-control" style={{ width: 'auto', fontSize: '0.8rem', padding: '0.3rem 0.75rem', fontWeight: 'bold' }} value={selectedDocType} onChange={e => setSelectedDocType(e.target.value)}>
+                    <option value="GLOBAL">Global Master Template</option>
                     <option value="SQ">Sales Quotation (SQ)</option>
                     <option value="LPO">Client LPO</option>
                     <option value="RFQ">Supplier RFQ</option>
@@ -1084,6 +1121,16 @@ Managing Director / Authorized Corporate Signatory`
                 </div>
               </div>
 
+              {/* UNIFORM BRANDING NOTICE BADGE */}
+              <div style={{ background: '#0f172a', padding: '0.75rem 1rem', borderRadius: '6px', marginBottom: '1rem', border: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.8rem' }}>
+                <span style={{ color: '#94a3b8' }}>
+                  🎨 System Primary Theme Color: <strong style={{ color: '#4A8BCE' }}>#4A8BCE</strong> (Uniform System-Wide)
+                </span>
+                <span style={{ color: '#94a3b8' }}>
+                  👣 Fixed Footer Notice: <strong style={{ color: '#4A8BCE' }}>"AKPALI LTD thanks you for your business."</strong>
+                </span>
+              </div>
+
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 setIsSavingTemplates(true);
@@ -1094,116 +1141,51 @@ Managing Director / Authorized Corporate Signatory`
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       id: selectedDocType,
-                      header_logo_url: currentTpl.header_logo_url || '',
                       header_text: currentTpl.header_text || '',
-                      footer_text: currentTpl.footer_text || '',
                       terms_conditions_text: currentTpl.terms_conditions_text || '',
-                      primary_color: currentTpl.primary_color || '#0f172a'
+                      primary_color: '#4A8BCE',
+                      footer_text: 'AKPALI LTD thanks you for your business.'
                     })
                   });
                   if (res.ok) {
-                    alert(`Template '${selectedDocType}' updated!`);
+                    alert(`✅ Template '${selectedDocType}' updated successfully!`);
                     fetchData();
                   }
                 } catch(err) { alert('Failed to save template'); }
                 finally { setIsSavingTemplates(false); }
               }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Header Logo (URL or Upload)</label>
-                    <div style={{ display: 'flex', gap: '0.4rem' }}>
-                      <input 
-                        type="text" 
-                        className="form-control" 
-                        placeholder="/uploads/logo.png" 
-                        value={documentTemplates[selectedDocType]?.header_logo_url || ''} 
-                        onChange={e => setDocumentTemplates({
-                          ...documentTemplates,
-                          [selectedDocType]: { ...documentTemplates[selectedDocType], header_logo_url: e.target.value }
-                        })} 
-                      />
-                      <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>
-                        📁 Upload
-                        <input type="file" accept="image/*" onChange={async (e) => {
-                          const file = e.target.files[0]
-                          if (!file) return
-                          const formData = new FormData()
-                          formData.append('file', file)
-                          try {
-                            const res = await fetch('http://localhost:5000/api/upload', { method: 'POST', body: formData })
-                            const data = await res.json()
-                            if (data.fileUrl) {
-                              setDocumentTemplates({
-                                ...documentTemplates,
-                                [selectedDocType]: { ...documentTemplates[selectedDocType], header_logo_url: data.fileUrl }
-                              })
-                            }
-                          } catch (err) { alert('Failed to upload logo') }
-                        }} style={{ display: 'none' }} />
-                      </label>
-                    </div>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Primary Theme Hex Color</label>
-                    <input 
-                      type="color" 
-                      className="form-control" 
-                      style={{ height: '38px', padding: '0.2rem' }}
-                      value={documentTemplates[selectedDocType]?.primary_color || '#0f172a'} 
-                      onChange={e => setDocumentTemplates({
-                        ...documentTemplates,
-                        [selectedDocType]: { ...documentTemplates[selectedDocType], primary_color: e.target.value }
-                      })} 
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Header Banner Title</label>
-                    <input 
-                      type="text" 
-                      className="form-control" 
-                      placeholder="e.g. OFFICIAL SALES QUOTATION" 
-                      value={documentTemplates[selectedDocType]?.header_text || ''} 
-                      onChange={e => setDocumentTemplates({
-                        ...documentTemplates,
-                        [selectedDocType]: { ...documentTemplates[selectedDocType], header_text: e.target.value }
-                      })} 
-                    />
-                  </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontWeight: 'bold' }}>Header Banner Title</label>
+                  <input 
+                    type="text" 
+                    className="form-control" 
+                    placeholder="e.g. OFFICIAL SALES QUOTATION or CLIENT LOCAL PURCHASE ORDER" 
+                    value={documentTemplates[selectedDocType]?.header_text || ''} 
+                    onChange={e => setDocumentTemplates({
+                      ...documentTemplates,
+                      [selectedDocType]: { ...documentTemplates[selectedDocType], header_text: e.target.value }
+                    })} 
+                  />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Footer Notice / Sub-text</label>
-                    <textarea 
-                      className="form-control" 
-                      rows={3} 
-                      placeholder="e.g. Thank you for your business. Generated by Akpali System." 
-                      value={documentTemplates[selectedDocType]?.footer_text || ''} 
-                      onChange={e => setDocumentTemplates({
-                        ...documentTemplates,
-                        [selectedDocType]: { ...documentTemplates[selectedDocType], footer_text: e.target.value }
-                      })} 
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Default Terms & Conditions</label>
-                    <textarea 
-                      className="form-control" 
-                      rows={3} 
-                      placeholder="1. Payment due within 30 days. 2. Goods once sold are non-refundable." 
-                      value={documentTemplates[selectedDocType]?.terms_conditions_text || ''} 
-                      onChange={e => setDocumentTemplates({
-                        ...documentTemplates,
-                        [selectedDocType]: { ...documentTemplates[selectedDocType], terms_conditions_text: e.target.value }
-                      })} 
-                    />
-                  </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontWeight: 'bold' }}>Default Terms & Conditions</label>
+                  <textarea 
+                    className="form-control" 
+                    rows={4} 
+                    placeholder="e.g., 1. Payment due within 30 days of invoice date. 2. Goods delivered remain property of Akpali Ltd until paid in full." 
+                    value={documentTemplates[selectedDocType]?.terms_conditions_text || ''} 
+                    onChange={e => setDocumentTemplates({
+                      ...documentTemplates,
+                      [selectedDocType]: { ...documentTemplates[selectedDocType], terms_conditions_text: e.target.value }
+                    })} 
+                  />
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                  <button type="submit" className="btn btn-primary" disabled={isSavingTemplates}>
-                    {isSavingTemplates ? 'Saving Template...' : `Save '${selectedDocType}' Template`}
+                  <button type="submit" className="btn btn-primary" disabled={isSavingTemplates} style={{ background: '#4A8BCE', border: 'none', padding: '0.6rem 1.5rem', fontWeight: 'bold' }}>
+                    {isSavingTemplates ? 'Saving Template...' : `Save '${selectedDocType}' Template Settings`}
                   </button>
                 </div>
               </form>
@@ -1261,6 +1243,24 @@ Managing Director / Authorized Corporate Signatory`
             onClose={() => setShowDocGenModal(false)} 
             documentTemplates={documentTemplates} 
           />
+        )}
+
+        {editingAccount && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+            <div className="card" style={{ width: '450px', background: 'var(--bg-card)', border: '2px solid #4A8BCE', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
+                <h3 style={{ margin: 0, color: '#4A8BCE' }}>✏️ Edit Bank Account & Type</h3>
+                <button type="button" className="btn" style={{ background: 'transparent', fontSize: '1rem', cursor: 'pointer' }} onClick={() => setEditingAccount(null)}>✕</button>
+              </div>
+              <BankAccountForm 
+                accountToEdit={editingAccount} 
+                onSuccess={() => {
+                  setEditingAccount(null);
+                  fetchData();
+                }} 
+              />
+            </div>
+          </div>
         )}
 
       </div>

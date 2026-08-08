@@ -178,6 +178,33 @@ async function initializeDB() {
   `);
   console.log('✅ System settings ensured.');
 
+  // Seed Default Chart of Accounts if empty
+  const coaCount = await db.get('SELECT COUNT(*) as count FROM chart_of_accounts');
+  if (coaCount.count === 0) {
+    await db.exec(`
+      INSERT INTO chart_of_accounts (id, account_code, name, type, category, current_balance) VALUES
+      ('ACC-1010', '1010', 'KCB Main Operating Bank Account', 'Asset', 'Cash & Bank', 0.00),
+      ('ACC-1020', '1020', 'M-Pesa Corporate Till / Paybill', 'Asset', 'Cash & Bank', 0.00),
+      ('ACC-1030', '1030', 'Office Petty Cash Imprest', 'Asset', 'Cash & Bank', 0.00),
+      ('ACC-1200', '1200', 'Accounts Receivable (Trade Debtors)', 'Asset', 'Current Asset', 0.00),
+      ('ACC-1250', '1250', 'Input VAT Claimable (KRA 16%)', 'Asset', 'Tax Asset', 0.00),
+      ('ACC-1300', '1300', 'Work in Progress (WIP) Project Materials', 'Asset', 'Inventory & WIP', 0.00),
+      ('ACC-2000', '2000', 'Accounts Payable (Trade Creditors)', 'Liability', 'Current Liability', 0.00),
+      ('ACC-2100', '2100', 'Output VAT Payable (KRA 16%)', 'Liability', 'Tax Liability', 0.00),
+      ('ACC-2200', '2200', 'Statutory Payroll Deductions (PAYE, NSSF, SHIF, Housing Levy)', 'Liability', 'Current Liability', 0.00),
+      ('ACC-3000', '3000', 'Shareholder Share Capital', 'Equity', 'Equity', 0.00),
+      ('ACC-3100', '3100', 'Retained Earnings', 'Equity', 'Equity', 0.00),
+      ('ACC-4000', '4000', 'Tender Sales & Direct Contracting Revenue', 'Revenue', 'Operating Income', 0.00),
+      ('ACC-4100', '4100', 'Consultancy & Service Fees Revenue', 'Revenue', 'Operating Income', 0.00),
+      ('ACC-5000', '5000', 'Direct Materials & Site Supplies Expense', 'Expense', 'Direct Project Cost', 0.00),
+      ('ACC-5010', '5010', 'Subcontractor & Site Labor Expense', 'Expense', 'Direct Project Cost', 0.00),
+      ('ACC-5020', '5020', 'Plant, Machinery & Transport Logistics Expense', 'Expense', 'Direct Project Cost', 0.00),
+      ('ACC-5100', '5100', 'Office Rent & Utilities Expense', 'Expense', 'Overhead', 0.00),
+      ('ACC-5200', '5200', 'Bank Charges & Transaction Fees', 'Expense', 'Overhead', 0.00);
+    `);
+    console.log('✅ Standard Chart of Accounts (COA) seeded.');
+  }
+
   await db.exec(`
     INSERT OR IGNORE INTO document_templates (id, header_logo_url, primary_color)
     VALUES ('GLOBAL', '', '#0f172a');
@@ -1401,13 +1428,56 @@ app.get('/api/treasury', async (req, res) => {
 app.post('/api/transactions', validate(TransactionSchema), async (req, res) => {
   const { id, account_id, tender_id, type, amount, purpose, reference } = req.body;
   
-  // The database triggers will automatically update the account balance,
-  // and if it's an expense linked to a tender, it will automatically update the tender's cost.
+  // 1. Insert transaction into cashbook
   await db.run(
     `INSERT INTO transactions (id, account_id, tender_id, type, amount, purpose, reference) 
      VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [id, account_id, tender_id || null, type, amount, purpose, reference]
   );
+
+  // 2. Automatically sync double-entry General Ledger Journal Record
+  try {
+    const entry_date = new Date().toISOString().split('T')[0];
+    const journal_id = 'JRN-' + Math.floor(100000 + Math.random() * 900000);
+    
+    // Map account_id (e.g. ACC-1010, ACC-1020, ACC-1030)
+    const targetBankAcc = account_id || '1010';
+    const isIncome = (type === 'Income');
+
+    await db.run(
+      `INSERT INTO journal_entries (id, entry_date, reference, description, created_by)
+       VALUES (?, ?, ?, ?, ?)`,
+      [journal_id, entry_date, reference || id, `Cashbook ${type}: ${purpose}`, 'System Auto-Sync']
+    );
+
+    if (isIncome) {
+      // Income: Debit Bank/Mobile Cash (1010/1020/1030), Credit Revenue (4000)
+      await db.run(
+        `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, ?, 0, ?)`,
+        [journal_id, targetBankAcc, amount, purpose]
+      );
+      await db.run(
+        `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, '4000', 0, ?, ?)`,
+        [journal_id, amount, purpose]
+      );
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = ?`, [amount, targetBankAcc]);
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = '4000'`, [amount]);
+    } else {
+      // Expense: Debit Expense (5000), Credit Bank/Mobile Cash (1010/1020/1030)
+      await db.run(
+        `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, '5000', ?, 0, ?)`,
+        [journal_id, amount, purpose]
+      );
+      await db.run(
+        `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, 0, ?, ?)`,
+        [journal_id, targetBankAcc, amount, purpose]
+      );
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = '5000'`, [amount]);
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance - ? WHERE account_code = ?`, [amount, targetBankAcc]);
+    }
+  } catch (jErr) {
+    console.error('Error auto-syncing journal entry from transaction:', jErr.message);
+  }
 
   const newTx = await db.get('SELECT * FROM transactions WHERE id = ?', [id]);
   res.status(201).json(newTx);
@@ -1708,6 +1778,302 @@ app.post('/api/audit-logs', async (req, res) => {
       [user_role || 'Admin', action, entity_type || '', entity_id || '', details || '']
     );
     res.json({ id: result.lastID, success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// 5. CORPORATE BOOKKEEPING & GENERAL LEDGER API
+// ==========================================
+
+// Get Chart of Accounts
+app.get('/api/bookkeeping/accounts', async (req, res) => {
+  try {
+    const accounts = await db.all('SELECT * FROM chart_of_accounts ORDER BY account_code ASC');
+    res.json(accounts);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Add / Update Account in Chart of Accounts
+app.post('/api/bookkeeping/accounts', async (req, res) => {
+  try {
+    const { account_code, name, type, category } = req.body;
+    if (!account_code || !name || !type) {
+      return res.status(400).json({ error: 'Account code, name, and type are required' });
+    }
+    const id = `ACC-${account_code}`;
+    await db.run(
+      `INSERT INTO chart_of_accounts (id, account_code, name, type, category)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(account_code) DO UPDATE SET
+       name=excluded.name, type=excluded.type, category=excluded.category`,
+      [id, account_code, name, type, category || type]
+    );
+    res.json({ success: true, message: 'Account saved to Chart of Accounts' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get Journal Entries with Line Items
+app.get('/api/bookkeeping/journals', async (req, res) => {
+  try {
+    const journals = await db.all('SELECT * FROM journal_entries ORDER BY entry_date DESC, created_at DESC');
+    for (let j of journals) {
+      j.items = await db.all(
+        `SELECT ji.*, ca.name as account_name, ca.type as account_type 
+         FROM journal_items ji 
+         LEFT JOIN chart_of_accounts ca ON ji.account_code = ca.account_code 
+         WHERE ji.journal_id = ?`,
+        [j.id]
+      );
+    }
+    res.json(journals);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Post a Journal Entry (with Balanced Debits & Credits Validation)
+app.post('/api/bookkeeping/journals', async (req, res) => {
+  try {
+    const { entry_date, reference, description, created_by, items } = req.body;
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Journal entry must contain line items' });
+    }
+
+    // Validate that total debits == total credits
+    const totalDebit = items.reduce((sum, item) => sum + (Number(item.debit) || 0), 0);
+    const totalCredit = items.reduce((sum, item) => sum + (Number(item.credit) || 0), 0);
+
+    if (Math.abs(totalDebit - totalCredit) > 0.01) {
+      return res.status(400).json({ 
+        error: `Unbalanced journal entry! Total Debits (${totalDebit.toFixed(2)}) must equal Total Credits (${totalCredit.toFixed(2)}).` 
+      });
+    }
+
+    const journalId = `JRN-${Date.now().toString().slice(-6)}`;
+    await db.run(
+      'INSERT INTO journal_entries (id, entry_date, reference, description, created_by, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [journalId, entry_date || new Date().toISOString().split('T')[0], reference || 'MANUAL', description || 'Manual Journal Entry', created_by || 'Finance Admin', 'Posted']
+    );
+
+    for (let line of items) {
+      const debitVal = Number(line.debit) || 0;
+      const creditVal = Number(line.credit) || 0;
+      await db.run(
+        'INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, ?, ?, ?)',
+        [journalId, line.account_code, debitVal, creditVal, line.memo || '']
+      );
+
+      // Update account current_balance in Chart of Accounts
+      const account = await db.get('SELECT type, current_balance FROM chart_of_accounts WHERE account_code = ?', [line.account_code]);
+      if (account) {
+        let balanceDelta = 0;
+        // Asset & Expense increase with Debit (+), decrease with Credit (-)
+        // Liability, Equity & Revenue increase with Credit (+), decrease with Debit (-)
+        if (['Asset', 'Expense'].includes(account.type)) {
+          balanceDelta = debitVal - creditVal;
+        } else {
+          balanceDelta = creditVal - debitVal;
+        }
+        await db.run(
+          'UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = ?',
+          [balanceDelta, line.account_code]
+        );
+      }
+    }
+
+    res.json({ success: true, journal_id: journalId, message: 'Journal Entry posted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Trial Balance Audit (Verifies Total Debits = Total Credits)
+app.get('/api/bookkeeping/trial-balance', async (req, res) => {
+  try {
+    const accounts = await db.all('SELECT * FROM chart_of_accounts ORDER BY account_code ASC');
+    let totalDebitSum = 0;
+    let totalCreditSum = 0;
+
+    const report = accounts.map(acc => {
+      const items = db.prepare ? null : null; // dynamically computed
+      const balance = acc.current_balance || 0;
+      let debit = 0;
+      let credit = 0;
+
+      if (['Asset', 'Expense'].includes(acc.type)) {
+        if (balance >= 0) debit = balance;
+        else credit = Math.abs(balance);
+      } else {
+        if (balance >= 0) credit = balance;
+        else debit = Math.abs(balance);
+      }
+
+      totalDebitSum += debit;
+      totalCreditSum += credit;
+
+      return {
+        account_code: acc.account_code,
+        name: acc.name,
+        type: acc.type,
+        debit,
+        credit
+      };
+    });
+
+    res.json({
+      accounts: report,
+      total_debit: totalDebitSum,
+      total_credit: totalCreditSum,
+      is_balanced: Math.abs(totalDebitSum - totalCreditSum) < 0.01
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Income Statement (Profit & Loss Report)
+app.get('/api/bookkeeping/profit-and-loss', async (req, res) => {
+  try {
+    const revenueAccounts = await db.all("SELECT * FROM chart_of_accounts WHERE type = 'Revenue'");
+    const expenseAccounts = await db.all("SELECT * FROM chart_of_accounts WHERE type = 'Expense'");
+
+    // Add revenue from actual paid/issued invoices
+    const clientInvoices = await db.all("SELECT SUM(amount) as total FROM client_invoices WHERE status != 'Cancelled'");
+    const supplierInvoices = await db.all("SELECT SUM(amount) as total FROM supplier_invoices WHERE status != 'Cancelled'");
+
+    const totalRevenue = (revenueAccounts.reduce((sum, a) => sum + Math.abs(a.current_balance), 0)) + (clientInvoices[0]?.total || 0);
+    const totalExpenses = (expenseAccounts.reduce((sum, a) => sum + Math.abs(a.current_balance), 0)) + (supplierInvoices[0]?.total || 0);
+    const netProfit = totalRevenue - totalExpenses;
+
+    res.json({
+      revenues: revenueAccounts,
+      expenses: expenseAccounts,
+      total_revenue: totalRevenue,
+      total_expenses: totalExpenses,
+      net_profit: netProfit,
+      net_margin_pct: totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(2) : 0
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Balance Sheet Report (Assets = Liabilities + Equity)
+app.get('/api/bookkeeping/balance-sheet', async (req, res) => {
+  try {
+    const assets = await db.all("SELECT * FROM chart_of_accounts WHERE type = 'Asset'");
+    const liabilities = await db.all("SELECT * FROM chart_of_accounts WHERE type = 'Liability'");
+    const equity = await db.all("SELECT * FROM chart_of_accounts WHERE type = 'Equity'");
+
+    const bankBalance = await db.all("SELECT SUM(current_balance) as total FROM accounts");
+    const totalAssets = assets.reduce((sum, a) => sum + Math.abs(a.current_balance), 0) + (bankBalance[0]?.total || 0);
+    const totalLiabilities = liabilities.reduce((sum, a) => sum + Math.abs(a.current_balance), 0);
+    const totalEquity = equity.reduce((sum, a) => sum + Math.abs(a.current_balance), 0);
+
+    res.json({
+      assets,
+      liabilities,
+      equity,
+      total_assets: totalAssets,
+      total_liabilities: totalLiabilities,
+      total_equity: totalEquity,
+      is_balanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// KRA 16% VAT & Tax Ledger Report
+app.get('/api/bookkeeping/vat-ledger', async (req, res) => {
+  try {
+    const clientInvoices = await db.all("SELECT * FROM client_invoices");
+    const supplierInvoices = await db.all("SELECT * FROM supplier_invoices");
+
+    let outputVat16 = 0;
+    let inputVat16 = 0;
+
+    const salesLedger = clientInvoices.map(inv => {
+      const taxable = (Number(inv.amount) || 0) / 1.16;
+      const vat = Number(inv.amount) || 0 - taxable;
+      outputVat16 += vat;
+      return {
+        ref: inv.id,
+        party: inv.client_name || 'Client',
+        amount: inv.amount,
+        vat_amount: vat,
+        type: 'Output VAT (Sales)'
+      };
+    });
+
+    const purchaseLedger = supplierInvoices.map(inv => {
+      const taxable = (Number(inv.amount) || 0) / 1.16;
+      const vat = Number(inv.amount) || 0 - taxable;
+      inputVat16 += vat;
+      return {
+        ref: inv.id,
+        party: inv.supplier_name || 'Supplier',
+        amount: inv.amount,
+        vat_amount: vat,
+        type: 'Input VAT (Purchases)'
+      };
+    });
+
+    res.json({
+      sales_vat: salesLedger,
+      purchase_vat: purchaseLedger,
+      total_output_vat: outputVat16,
+      total_input_vat: inputVat16,
+      net_kra_vat_payable: outputVat16 - inputVat16
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Accounts Receivable & Accounts Payable Aging Analysis (0-30, 31-60, 61-90, 90+ days)
+app.get('/api/bookkeeping/aging', async (req, res) => {
+  try {
+    const clientInvoices = await db.all("SELECT * FROM client_invoices WHERE status != 'Paid'");
+    const supplierInvoices = await db.all("SELECT * FROM supplier_invoices WHERE status != 'Paid'");
+
+    const now = new Date();
+
+    const arAging = { current: 0, days30: 0, days60: 0, days90Plus: 0, items: [] };
+    for (let inv of clientInvoices) {
+      const invDate = new Date(inv.invoice_date || inv.due_date || now);
+      const diffDays = Math.floor((now - invDate) / (1000 * 60 * 60 * 24));
+      const amount = Number(inv.amount) || 0;
+
+      if (diffDays <= 30) arAging.current += amount;
+      else if (diffDays <= 60) arAging.days30 += amount;
+      else if (diffDays <= 90) arAging.days60 += amount;
+      else arAging.days90Plus += amount;
+
+      arAging.items.push({ ...inv, age_days: diffDays });
+    }
+
+    const apAging = { current: 0, days30: 0, days60: 0, days90Plus: 0, items: [] };
+    for (let inv of supplierInvoices) {
+      const invDate = new Date(inv.invoice_date || now);
+      const diffDays = Math.floor((now - invDate) / (1000 * 60 * 60 * 24));
+      const amount = Number(inv.amount) || 0;
+
+      if (diffDays <= 30) apAging.current += amount;
+      else if (diffDays <= 60) apAging.days30 += amount;
+      else if (diffDays <= 90) apAging.days60 += amount;
+      else apAging.days90Plus += amount;
+
+      apAging.items.push({ ...inv, age_days: diffDays });
+    }
+
+    res.json({ ar_aging: arAging, ap_aging: apAging });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

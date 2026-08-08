@@ -1,13 +1,24 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 
-export default function BankAccountForm({ onSuccess }) {
+export default function BankAccountForm({ onSuccess, accountToEdit = null }) {
   const [formData, setFormData] = useState({
-    id: `ACC-${Math.floor(Math.random() * 10000)}`,
-    name: '',
-    type: 'Bank',
-    current_balance: 0
+    id: accountToEdit ? accountToEdit.id : `ACC-${Math.floor(Math.random() * 10000)}`,
+    name: accountToEdit ? accountToEdit.name : '',
+    type: accountToEdit ? accountToEdit.type : 'Bank',
+    current_balance: accountToEdit ? Number(accountToEdit.current_balance) || 0 : 0
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (accountToEdit) {
+      setFormData({
+        id: accountToEdit.id,
+        name: accountToEdit.name || '',
+        type: accountToEdit.type || 'Bank',
+        current_balance: Number(accountToEdit.current_balance) || 0
+      })
+    }
+  }, [accountToEdit])
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,7 +32,7 @@ export default function BankAccountForm({ onSuccess }) {
       });
 
       if (res.ok) {
-        alert('Bank account saved successfully!');
+        alert(`Bank account '${formData.name}' ${accountToEdit ? 'updated' : 'saved'} successfully!`);
         window.dispatchEvent(new Event('refreshCorporateHub'));
         if (onSuccess) onSuccess();
       } else {
@@ -36,31 +47,32 @@ export default function BankAccountForm({ onSuccess }) {
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       
       <div className="form-group" style={{ marginBottom: 0 }}>
-        <label>Account Name</label>
+        <label style={{ fontWeight: 'bold' }}>Account Name *</label>
         <input type="text" className="form-control" required placeholder="e.g. KCB Main Operations" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
-          <label>Account Type</label>
+          <label style={{ fontWeight: 'bold' }}>Account Type *</label>
           <select className="form-control" required value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
             <option value="Bank">Bank Account</option>
             <option value="Mobile Money">Mobile Money (M-Pesa/Till)</option>
             <option value="Cash">Petty Cash</option>
+            <option value="Escrow">Escrow Account</option>
           </select>
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>
-          <label>Starting Balance</label>
+          <label style={{ fontWeight: 'bold' }}>Current Balance (KSh)</label>
           <input type="number" step="0.01" className="form-control" value={formData.current_balance} onChange={e => setFormData({...formData, current_balance: parseFloat(e.target.value) || 0})} />
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-        <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-          {isSubmitting ? 'Saving...' : 'Save Account'}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+        <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ background: '#4A8BCE', border: 'none', padding: '0.6rem 1.5rem', fontWeight: 'bold' }}>
+          {isSubmitting ? 'Saving...' : (accountToEdit ? 'Update Account' : 'Save Account')}
         </button>
       </div>
     </form>

@@ -1,44 +1,144 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react';
+import { useCurrency } from '../context/CurrencyContext';
 
 export default function GenerateInvoiceForm() {
-  const [billingType, setBillingType] = useState('delivery') // 'delivery' or 'milestone'
-  const [evidence, setEvidence] = useState([])
-  const [tenders, setTenders] = useState([])
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const { formatAmount } = useCurrency();
+  const [sourceType, setSourceType] = useState('delivery'); // 'delivery' | 'lpo' | 'milestone'
+  const [evidence, setEvidence] = useState([]);
+  const [tenders, setTenders] = useState([]);
+  const [pos, setPos] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [formData, setFormData] = useState({
     id: `INV-2026-${Math.floor(Math.random() * 1000)}`,
     tender_id: '',
-    reference_id: '', // evidence_id for delivery, or description for milestone
-    amount: '',
-    invoice_date: ''
-  })
+    reference_id: '',
+    client_name: '',
+    invoice_date: new Date().toISOString().split('T')[0],
+    subtotal: 0,
+    include_vat: true,
+    vat_amount: 0,
+    amount: 0,
+    items: []
+  });
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/evidence')
-      .then(res => res.json())
-      .then(data => setEvidence(data))
-      .catch(err => console.error("Error fetching evidence:", err));
-
-    fetch('http://localhost:5000/api/tenders')
-      .then(res => res.json())
-      .then(data => setTenders(data))
-      .catch(err => console.error("Error fetching tenders:", err));
+    Promise.all([
+      fetch('http://localhost:5000/api/evidence').then(res => res.json()).catch(() => []),
+      fetch('http://localhost:5000/api/tenders').then(res => res.json()).catch(() => []),
+      fetch('http://localhost:5000/api/pos').then(res => res.json()).catch(() => [])
+    ]).then(([evData, tenderData, poData]) => {
+      setEvidence(Array.isArray(evData) ? evData : []);
+      setTenders(Array.isArray(tenderData) ? tenderData : []);
+      setPos(Array.isArray(poData) ? poData : []);
+    });
   }, []);
 
+  const updateAmounts = (itemsList, includeVat) => {
+    const sub = itemsList.reduce((sum, item) => sum + (Number(item.total) || (Number(item.qty || 1) * Number(item.unit_price || 0))), 0);
+    const vat = includeVat ? sub * 0.16 : 0;
+    const total = sub + vat;
+
+    setFormData(prev => ({
+      ...prev,
+      items: itemsList,
+      subtotal: sub,
+      include_vat: includeVat,
+      vat_amount: vat,
+      amount: total
+    }));
+  };
+
+  // Delivery / Evidence Selection
   const handleDeliverySelect = (e) => {
     const evId = e.target.value;
     const ev = evidence.find(x => x.id === evId);
+
     if (ev) {
-      setFormData({
-        ...formData,
+      const extractedItems = [
+        {
+          description: ev.deliverable_name || `Completed Delivery for Tender ${ev.tender_name || ''}`,
+          qty: 1,
+          unit_price: Number(ev.revenue_generated || 0),
+          total: Number(ev.revenue_generated || 0)
+        }
+      ];
+
+      setFormData(prev => ({
+        ...prev,
         reference_id: ev.id,
-        tender_id: ev.tender_id || '', // Note: evidence has deliverable_id, we need to map to tender
-        amount: ev.revenue_generated
-      });
+        client_name: ev.client_name || ev.tender_name || 'Client'
+      }));
+
+      updateAmounts(extractedItems, formData.include_vat);
     } else {
-      setFormData({ ...formData, reference_id: '', amount: '' });
+      setFormData(prev => ({ ...prev, reference_id: '' }));
+      updateAmounts([], formData.include_vat);
     }
+  };
+
+  // LPO / PO Selection
+  const handlePOSelect = (e) => {
+    const poId = e.target.value;
+    const po = pos.find(p => p.id === poId);
+
+    if (po) {
+      let extractedItems = [];
+      if (Array.isArray(po.items) && po.items.length > 0) {
+        extractedItems = po.items.map(i => ({
+          description: i.description || i.item_name || 'LPO Deliverable',
+          qty: Number(i.quantity || i.qty || 1),
+          unit_price: Number(i.unit_price || i.price || (po.total_value / (i.quantity || 1))),
+          total: Number(i.total || (i.quantity * i.unit_price) || po.total_value)
+        }));
+      } else {
+        extractedItems = [
+          {
+            description: `Client Order LPO ${po.id}`,
+            qty: 1,
+            unit_price: Number(po.total_value || 0),
+            total: Number(po.total_value || 0)
+          }
+        ];
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        reference_id: po.id,
+        client_name: po.client_name || po.supplier_name || 'Client'
+      }));
+
+      updateAmounts(extractedItems, formData.include_vat);
+    } else {
+      setFormData(prev => ({ ...prev, reference_id: '' }));
+      updateAmounts([], formData.include_vat);
+    }
+  };
+
+  const handleVatToggle = (e) => {
+    const checked = e.target.checked;
+    updateAmounts(formData.items, checked);
+  };
+
+  const handleItemChange = (idx, field, val) => {
+    const newItems = [...formData.items];
+    newItems[idx][field] = val;
+    if (field === 'qty' || field === 'unit_price') {
+      const qty = Number(newItems[idx].qty) || 0;
+      const price = Number(newItems[idx].unit_price) || 0;
+      newItems[idx].total = qty * price;
+    }
+    updateAmounts(newItems, formData.include_vat);
+  };
+
+  const handleAddLineItem = () => {
+    const newItems = [...formData.items, { description: '', qty: 1, unit_price: 0, total: 0 }];
+    updateAmounts(newItems, formData.include_vat);
+  };
+
+  const handleRemoveLineItem = (idx) => {
+    const newItems = formData.items.filter((_, i) => i !== idx);
+    updateAmounts(newItems, formData.include_vat);
   };
 
   const handleSubmit = async (e) => {
@@ -47,21 +147,17 @@ export default function GenerateInvoiceForm() {
 
     const payload = {
       id: formData.id,
-      tender_id: formData.tender_id, // For delivery, we might need to look it up if not strictly set
-      billing_type: billingType,
+      tender_id: formData.tender_id,
+      billing_type: sourceType,
       reference_id: formData.reference_id,
+      client_name: formData.client_name,
+      subtotal: formData.subtotal,
+      include_vat: formData.include_vat,
+      vat_amount: formData.vat_amount,
       amount: formData.amount,
-      invoice_date: formData.invoice_date
+      invoice_date: formData.invoice_date,
+      items: formData.items
     };
-
-    if (billingType === 'delivery' && !payload.tender_id) {
-      // Find tender from evidence -> deliverable
-      const ev = evidence.find(x => x.id === payload.reference_id);
-      if (ev) {
-        const t = tenders.find(tnd => tnd.name === ev.tender_name);
-        if (t) payload.tender_id = t.id;
-      }
-    }
 
     try {
       const res = await fetch('http://localhost:5000/api/client_invoices', {
@@ -70,7 +166,7 @@ export default function GenerateInvoiceForm() {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
-        alert('Client Invoice Generated successfully!');
+        alert('✅ Client Invoice Generated successfully!');
         window.location.reload();
       } else {
         alert('Failed to generate invoice.');
@@ -84,96 +180,207 @@ export default function GenerateInvoiceForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div className="form-group" style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-        <button 
-          type="button" 
-          onClick={() => { setBillingType('delivery'); setFormData({...formData, reference_id: '', tender_id: '', amount: ''}); }}
-          style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', border: `1px solid ${billingType === 'delivery' ? 'hsl(var(--primary))' : 'hsl(var(--border))'}`, background: billingType === 'delivery' ? 'hsla(var(--primary), 0.1)' : 'transparent', color: billingType === 'delivery' ? 'hsl(var(--primary))' : 'hsl(var(--text-secondary))', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          Delivery Note Billing
-        </button>
-        <button 
-          type="button" 
-          onClick={() => { setBillingType('milestone'); setFormData({...formData, reference_id: '', tender_id: '', amount: ''}); }}
-          style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', border: `1px solid ${billingType === 'milestone' ? 'hsl(var(--primary))' : 'hsl(var(--border))'}`, background: billingType === 'milestone' ? 'hsla(var(--primary), 0.1)' : 'transparent', color: billingType === 'milestone' ? 'hsl(var(--primary))' : 'hsl(var(--text-secondary))', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
-        >
-          Milestone / Advance
-        </button>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      
+      {/* SOURCE DOCUMENT SELECTOR */}
+      <div>
+        <label style={{ fontSize: '0.8rem', fontWeight: 'bold', display: 'block', marginBottom: '0.4rem' }}>
+          Pull Content From ERP Source Document:
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+          <button 
+            type="button" 
+            onClick={() => { setSourceType('delivery'); updateAmounts([], formData.include_vat); }}
+            style={{
+              padding: '0.6rem',
+              borderRadius: '6px',
+              border: sourceType === 'delivery' ? '2px solid hsl(var(--primary))' : '1px solid hsl(var(--border))',
+              background: sourceType === 'delivery' ? 'hsla(var(--primary), 0.12)' : 'transparent',
+              color: sourceType === 'delivery' ? 'hsl(var(--primary))' : 'inherit',
+              fontWeight: 'bold',
+              fontSize: '0.8rem',
+              cursor: 'pointer'
+            }}
+          >
+            🚚 From Delivery Note
+          </button>
+          <button 
+            type="button" 
+            onClick={() => { setSourceType('lpo'); updateAmounts([], formData.include_vat); }}
+            style={{
+              padding: '0.6rem',
+              borderRadius: '6px',
+              border: sourceType === 'lpo' ? '2px solid #10b981' : '1px solid hsl(var(--border))',
+              background: sourceType === 'lpo' ? 'rgba(16, 185, 129, 0.12)' : 'transparent',
+              color: sourceType === 'lpo' ? '#10b981' : 'inherit',
+              fontWeight: 'bold',
+              fontSize: '0.8rem',
+              cursor: 'pointer'
+            }}
+          >
+            📋 From LPO / Order
+          </button>
+          <button 
+            type="button" 
+            onClick={() => { setSourceType('milestone'); updateAmounts([], formData.include_vat); }}
+            style={{
+              padding: '0.6rem',
+              borderRadius: '6px',
+              border: sourceType === 'milestone' ? '2px solid #f59e0b' : '1px solid hsl(var(--border))',
+              background: sourceType === 'milestone' ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
+              color: sourceType === 'milestone' ? '#f59e0b' : 'inherit',
+              fontWeight: 'bold',
+              fontSize: '0.8rem',
+              cursor: 'pointer'
+            }}
+          >
+            🎯 Milestone / Advance
+          </button>
+        </div>
       </div>
 
-      {billingType === 'delivery' ? (
+      {sourceType === 'delivery' && (
         <div className="form-group">
-          <label>Select Completed Delivery / Evidence</label>
+          <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Select Delivery Note / Evidence *</label>
           <select className="form-control" required value={formData.reference_id} onChange={handleDeliverySelect}>
             <option value="">Select an approved delivery...</option>
             {evidence.map(ev => (
               <option key={ev.id} value={ev.id}>
-                {ev.id} - {ev.deliverable_name} ({ev.tender_name}) - ${ev.revenue_generated.toLocaleString()}
+                {ev.id} - {ev.deliverable_name} ({ev.tender_name}) - {formatAmount(ev.revenue_generated)}
               </option>
             ))}
           </select>
         </div>
-      ) : (
-        <>
+      )}
+
+      {sourceType === 'lpo' && (
+        <div className="form-group">
+          <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Select LPO / Client Purchase Order *</label>
+          <select className="form-control" required value={formData.reference_id} onChange={handlePOSelect}>
+            <option value="">Select client LPO...</option>
+            {pos.map(po => (
+              <option key={po.id} value={po.id}>
+                {po.id} - {po.supplier_name || 'Client Order'} ({formatAmount(po.total_value)})
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {sourceType === 'milestone' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div className="form-group">
-            <label>Select Tender / Project</label>
+            <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Select Tender / Project *</label>
             <select className="form-control" required value={formData.tender_id} onChange={e => setFormData({...formData, tender_id: e.target.value})}>
-              <option value="">Select...</option>
+              <option value="">Select project...</option>
               {tenders.map(t => (
-                <option key={t.id} value={t.id}>
-                  {t.id} - {t.name} (Value: ${t.contract_value.toLocaleString()})
-                </option>
+                <option key={t.id} value={t.id}>{t.id} - {t.name}</option>
               ))}
             </select>
           </div>
           <div className="form-group">
-            <label>Milestone Description</label>
-            <input type="text" className="form-control" placeholder="e.g., 30% Advance Payment for Mobilization" required value={formData.reference_id} onChange={e => setFormData({...formData, reference_id: e.target.value})} />
+            <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Milestone Description *</label>
+            <input type="text" className="form-control" placeholder="e.g. 30% Advance Payment" required value={formData.reference_id} onChange={e => setFormData({...formData, reference_id: e.target.value})} />
           </div>
-        </>
+        </div>
       )}
-
-      <div className="form-group">
-        <label>Invoice Number</label>
-        <input type="text" className="form-control" value={formData.id} disabled required />
-      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div className="form-group">
-          <label>Invoice Date</label>
-          <input type="date" className="form-control" required value={formData.invoice_date} onChange={e => setFormData({...formData, invoice_date: e.target.value})} />
+          <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Invoice Number</label>
+          <input type="text" className="form-control" value={formData.id} onChange={e => setFormData({...formData, id: e.target.value})} required />
         </div>
         <div className="form-group">
-          <label>VAT Rate (%)</label>
-          <input type="number" className="form-control" defaultValue="16" required />
+          <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Invoice Date</label>
+          <input type="date" className="form-control" required value={formData.invoice_date} onChange={e => setFormData({...formData, invoice_date: e.target.value})} />
         </div>
-      </div>
-      
-      <div className="form-group">
-        <label>{billingType === 'delivery' ? 'Total Invoice Amount (Auto-calculated from Delivery)' : 'Invoice Amount (Net of VAT)'}</label>
-        <input 
-          type="number" 
-          className="form-control" 
-          placeholder={billingType === 'milestone' ? "0.00" : "Auto-calculated..."}
-          disabled={billingType === 'delivery'} 
-          style={{ opacity: billingType === 'delivery' ? 0.7 : 1 }}
-          required
-          value={formData.amount}
-          onChange={e => setFormData({...formData, amount: e.target.value})}
-        />
       </div>
 
-      <div className="form-group">
-        <label>Upload Final Invoice PDF (Optional)</label>
-        <div style={{ border: '2px dashed hsl(var(--border))', padding: '2rem', textAlign: 'center', borderRadius: 'var(--radius-md)', color: 'hsl(var(--text-secondary))' }}>
-          Drag and drop PDF here
+      {/* INVOICED ITEMS TABLE */}
+      <div style={{ background: '#0f172a11', padding: '1rem', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+          <strong style={{ fontSize: '0.85rem', color: 'hsl(var(--primary))' }}>📦 Invoiced Line Items ({formData.items.length})</strong>
+          <button type="button" className="btn" style={{ fontSize: '0.75rem', background: 'hsl(var(--primary))', color: '#fff', padding: '0.3rem 0.6rem' }} onClick={handleAddLineItem}>
+            + Add Line Item
+          </button>
+        </div>
+
+        {formData.items.length === 0 ? (
+          <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>
+            No line items loaded. Select a Delivery / LPO above or click "+ Add Line Item".
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left' }}>
+                <th style={{ padding: '0.4rem' }}>Item Description</th>
+                <th style={{ padding: '0.4rem', width: '70px' }}>Qty</th>
+                <th style={{ padding: '0.4rem', width: '110px' }}>Unit Price</th>
+                <th style={{ padding: '0.4rem', width: '110px', textAlign: 'right' }}>Total (KSh)</th>
+                <th style={{ padding: '0.4rem', width: '40px' }}></th>
+              </tr>
+            </thead>
+            <tbody>
+              {formData.items.map((item, idx) => (
+                <tr key={idx} style={{ borderBottom: '1px solid hsla(var(--border), 0.4)' }}>
+                  <td style={{ padding: '0.4rem' }}>
+                    <input type="text" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Item description..." />
+                  </td>
+                  <td style={{ padding: '0.4rem' }}>
+                    <input type="number" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.qty} onChange={e => handleItemChange(idx, 'qty', e.target.value)} />
+                  </td>
+                  <td style={{ padding: '0.4rem' }}>
+                    <input type="number" step="0.01" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.unit_price} onChange={e => handleItemChange(idx, 'unit_price', e.target.value)} />
+                  </td>
+                  <td style={{ padding: '0.4rem', textAlign: 'right', fontWeight: 'bold' }}>
+                    {formatAmount(item.total || 0)}
+                  </td>
+                  <td style={{ padding: '0.4rem', textAlign: 'center' }}>
+                    <button type="button" style={{ background: 'transparent', border: 'none', color: '#f43f5e', cursor: 'pointer', fontSize: '1rem' }} onClick={() => handleRemoveLineItem(idx)}>✕</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* VAT 16% TOGGLE & TAX BREAKDOWN */}
+      <div style={{ background: 'hsla(var(--primary), 0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid hsl(var(--primary))', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontWeight: 'bold', fontSize: '0.875rem', cursor: 'pointer' }}>
+          <input 
+            type="checkbox" 
+            checked={formData.include_vat} 
+            onChange={handleVatToggle}
+            style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'hsl(var(--primary))' }}
+          />
+          <span>Include 16% VAT in Total Invoiced Amount</span>
+        </label>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', borderTop: '1px solid hsla(var(--border), 0.6)', paddingTop: '0.75rem', fontSize: '0.85rem' }}>
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>Subtotal (Net Amount)</span>
+            <strong>{formatAmount(formData.subtotal)}</strong>
+          </div>
+
+          <div>
+            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>16% Output VAT Portion</span>
+            <strong style={{ color: formData.include_vat ? '#f59e0b' : 'hsl(var(--text-secondary))' }}>
+              {formData.include_vat ? formatAmount(formData.vat_amount) : 'KSh 0.00 (Exempt)'}
+            </strong>
+          </div>
+
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>Grand Invoiced Total</span>
+            <strong style={{ fontSize: '1.05rem', color: '#10b981' }}>{formatAmount(formData.amount)}</strong>
+          </div>
         </div>
       </div>
-      
-      <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={isSubmitting}>
-        {isSubmitting ? 'Generating...' : 'Generate Client Invoice'}
+
+      <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.75rem', fontWeight: 'bold' }} disabled={isSubmitting}>
+        {isSubmitting ? 'Generating Invoice...' : 'Generate Client Invoice'}
       </button>
     </form>
-  )
+  );
 }
