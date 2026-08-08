@@ -870,66 +870,35 @@ Managing Director / Authorized Corporate Signatory`
               <CreateRoleModal onClose={() => setIsCreateRoleOpen(false)} />
             </Drawer>
 
-            {/* SYSTEM ROLES & TASK ALLOCATION MANAGEMENT PANEL */}
+            {/* SYSTEM ROLES & USER ACCESS CONTROL PANEL */}
             <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <ShieldCheck color="hsl(var(--primary))" size={20} />
-                  <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>System Roles & Authorized Task Allocations</h4>
-                </div>
-                <button className="btn btn-primary" style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }} onClick={() => setIsCreateRoleOpen(true)}>
-                  <PlusCircle size={16} /> + Create Custom Role
-                </button>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                {Object.values(ROLES).map((role) => (
-                  <div key={role.id} style={{ background: '#ffffff', border: `1.5px solid ${role.color}`, borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong style={{ fontSize: '0.95rem', color: '#0f172a' }}>{role.name}</strong>
-                      <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', borderRadius: '4px', background: role.color, color: '#fff', fontWeight: '800' }}>
-                        {role.badge}
-                      </span>
-                    </div>
-                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', lineHeight: '1.4' }}>
-                      {role.description}
-                    </p>
-                    <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '0.5rem', marginTop: '0.25rem' }}>
-                      <div style={{ fontSize: '0.72rem', fontWeight: '800', textTransform: 'uppercase', color: '#0f172a', marginBottom: '0.35rem' }}>
-                        Assigned Responsibilities ({role.tasks.length}):
-                      </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                        {role.tasks.map((task, idx) => (
-                          <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem', fontSize: '0.75rem', color: '#334155' }}>
-                            <CheckCircle2 size={13} color={role.color} style={{ flexShrink: 0, marginTop: '0.1rem' }} />
-                            <span>{task}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ShieldCheck color="hsl(var(--primary))" size={22} />
+                    <h4 style={{ margin: 0, color: 'hsl(var(--primary))', fontSize: '1.1rem', fontWeight: 'bold' }}>System Roles & Authorized Task Allocations</h4>
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* EDIT USER DRAWER */}
-            {editingUser && (
-              <Drawer isOpen={!!editingUser} onClose={() => setEditingUser(null)} title={`Edit User Account: ${editingUser.name}`}>
-                <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSuccess={() => fetchData()} />
-              </Drawer>
-            )}
-
-            {/* USER ACCOUNTS & TEAM MANAGEMENT PANEL */}
-            <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Users color="hsl(var(--primary))" size={20} />
-                  <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>User Accounts & Team Access Control</h4>
+                  <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.825rem', color: '#64748b' }}>
+                    Invite users, assign specialized roles, and allocate task permissions. Users only access what they are granted.
+                  </p>
                 </div>
-                <button className="btn btn-primary" style={{ padding: '0.4rem 0.85rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }} onClick={() => setGlobalDrawer('invite_user')}>
-                  <PlusCircle size={16} /> + Invite / Add User
-                </button>
+
+                <div style={{ display: 'flex', gap: '0.6rem' }}>
+                  <button className="btn btn-primary" style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 'bold' }} onClick={() => setGlobalDrawer('invite_user')}>
+                    <PlusCircle size={16} /> + Invite / Add User
+                  </button>
+                  <button className="btn" style={{ padding: '0.45rem 1rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', background: '#334155', color: '#fff', border: '1px solid #475569' }} onClick={() => setIsCreateRoleOpen(true)}>
+                    + Create Custom Role
+                  </button>
+                </div>
               </div>
+
+              {/* EDIT USER DRAWER */}
+              {editingUser && (
+                <Drawer isOpen={!!editingUser} onClose={() => setEditingUser(null)} title={`Edit User Account: ${editingUser.name}`}>
+                  <EditUserModal user={editingUser} onClose={() => setEditingUser(null)} onSuccess={() => fetchData()} />
+                </Drawer>
+              )}
 
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
