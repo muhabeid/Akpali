@@ -50,8 +50,16 @@ export default function NewDeliverableForm() {
 
     setIsSubmitting(true);
     
-    // Only send items if type is Goods
-    const payload = { ...formData };
+    // Ensure default dates if empty
+    const today = new Date().toISOString().split('T')[0];
+    const defaultDue = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    const payload = { 
+      ...formData,
+      planned_date: formData.planned_date || today,
+      due_date: formData.due_date || defaultDue
+    };
+
     if (formData.type === 'Goods') {
       payload.items = JSON.stringify(items);
     }
@@ -67,7 +75,8 @@ export default function NewDeliverableForm() {
         alert('Deliverable added to Tender successfully!');
         window.location.reload(); 
       } else {
-        alert('Failed to create deliverable');
+        const errData = await res.json().catch(() => ({}));
+        alert(`Failed to create deliverable: ${errData.error || errData.message || 'Server error'}`);
       }
     } catch (err) {
       console.error(err);

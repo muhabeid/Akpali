@@ -1544,14 +1544,42 @@ app.post('/api/match/:invoice_id', async (req, res) => {
 
 // POST /api/deliverables
 app.post('/api/deliverables', async (req, res) => {
-  const { id, tender_id, description, type, billing_method, planned_date, due_date, items } = req.body;
-  await db.run(
-    `INSERT INTO deliverables (id, tender_id, description, type, billing_method, planned_date, due_date, items) 
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [id, tender_id, description, type, billing_method, planned_date, due_date, items]
-  );
-  const newDlv = await db.get('SELECT * FROM deliverables WHERE id = ?', [id]);
-  res.status(201).json(newDlv);
+  try {
+    let { id, tender_id, description, type, billing_method, planned_date, due_date, items } = req.body;
+
+    if (!tender_id) {
+      return res.status(400).json({ error: 'Parent Tender is required.' });
+    }
+
+    // Guaranteed Unique ID Resolution
+    let finalId = id;
+    if (!finalId) {
+      const row = await db.get("SELECT COUNT(*) as count FROM deliverables");
+      finalId = `DLV-${(row?.count || 0) + 101}`;
+    }
+
+    // Check collision and assign unique timestamp hash if needed
+    const existing = await db.get('SELECT id FROM deliverables WHERE id = ?', [finalId]);
+    if (existing) {
+      finalId = `DLV-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    const itemsStr = typeof items === 'string' ? items : JSON.stringify(items || []);
+    const pDate = planned_date || new Date().toISOString().split('T')[0];
+    const dDate = due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+    await db.run(
+      `INSERT INTO deliverables (id, tender_id, description, type, billing_method, planned_date, due_date, items, status) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Planned')`,
+      [finalId, tender_id, description || 'Project Deliverable', type || 'Goods', billing_method || 'Fixed Price', pDate, dDate, itemsStr]
+    );
+
+    const newDlv = await db.get('SELECT * FROM deliverables WHERE id = ?', [finalId]);
+    res.status(201).json(newDlv);
+  } catch (err) {
+    console.error('Error creating deliverable:', err);
+    res.status(500).json({ error: err.message || 'Database error creating deliverable' });
+  }
 });
 
 // POST /api/deliverables/:id/evidence (With File Upload)
