@@ -151,11 +151,6 @@ export default function Tenders({ setGlobalDrawer }) {
           <div className="card stat-card">
             <span className="stat-label">Contract Value / Ceiling</span>
             <span className="stat-value">{formatAmount(selectedTender.effective_contract_value || selectedTender.contract_value || selectedTender.lpo_total || 0)}</span>
-            {selectedTender.contract_value > 0 ? (
-              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Fixed Ceiling Budget</span>
-            ) : (
-              <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 'bold' }}>⚡ Auto-Calculated (LPOs)</span>
-            )}
           </div>
           <div className="card stat-card">
             <span className="stat-label">Committed Costs (POs)</span>
@@ -348,7 +343,7 @@ export default function Tenders({ setGlobalDrawer }) {
                           style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--success), 0.15)', color: 'hsl(var(--success))', border: '1px solid hsla(var(--success), 0.3)', fontWeight: 'bold' }}
                           title="1-Click Auto Fulfill Delivery & Auto Generate Delivery Note"
                         >
-                          ⚡ 1-Click Fulfill
+                          Fulfill Deliverable
                         </button>
                       )}
                     </td>
@@ -375,10 +370,8 @@ export default function Tenders({ setGlobalDrawer }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <input type="text" placeholder="Search tenders..." style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)', background: 'var(--glass-bg)', border: '1px solid hsl(var(--border))', color: '#fff', width: '300px' }} />
-        <button className="btn btn-primary" onClick={() => setGlobalDrawer('tender')}>+ New Tender</button>
+        <button className="btn btn-primary" onClick={() => setIsCreateModalOpen(true)}>+ New Tender</button>
       </div>
-      
-
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -419,11 +412,6 @@ export default function Tenders({ setGlobalDrawer }) {
                 <td style={{ padding: '1rem' }}>
                   <div>
                     <strong>{formatAmount(t.effective_contract_value || t.contract_value || t.lpo_total || 0)}</strong>
-                    {t.contract_value > 0 ? (
-                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Ceiling Budget</div>
-                    ) : (
-                      <div style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 'bold' }}>⚡ Auto-Calculated (LPOs)</div>
-                    )}
                   </div>
                 </td>
                 <td style={{ padding: '1rem' }}>

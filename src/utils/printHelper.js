@@ -167,6 +167,15 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
                 border: none !important;
                 border-radius: 0 !important;
               }
+              table {
+                width: 100% !important;
+                table-layout: fixed !important;
+                border-collapse: collapse !important;
+              }
+              th, td {
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+              }
               .page-break { page-break-before: always !important; }
               @page {
                 size: A4 portrait;

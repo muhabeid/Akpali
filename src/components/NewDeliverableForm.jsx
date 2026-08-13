@@ -136,13 +136,10 @@ export default function NewDeliverableForm() {
       </div>
 
       {selectedTender && (availableLpos.length > 0 || availableQuotes.length > 0) && (
-        <div style={{ background: 'hsla(var(--primary), 0.08)', border: '1px solid hsla(var(--primary), 0.2)', padding: '0.85rem', borderRadius: 'var(--radius-md)' }}>
-          <label style={{ fontSize: '0.825rem', fontWeight: 'bold', color: 'hsl(var(--primary))', display: 'block', marginBottom: '0.35rem' }}>
-            ⚡ Fast Auto-Fill from ERP Documents
-          </label>
+        <div className="form-group">
+          <label>Import Line Items from Source Document</label>
           <select 
             className="form-control" 
-            style={{ fontSize: '0.85rem', background: '#ffffff', color: '#0f172a' }}
             onChange={(e) => {
               const val = e.target.value;
               if (!val) return;
@@ -156,25 +153,22 @@ export default function NewDeliverableForm() {
               }
             }}
           >
-            <option value="">-- Choose LPO or Quote to Auto-Populate --</option>
+            <option value="">Select Document to Populate Items...</option>
             {availableLpos.length > 0 && (
-              <optgroup label="Client LPOs (Incoming Orders)">
+              <optgroup label="Client LPOs">
                 {availableLpos.map(lpo => (
                   <option key={lpo.id} value={`LPO:${lpo.id}`}>LPO #{lpo.id} (Due: {lpo.due_date || 'N/A'})</option>
                 ))}
               </optgroup>
             )}
             {availableQuotes.length > 0 && (
-              <optgroup label="Sales Quotes (Outbound Quotes)">
+              <optgroup label="Sales Quotations">
                 {availableQuotes.map(sq => (
                   <option key={sq.id} value={`SQ:${sq.id}`}>Quote #{sq.id} (Issued: {sq.issue_date || 'N/A'})</option>
                 ))}
               </optgroup>
             )}
           </select>
-          <small style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.75rem', marginTop: '0.35rem', display: 'block' }}>
-            Selecting an order automatically extracts all items, quantities, units of measurement, and due dates.
-          </small>
         </div>
       )}
 

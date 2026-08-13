@@ -230,49 +230,54 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
                 <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', textTransform: 'uppercase', color: '#475569', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.25rem' }}>
                   {getScheduleTitle(docType)}
                 </h4>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
-                  <thead>
-                    <tr style={{ background: '#f1f5f9', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>
-                      <th style={{ padding: '0.5rem' }}>Description</th>
-                      <th style={{ padding: '0.5rem', textAlign: 'center' }}>Qty / Unit</th>
-                      {items.some(i => i.unitPrice !== undefined || i.price !== undefined) && (
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Unit Rate (KSh)</th>
-                      )}
-                      {items.some(i => i.unitPrice !== undefined || i.price !== undefined) && (
-                        <th style={{ padding: '0.5rem', textAlign: 'right' }}>Subtotal (KSh)</th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => {
-                      const desc = item.desc || item.description || item.name || '-';
-                      const qty = item.qty || item.quantity || '';
-                      const unit = item.unit || 'PCS';
-                      const unitPrice = item.unitPrice !== undefined ? item.unitPrice : item.price;
-                      const hasPrice = unitPrice !== undefined;
-                      const subtotal = hasPrice ? (Number(qty || 1) * Number(unitPrice)) : 0;
-
-                      return (
-                        <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                          <td style={{ padding: '0.5rem' }}>{desc}</td>
-                          <td style={{ padding: '0.5rem', textAlign: 'center', fontWeight: 'bold' }}>
-                            {qty ? `${qty} (${unit})` : unit}
-                          </td>
-                          {items.some(i => i.unitPrice !== undefined || i.price !== undefined) && (
-                            <td style={{ padding: '0.5rem', textAlign: 'right' }}>
-                              {hasPrice ? formatAmount(unitPrice) : '-'}
-                            </td>
+                {(() => {
+                  const hasPricing = items.some(i => i.unitPrice !== undefined || i.price !== undefined);
+                  return (
+                    <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                      <thead>
+                        <tr style={{ background: '#f1f5f9', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>
+                          <th style={{ padding: '0.6rem 0.5rem', width: hasPricing ? '46%' : '75%' }}>Description</th>
+                          <th style={{ padding: '0.6rem 0.5rem', textAlign: 'center', width: hasPricing ? '18%' : '25%' }}>Qty / Unit</th>
+                          {hasPricing && (
+                            <th style={{ padding: '0.6rem 0.5rem', textAlign: 'right', width: '18%' }}>Unit Rate (KSh)</th>
                           )}
-                          {items.some(i => i.unitPrice !== undefined || i.price !== undefined) && (
-                            <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: 'bold' }}>
-                              {hasPrice ? formatAmount(subtotal) : '-'}
-                            </td>
+                          {hasPricing && (
+                            <th style={{ padding: '0.6rem 0.5rem', textAlign: 'right', width: '18%' }}>Subtotal (KSh)</th>
                           )}
                         </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {items.map((item, idx) => {
+                          const desc = item.desc || item.description || item.name || '-';
+                          const qty = item.qty || item.quantity || '';
+                          const unit = item.unit || 'PCS';
+                          const unitPrice = item.unitPrice !== undefined ? item.unitPrice : item.price;
+                          const hasPrice = unitPrice !== undefined;
+                          const subtotal = hasPrice ? (Number(qty || 1) * Number(unitPrice)) : 0;
+
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                              <td style={{ padding: '0.6rem 0.5rem', wordBreak: 'break-word' }}>{desc}</td>
+                              <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center', fontWeight: 'bold' }}>
+                                {qty ? `${qty} ${unit}` : unit}
+                              </td>
+                              {hasPricing && (
+                                <td style={{ padding: '0.6rem 0.5rem', textAlign: 'right' }}>
+                                  {hasPrice ? formatAmount(unitPrice) : '-'}
+                                </td>
+                              )}
+                              {hasPricing && (
+                                <td style={{ padding: '0.6rem 0.5rem', textAlign: 'right', fontWeight: 'bold' }}>
+                                  {hasPrice ? formatAmount(subtotal) : '-'}
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  );
+                })()}
               </div>
             ) : (
               doc.items && typeof doc.items === 'string' && (
