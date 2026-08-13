@@ -34,38 +34,42 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
     (targetClientName && c.name && (c.name.toLowerCase().includes(targetClientName.toLowerCase()) || targetClientName.toLowerCase().includes(c.name.toLowerCase())))
   );
 
-  // Standardize & Clean Document Type Title
+  // Standardize & Shorten Document Type Title
   const cleanDocTypeName = (type) => {
-    if (!type) return 'OFFICIAL ERP DOCUMENT';
+    if (!type) return 'DOCUMENT';
     const t = type.toUpperCase();
     if (t.includes('CLIENT LPO') || t.includes('CLIENT PURCHASE ORDER')) return 'CLIENT LPO';
     if (t.includes('PURCHASE ORDER')) return 'PURCHASE ORDER';
-    if (t.includes('QUOTATION') || t.includes('QUOTE')) return 'SALES QUOTATION';
-    if (t.includes('DELIVERY') || t.includes('GRN') || t.includes('GOODS')) return 'GOODS DELIVERY NOTE';
-    if (t.includes('RFQ') || t.includes('REQUEST FOR QUOTATION')) return 'REQUEST FOR QUOTATION';
+    if (t.includes('QUOTATION') || t.includes('QUOTE')) return 'QUOTATION';
+    if (t.includes('DELIVERY') || t.includes('GRN') || t.includes('GOODS')) return 'DELIVERY NOTE';
+    if (t.includes('RFQ') || t.includes('REQUEST FOR QUOTATION')) return 'RFQ';
     return type.replace(/\s*\([^)]*\)/g, '').trim();
   };
 
-  // Clean Document Ref to prevent duplicate "LPO #LPO-..." prefixes
+  // Ultra-Short Clean Document Ref Number
   const formatCleanDocRef = (id, type) => {
-    if (!id) return 'DOC-001';
-    let raw = String(id).trim().replace(/^(?:LPO|PO|SQ|RFQ|GDN|GRN|Doc Ref|Ref)\s*#?\s*/i, '');
+    if (!id) return '#001';
+    let raw = String(id).trim()
+      .replace(/^(?:CLIENT LPO|LOCAL PURCHASE ORDER|PURCHASE ORDER|SALES QUOTATION|GOODS DELIVERY NOTE|DELIVERY NOTE|RFQ|LPO|PO|SQ|GDN|GRN|Doc Ref|Ref)\s*#?\s*/i, '')
+      .replace(/^\d{4}-\d{2}-/, '');
+
     const cleanType = cleanDocTypeName(type);
     if (cleanType === 'CLIENT LPO') return raw.startsWith('LPO-') ? raw : `LPO-${raw}`;
     if (cleanType === 'PURCHASE ORDER') return raw.startsWith('PO-') ? raw : `PO-${raw}`;
-    if (cleanType === 'SALES QUOTATION') return raw.startsWith('SQ-') ? raw : `SQ-${raw}`;
-    if (cleanType === 'GOODS DELIVERY NOTE') return raw.startsWith('GDN-') ? raw : `GDN-${raw}`;
-    return raw;
+    if (cleanType === 'QUOTATION') return raw.startsWith('SQ-') ? raw : `SQ-${raw}`;
+    if (cleanType === 'DELIVERY NOTE') return raw.startsWith('DN-') ? raw : `DN-${raw}`;
+    if (cleanType === 'RFQ') return raw.startsWith('RFQ-') ? raw : `RFQ-${raw}`;
+    return `#${raw}`;
   };
 
-  // Shorten long Tender Name / Description to avoid bloated titles
+  // Shorten Tender Name / Project Description to ultra-concise length
   const shortenTenderName = (name) => {
     if (!name) return '';
     let clean = name
-      .replace(/^(?:Supply\s+and\s+Delivery\s+of|Supply\s+of|Delivery\s+of|Provision\s+of|Tender\s+for|Contract\s+for)\s+/i, '')
+      .replace(/^(?:Supply\s+and\s+Delivery\s+of|Supply\s+of|Delivery\s+of|Provision\s+of|Tender\s+for|Contract\s+for|Procurement\s+of)\s+/i, '')
       .trim();
-    if (clean.length > 55) {
-      clean = clean.substring(0, 52).trim() + '...';
+    if (clean.length > 35) {
+      clean = clean.substring(0, 32).trim() + '...';
     }
     return clean ? (clean.charAt(0).toUpperCase() + clean.slice(1)) : name;
   };
