@@ -66,7 +66,7 @@ export default function ApprovalWorkflowForm({ onSuccess }) {
       </div>
 
       <div className="form-group" style={{ marginBottom: 0 }}>
-        <label>Threshold Amount ($)</label>
+        <label>Threshold Amount (KSh)</label>
         <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', marginBottom: '0.5rem' }}>If set above 0, rule only applies when amount exceeds threshold.</div>
         <input type="number" step="0.01" className="form-control" value={formData.threshold_amount} onChange={e => setFormData({...formData, threshold_amount: parseFloat(e.target.value) || 0})} />
       </div>

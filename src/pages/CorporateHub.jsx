@@ -622,7 +622,7 @@ Managing Director / Authorized Corporate Signatory`
                             <td style={{ padding: '0.75rem 0.85rem', fontWeight: '700', color: '#ffffff' }}>{exp.project_name}</td>
                             <td style={{ padding: '0.75rem 0.85rem', color: '#f8fafc', fontWeight: '500' }}>{exp.client_name}</td>
                             <td style={{ padding: '0.75rem 0.85rem', color: '#cbd5e1' }}>{exp.completion_date || 'Completed'}</td>
-                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#4ade80' }}>${Number(exp.contract_value || 0).toLocaleString()}</td>
+                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#4ade80' }}>KSh {Number(exp.contract_value || 0).toLocaleString()}</td>
                             <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
                               <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
                                 if(window.confirm(`Delete project ${exp.project_name}?`)) {

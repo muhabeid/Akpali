@@ -66,7 +66,7 @@ export default function CompanyExperienceForm({ experience, onSuccess }) {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
-          <label>Contract Value ($ / KES)</label>
+          <label>Contract Value (KSh)</label>
           <input type="number" step="0.01" className="form-control" value={formData.contract_value} onChange={e => setFormData({...formData, contract_value: e.target.value})} placeholder="e.g. 150000" />
         </div>
         <div className="form-group" style={{ marginBottom: 0 }}>

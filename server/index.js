@@ -57,10 +57,12 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 const TenderSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(3, "Name must be at least 3 characters"),
-  client_id: z.string().optional(), // Kept optional for backward compatibility if client isn't fully implemented on frontend
-  client: z.string().optional(), // Old fallback
+  client_id: z.string().optional(),
+  client: z.string().optional(),
   client_reference: z.string().optional(),
-  category: z.enum(['Supply of goods', 'Provision of services', 'Construction works', 'Mixed contracts']),
+  category: z.string().min(1, "Category is required"),
+  contract_type: z.string().optional(),
+  contract_period: z.string().optional(),
   contract_value: z.coerce.number().min(0, "Contract value cannot be negative")
 });
 
@@ -117,14 +119,29 @@ async function initializeDB() {
     console.log('✅ Added client_name column to tenders table.');
   } catch(e) {}
 
-  try {
-    await db.exec('ALTER TABLE tenders ADD COLUMN client_reference TEXT;');
-    console.log('✅ Added client_reference column to tenders table.');
-  } catch(e) {}
+  try { await db.exec('ALTER TABLE tenders ADD COLUMN client_reference TEXT;'); } catch(e) {}
+  try { await db.exec('ALTER TABLE tenders ADD COLUMN contract_type TEXT;'); } catch(e) {}
+  try { await db.exec('ALTER TABLE tenders ADD COLUMN contract_period TEXT;'); } catch(e) {}
 
   try {
     await db.exec('ALTER TABLE client_lpos ADD COLUMN client_reference TEXT;');
     console.log('✅ Added client_reference column to client_lpos table.');
+  } catch(e) {}
+
+  // Clean up redundant "Delivery for LPO #..." descriptions in deliverables database table
+  try {
+    const existingDlvs = await db.all("SELECT id, tender_id, description FROM deliverables");
+    for (const d of existingDlvs) {
+      if (d.description && (d.description.includes('Delivery for LPO') || d.description.includes('Supply and Delivery of Supply and Delivery of'))) {
+        const tender = await db.get('SELECT name FROM tenders WHERE id = ?', [d.tender_id]);
+        const lpoMatch = d.description.match(/LPO #([^\s(]+)/i);
+        const lpoId = lpoMatch ? lpoMatch[1] : '001';
+        let cleanName = (tender?.name || '').replace(/^(?:Supply\s+and\s+Delivery\s+of|Supply\s+of|Delivery\s+of|Provision\s+of)\s+/i, '').trim();
+        if (cleanName) cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+        const newDesc = cleanName ? `LPO #${lpoId} - ${cleanName}` : `LPO #${lpoId} Fulfillment`;
+        await db.run('UPDATE deliverables SET description = ? WHERE id = ?', [newDesc, d.id]);
+      }
+    }
   } catch(e) {}
 
   // Enterprise Company Profile & Accounts column migrations
@@ -274,7 +291,7 @@ app.put('/api/company', async (req, res) => {
       legal_name, trading_name, registration_num, registration_date, business_type,
       tax_pin, vat_num, email, phone, address, postal_address, website, logo_url,
       seal_url, industry, nature_of_business, years_in_operation || 1, vision, mission,
-      core_values, introductory_letter, profile_doc_url, base_currency || 'USD'
+      core_values, introductory_letter, profile_doc_url, base_currency || 'KES'
     ]
   );
   const updatedProfile = await db.get('SELECT * FROM company_profile WHERE id = 1');
@@ -870,14 +887,64 @@ app.delete('/api/accounts/:id', async (req, res) => {
   res.json({ success: true });
 });
 
+// Linear Document ID Generator Endpoint
+const ID_PREFIX_MAP = {
+  tender: { table: 'tenders', prefix: 'TND' },
+  lpo: { table: 'client_lpos', prefix: 'LPO' },
+  client: { table: 'clients', prefix: 'CLI' },
+  supplier: { table: 'suppliers', prefix: 'SUP' },
+  po: { table: 'purchase_orders', prefix: 'PO' },
+  rfq: { table: 'rfqs', prefix: 'RFQ' },
+  sq: { table: 'sales_quotes', prefix: 'SQ' },
+  invoice: { table: 'client_invoices', prefix: 'INV' },
+  grn: { table: 'grns', prefix: 'GRN' },
+  contract: { table: 'legal_contracts', prefix: 'CON' },
+  opd: { table: 'company_documents', prefix: 'OPD' }
+};
+
+app.get('/api/next-id/:type', async (req, res) => {
+  const type = req.params.type.toLowerCase();
+  const config = ID_PREFIX_MAP[type];
+  if (!config) {
+    return res.status(400).json({ error: 'Unknown document type' });
+  }
+
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+
+  try {
+    const row = await db.get(`SELECT COUNT(*) as count FROM ${config.table}`);
+    let nextNum = (row?.count || 0) + 1;
+    let candidateId = `${config.prefix}-${year}-${month}-${String(nextNum).padStart(3, '0')}`;
+    
+    while (await db.get(`SELECT id FROM ${config.table} WHERE id = ? OR id = ?`, [candidateId, `${config.prefix}/${year}/${month}/${String(nextNum).padStart(3, '0')}`])) {
+      nextNum++;
+      candidateId = `${config.prefix}-${year}-${month}-${String(nextNum).padStart(3, '0')}`;
+    }
+    res.json({ id: candidateId });
+  } catch (err) {
+    console.error(`Error generating next ID for ${type}:`, err);
+    res.json({ id: `${config.prefix}-${year}-${month}-001` });
+  }
+});
+
 // Clients & Suppliers
 app.get('/api/clients', async (req, res) => {
   const clients = await db.all('SELECT * FROM clients ORDER BY name ASC');
   res.json(clients);
 });
 app.post('/api/clients', async (req, res) => {
-  const { id, name, registration_num, tax_pin, contact_name, email, phone, address } = req.body;
+  let { id, name, registration_num, tax_pin, contact_name, email, phone, address } = req.body;
+  if (!id) {
+    const row = await db.get('SELECT COUNT(*) as count FROM clients');
+    id = `CLI-${String((row?.count || 0) + 1).padStart(3, '0')}`;
+  }
   await db.run('INSERT INTO clients (id, name, registration_num, tax_pin, contact_name, email, phone, address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [id, name, registration_num, tax_pin, contact_name, email, phone, address]);
+  res.json({ success: true, id });
+});
+app.delete('/api/clients/:id', async (req, res) => {
+  await db.run('DELETE FROM clients WHERE id = ?', [req.params.id]);
   res.json({ success: true });
 });
 
@@ -886,8 +953,16 @@ app.get('/api/suppliers', async (req, res) => {
   res.json(suppliers);
 });
 app.post('/api/suppliers', async (req, res) => {
-  const { id, name, kra_pin, registration_num, email, phone, bank_name, bank_branch, account_number } = req.body;
+  let { id, name, kra_pin, registration_num, email, phone, bank_name, bank_branch, account_number } = req.body;
+  if (!id) {
+    const row = await db.get('SELECT COUNT(*) as count FROM suppliers');
+    id = `SUP-${String((row?.count || 0) + 1).padStart(3, '0')}`;
+  }
   await db.run('INSERT INTO suppliers (id, name, kra_pin, registration_num, email, phone, bank_name, bank_branch, account_number) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', [id, name, kra_pin, registration_num, email, phone, bank_name, bank_branch, account_number]);
+  res.json({ success: true, id });
+});
+app.delete('/api/suppliers/:id', async (req, res) => {
+  await db.run('DELETE FROM suppliers WHERE id = ?', [req.params.id]);
   res.json({ success: true });
 });
 
@@ -1025,12 +1100,20 @@ app.get('/api/tenders', async (req, res) => {
       items: safeParse(po.items)
     }));
     
+    const lpo_total = lpos.reduce((sum, l) => sum + (parseFloat(l.total_value) || 0), 0);
+    const contractVal = parseFloat(t.contract_value) || 0;
+    const effective_contract_value = contractVal > 0 ? contractVal : lpo_total;
+    const is_open_framework = contractVal === 0;
+
     return { 
         ...t, 
         deliverables, 
         lpos, 
         sales_quotes,
         pos,
+        lpo_total,
+        effective_contract_value,
+        is_open_framework,
         deliverables_json: undefined, 
         lpos_json: undefined,
         sales_quotes_json: undefined,
@@ -1043,16 +1126,64 @@ app.get('/api/tenders', async (req, res) => {
 
 // POST /api/tenders
 app.post('/api/tenders', validate(TenderSchema), async (req, res) => {
-  const { id, name, client, client_reference, category, contract_value } = req.body;
+  let { id, name, client, client_reference, category, contract_value, contract_type, contract_period } = req.body;
+  
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+
+  let existing = id ? await db.get('SELECT id FROM tenders WHERE id = ?', [id]) : null;
+  if (!id || existing || id.includes('Math')) {
+    const row = await db.get('SELECT COUNT(*) as count FROM tenders');
+    let nextNum = (row?.count || 0) + 1;
+    id = `TND-${year}-${month}-${String(nextNum).padStart(3, '0')}`;
+    while (await db.get('SELECT id FROM tenders WHERE id = ?', [id])) {
+      nextNum++;
+      id = `TND-${year}-${month}-${String(nextNum).padStart(3, '0')}`;
+    }
+  }
   
   await db.run(
-    `INSERT INTO tenders (id, name, client_id, client_name, client_reference, category, contract_value) 
-     VALUES (?, ?, NULL, ?, ?, ?, ?)`,
-    [id, name, client, client_reference || null, category, contract_value]
+    `INSERT INTO tenders (id, name, client_id, client_name, client_reference, category, contract_type, contract_period, contract_value) 
+     VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)`,
+    [id, name, client || 'Direct Client', client_reference || null, category || 'Framework Agreement', contract_type || 'Framework Call-Off Agreement', contract_period || '24 Months', contract_value || 0]
   );
   
   const newTender = await db.get('SELECT *, client_name as client FROM tenders WHERE id = ?', [id]);
   res.status(201).json(newTender);
+});
+
+app.put('/api/tenders/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, client, client_reference, category, contract_type, contract_period, contract_value, status } = req.body;
+
+  await db.run(
+    `UPDATE tenders 
+     SET name = COALESCE(?, name), 
+         client_name = COALESCE(?, client_name), 
+         client_reference = COALESCE(?, client_reference), 
+         category = COALESCE(?, category), 
+         contract_type = COALESCE(?, contract_type), 
+         contract_period = COALESCE(?, contract_period), 
+         contract_value = COALESCE(?, contract_value), 
+         status = COALESCE(?, status), 
+         updated_at = CURRENT_TIMESTAMP 
+     WHERE id = ?`,
+    [name, client, client_reference, category, contract_type, contract_period, contract_value, status, id]
+  );
+
+  const updated = await db.get('SELECT *, client_name as client FROM tenders WHERE id = ?', [id]);
+  res.json(updated);
+});
+
+app.delete('/api/tenders/:id', async (req, res) => {
+  const { id } = req.params;
+  await db.run('DELETE FROM deliverables WHERE tender_id = ?', [id]);
+  await db.run('DELETE FROM rfqs WHERE tender_id = ?', [id]);
+  await db.run('DELETE FROM client_lpos WHERE tender_id = ?', [id]);
+  await db.run('DELETE FROM sales_quotes WHERE tender_id = ?', [id]);
+  await db.run('DELETE FROM tenders WHERE id = ?', [id]);
+  res.json({ success: true, message: `Tender '${id}' deleted successfully` });
 });
 
 // ==========================================
@@ -1079,8 +1210,41 @@ app.post('/api/lpos', async (req, res) => {
     [id, tender_id, client_reference || null, issue_date, due_date, total_value, items]
   );
   
+  // Auto-create matching deliverable for the Tender with clean description
+  try {
+    const dlvId = `DLV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const tender = await db.get('SELECT name FROM tenders WHERE id = ?', [tender_id]);
+    let cleanName = (tender?.name || '').replace(/^(?:Supply\s+and\s+Delivery\s+of|Supply\s+of|Delivery\s+of|Provision\s+of)\s+/i, '').trim();
+    if (cleanName) cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+    const desc = cleanName ? `LPO #${id} - ${cleanName}` : `LPO #${id} Fulfillment`;
+
+    await db.run(
+      `INSERT INTO deliverables (id, tender_id, description, type, billing_method, planned_date, due_date, items, status) 
+       VALUES (?, ?, ?, 'Goods', 'Fixed Price', ?, ?, ?, 'Planned')`,
+      [dlvId, tender_id, desc, issue_date || new Date().toISOString().split('T')[0], due_date, items || '[]']
+    );
+  } catch(err) {
+    console.error('Auto deliverable creation error:', err);
+  }
+
   const newLPO = await db.get('SELECT * FROM client_lpos WHERE id = ?', [id]);
   res.status(201).json(newLPO);
+});
+
+app.put('/api/lpos/:id', async (req, res) => {
+  const { id } = req.params;
+  const { client_reference, issue_date, due_date, total_value } = req.body;
+  await db.run(
+    `UPDATE client_lpos SET client_reference = COALESCE(?, client_reference), issue_date = COALESCE(?, issue_date), due_date = COALESCE(?, due_date), total_value = COALESCE(?, total_value) WHERE id = ?`,
+    [client_reference, issue_date, due_date, total_value, id]
+  );
+  res.json({ success: true });
+});
+
+app.delete('/api/lpos/:id', async (req, res) => {
+  const { id } = req.params;
+  await db.run('DELETE FROM client_lpos WHERE id = ?', [id]);
+  res.json({ success: true, message: `Client LPO '${id}' deleted` });
 });
 
 // ==========================================
@@ -1159,6 +1323,18 @@ app.put('/api/pos/:id/reject', async (req, res) => {
   const { id } = req.params;
   await db.run('UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', ['Rejected', id]);
   res.json({ message: 'Purchase Order Rejected.' });
+});
+
+app.delete('/api/pos/:id', async (req, res) => {
+  const { id } = req.params;
+  await db.run('DELETE FROM purchase_orders WHERE id = ?', [id]);
+  res.json({ success: true, message: `Purchase Order '${id}' deleted` });
+});
+
+app.delete('/api/rfqs/:id', async (req, res) => {
+  const { id } = req.params;
+  await db.run('DELETE FROM rfqs WHERE id = ?', [id]);
+  res.json({ success: true, message: `RFQ '${id}' deleted` });
 });
 
 // ==========================================
@@ -1398,6 +1574,26 @@ app.post('/api/deliverables/:id/evidence', upload.single('evidence_file'), async
   res.status(201).json(updatedEv);
 });
 
+// POST /api/deliverables/:id/auto-fulfill (1-Click Auto Fulfill Delivery & Auto Generate Delivery Note)
+app.post('/api/deliverables/:id/auto-fulfill', async (req, res) => {
+  const { id } = req.params;
+  const dlv = await db.get('SELECT * FROM deliverables WHERE id = ?', [id]);
+  if (!dlv) return res.status(404).json({ error: 'Deliverable not found' });
+
+  const evId = `GDN-${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}-${Math.floor(100+Math.random()*900)}`;
+  const dateSubmitted = new Date().toISOString().split('T')[0];
+  const details = `Automated Goods Delivery Note for ${dlv.description}. All items verified and accepted under contract terms.`;
+
+  await db.run(
+    `INSERT INTO evidence (id, deliverable_id, type, details, date_submitted, revenue_generated) 
+     VALUES (?, ?, 'Goods Delivery Note', ?, ?, 0)`,
+    [evId, id, details, dateSubmitted]
+  );
+
+  await db.run(`UPDATE deliverables SET status = 'Approved' WHERE id = ?`, [id]);
+  res.json({ success: true, message: `Deliverable '${dlv.description}' auto-fulfilled with Delivery Note ${evId}!`, evidence_id: evId });
+});
+
 // GET /api/evidence (For GRN / Deliveries Review in Finance)
 app.get('/api/evidence', async (req, res) => {
   const query = `
@@ -1548,7 +1744,7 @@ app.get('/api/analytics/cashflow', async (req, res) => {
 // ==========================================
 // DOCUMENT EXPORT & ARCHIVE
 // ==========================================
-app.get('/api/tenders/:id/archive', async (req, res) => {
+app.get('/api/tenders/:id(*)/archive', async (req, res) => {
   const { id } = req.params;
   
   const tender = await db.get('SELECT * FROM tenders WHERE id = ?', [id]);

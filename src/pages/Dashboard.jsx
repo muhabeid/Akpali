@@ -162,7 +162,7 @@ export default function Dashboard({ setGlobalDrawer }) {
             <span style={{ fontWeight: '600', fontSize: '0.75rem', textAlign: 'center' }}>10. Gen. Invoice</span>
           </button>
 
-          <button className="btn" onClick={() => setGlobalDrawer('op_doc')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.4)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
+          <button className="btn" onClick={() => setGlobalDrawer('op_documents')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '1rem 0.25rem', gap: '0.5rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.4)', borderRadius: 'var(--radius-md)', transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>
             <FileText size={22} style={{ opacity: 0.9 }} />
             <span style={{ fontWeight: '700', fontSize: '0.75rem', textAlign: 'center' }}>11. Op. Documents</span>
           </button>
@@ -229,7 +229,7 @@ export default function Dashboard({ setGlobalDrawer }) {
                   <td style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'hsl(var(--primary))' }}>{lpo.id}</td>
                   <td style={{ padding: '1rem' }}>{lpo.tender_name}</td>
                   <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>{lpo.issue_date}</td>
-                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>${lpo.total_value.toLocaleString()}</td>
+                  <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>{formatAmount(lpo.total_value)}</td>
                 </tr>
               ))
             )}

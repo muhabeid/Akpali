@@ -3,11 +3,11 @@ import { Plus, Trash2 } from 'lucide-react'
 
 export default function RecordLPOForm() {
   const [tenders, setTenders] = useState([])
-  const [items, setItems] = useState([{ id: 1, desc: '', qty: 0, price: 0 }])
+  const [items, setItems] = useState([{ id: 1, desc: '', qty: 0, unit: 'PCS', price: 0 }])
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const [formData, setFormData] = useState({
-    id: `LPO-2026-${Math.floor(Math.random() * 10000)}`,
+    id: 'Loading LPO ID...',
     tender_id: '',
     client_reference: '',
     issue_date: '',
@@ -19,10 +19,17 @@ export default function RecordLPOForm() {
       .then(res => res.json())
       .then(data => setTenders(data))
       .catch(err => console.error("Could not fetch tenders:", err))
+
+    fetch('http://localhost:5000/api/next-id/lpo')
+      .then(res => res.json())
+      .then(data => {
+        if (data.id) setFormData(prev => ({ ...prev, id: data.id }))
+      })
+      .catch(err => console.error("Could not fetch next LPO ID:", err))
   }, [])
 
   const addItem = () => {
-    setItems([...items, { id: Date.now(), desc: '', qty: 0, price: 0 }])
+    setItems([...items, { id: Date.now(), desc: '', qty: 0, unit: 'PCS', price: 0 }])
   }
 
   const removeItem = (id) => {
@@ -59,7 +66,7 @@ export default function RecordLPOForm() {
       });
 
       if (res.ok) {
-        alert('LPO Recorded successfully!');
+        alert(`✅ Client LPO '${formData.id}' recorded successfully!`);
         window.location.reload();
       } else {
         alert('Failed to record LPO');
@@ -75,8 +82,8 @@ export default function RecordLPOForm() {
   return (
     <form onSubmit={handleSubmit}>
       <div className="form-group">
-        <label>LPO Number (Auto)</label>
-        <input type="text" className="form-control" value={formData.id} disabled />
+        <label>LPO Number (Linear Generator)</label>
+        <input type="text" className="form-control" value={formData.id} disabled style={{ fontWeight: 'bold', color: '#38bdf8' }} />
       </div>
       <div className="form-group">
         <label>Link to Tender</label>
@@ -107,15 +114,15 @@ export default function RecordLPOForm() {
       </div>
       
       <div className="form-group">
-        <label>LPO Items</label>
+        <label>LPO Line Items & Units of Measurement</label>
         <div style={{ background: 'hsla(var(--border), 0.3)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
           {items.map((item) => (
             <div key={item.id} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.5rem', flex: 1 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1.2fr', gap: '0.5rem', flex: 1 }}>
                 <input 
                   type="text" 
                   className="form-control" 
-                  placeholder="Description" 
+                  placeholder="Item Description" 
                   value={item.desc}
                   onChange={(e) => updateItem(item.id, 'desc', e.target.value)}
                 />
@@ -126,6 +133,27 @@ export default function RecordLPOForm() {
                   value={item.qty || ''}
                   onChange={(e) => updateItem(item.id, 'qty', e.target.value)}
                 />
+                <select 
+                  className="form-control" 
+                  value={item.unit || 'PCS'}
+                  onChange={(e) => updateItem(item.id, 'unit', e.target.value)}
+                >
+                  <option value="PCS">PCS</option>
+                  <option value="KG">KG</option>
+                  <option value="TONS">TONS</option>
+                  <option value="MTRS">MTRS</option>
+                  <option value="BAGS">BAGS</option>
+                  <option value="LOT">LOT</option>
+                  <option value="SETS">SETS</option>
+                  <option value="HRS">HRS</option>
+                  <option value="DAYS">DAYS</option>
+                  <option value="MONTHS">MONTHS</option>
+                  <option value="TRIPS">TRIPS</option>
+                  <option value="SQM">SQM</option>
+                  <option value="CBM">CBM</option>
+                  <option value="LTRS">LTRS</option>
+                  <option value="BOX">BOX</option>
+                </select>
                 <input 
                   type="number" 
                   className="form-control" 
@@ -152,7 +180,7 @@ export default function RecordLPOForm() {
         <input 
           type="text" 
           className="form-control" 
-          value={`$${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
+          value={`KSh ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`} 
           disabled 
           style={{ opacity: 0.7, fontWeight: 'bold', color: 'hsl(var(--success))' }} 
         />

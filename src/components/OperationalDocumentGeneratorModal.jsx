@@ -23,6 +23,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
   const [isUploadingSeal, setIsUploadingSeal] = useState(false)
 
   const [companyProfile, setCompanyProfile] = useState(null)
+  const [opdId, setOpdId] = useState('OPD/2026/08/001')
 
   useEffect(() => {
     fetch('http://localhost:5000/api/company-profile')
@@ -35,6 +36,11 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
         }
       })
       .catch(err => console.error('Error fetching company profile:', err))
+
+    fetch('http://localhost:5000/api/next-id/opd')
+      .then(res => res.json())
+      .then(data => { if (data && data.id) setOpdId(data.id) })
+      .catch(err => console.error('Error fetching next OPD ID:', err))
   }, [])
 
   const handleLogoFileUpload = async (e) => {
@@ -111,7 +117,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
   // 5. Handover & Practical Completion
   const [defectPeriod, setDefectPeriod] = useState('6 Months (Expiring 25 Jan 2027)')
   const [snagStatus, setSnagStatus] = useState('Minor Snag List Attached (3 touch-up items remaining)')
-  const [retentionRelease, setRetentionRelease] = useState('50% Released ($12,500), 50% Withheld until Defect Period Expiry')
+  const [retentionRelease, setRetentionRelease] = useState('50% Released (KSh 1,250,000), 50% Withheld until Defect Period Expiry')
 
   // 6. Daily Site Log & Diary
   const [laborForce, setLaborForce] = useState('38 Personnel (4 Engineers, 24 Technicians, 10 General Labor)')
@@ -294,8 +300,8 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.8rem' }}>Contract Value ($)</label>
-                    <input type="text" className="form-control" value={contractValue} onChange={e => setContractValue(e.target.value)} />
+                    <label style={{ fontSize: '0.8rem' }}>Contract Value (KSh)</label>
+                    <input type="number" className="form-control" value={contractValue} onChange={e => setContractValue(e.target.value)} />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
                     <label style={{ fontSize: '0.8rem' }}>Duration</label>
@@ -449,7 +455,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                     <input type="text" className="form-control" value={variationRef} onChange={e => setVariationRef(e.target.value)} />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.8rem' }}>Cost Adjustment ($)</label>
+                    <label style={{ fontSize: '0.8rem' }}>Cost Adjustment (KSh)</label>
                     <input type="text" className="form-control" value={costAdjustment} onChange={e => setCostAdjustment(e.target.value)} />
                   </div>
                 </div>
@@ -501,7 +507,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Gross Work ($)</label>
+                    <label style={{ fontSize: '0.75rem' }}>Gross Work (KSh)</label>
                     <input type="number" className="form-control" value={grossValue} onChange={e => {
                       setGrossValue(e.target.value)
                       const ret = Number(e.target.value) * 0.1
@@ -514,7 +520,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                     <input type="number" className="form-control" value={retentionAmt} onChange={e => setRetentionAmt(e.target.value)} />
                   </div>
                   <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.75rem' }}>Net Payable ($)</label>
+                    <label style={{ fontSize: '0.75rem' }}>Net Payable (KSh)</label>
                     <input type="number" className="form-control" value={netPayable} onChange={e => setNetPayable(e.target.value)} />
                   </div>
                 </div>
@@ -610,20 +616,25 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                   <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
                     <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
                     <div style={{ fontWeight: '500' }}>
-                      Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
+                      Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'} &bull; KRA PIN: {companyProfile?.tax_pin || 'P051234567Z'}
                     </div>
+                  </div>
+
+                  {/* CENTERED DOCUMENT TITLE (BELOW TEL & EMAIL, OUTSIDE PLACEHOLDER) */}
+                  <div style={{ marginTop: '0.75rem', marginBottom: '0.15rem' }}>
+                    <h2 style={{ margin: 0, color: currentTemplate?.primary_color || '#0f172a', fontSize: '1.2rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: `2px solid ${currentTemplate?.primary_color || '#0f172a'}`, display: 'inline-block', paddingBottom: '2px' }}>
+                      {title || currentTemplate?.header_text || 'OFFICIAL DOCUMENT'}
+                    </h2>
                   </div>
                 </div>
 
-                {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT ABOVE LINE BREAK) */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                  <div style={{ fontSize: '0.95rem', fontWeight: '800', color: currentTemplate?.primary_color || '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {title || currentTemplate?.header_text || 'OFFICIAL DOCUMENT'}
+                {/* PLACEHOLDER CONTAINER (DOC REF AT LEFT END, DATE AT RIGHT END) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.825rem', color: '#334155' }}>
+                  <div>
+                    <strong>Doc Ref #:</strong> {opdId}
                   </div>
-                  <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    <span><strong>Doc Ref #:</strong> {docType}-{Math.floor(Math.random() * 9000 + 1000)}</span>
-                    <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
-                    <span><strong>Date Generated:</strong> {docDate}</span>
+                  <div style={{ textAlign: 'right' }}>
+                    <strong>Date Generated:</strong> {docDate}
                   </div>
                 </div>
               </div>

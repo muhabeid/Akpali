@@ -59,7 +59,7 @@ export default function Finances({ setGlobalDrawer }) {
       const invData = await invRes.json();
       setInvoices(invData);
 
-      alert(`[3-WAY MATCH ENGINE RESULT]\n\nStatus: ${data.matchStatus}\nDetails: ${data.details}\nBilled Amount: $${data.invoiceAmount}\nVerified GRN Total: $${data.totalGRNValue}`);
+      alert(`[3-WAY MATCH ENGINE RESULT]\n\nStatus: ${data.matchStatus}\nDetails: ${data.details}\nBilled Amount: ${formatAmount(data.invoiceAmount)}\nVerified GRN Total: ${formatAmount(data.totalGRNValue)}`);
     } catch (e) {
       console.error(e);
       alert('Error running 3-way match');

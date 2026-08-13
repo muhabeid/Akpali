@@ -157,17 +157,20 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
               }
               .no-print-toolbar { display: none !important; }
               body { background: white !important; padding: 0 !important; margin: 0 !important; }
-              .dossier-container, .print-only { 
+              .dossier-container, .print-only, #document-preview-print-area { 
                 box-shadow: none !important; 
                 padding: 0 !important; 
-                margin: 0 !important; 
-                width: 100% !important;
-                max-width: 100% !important;
+                margin: 0 auto !important; 
+                width: 210mm !important;
+                max-width: 210mm !important;
+                box-sizing: border-box !important;
+                border: none !important;
+                border-radius: 0 !important;
               }
               .page-break { page-break-before: always !important; }
               @page {
-                size: A4;
-                margin: 15mm;
+                size: A4 portrait;
+                margin: 12mm 15mm;
               }
             }
           </style>

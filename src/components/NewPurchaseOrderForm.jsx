@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react'
 import { Trash2, PlusCircle } from 'lucide-react'
 import { useRole } from '../context/RoleContext'
 
-export default function NewPurchaseOrderForm() {
+export default function NewPurchaseOrderForm({ onSuccess }) {
   const { currentRole } = useRole();
   const [tenders, setTenders] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -11,7 +11,7 @@ export default function NewPurchaseOrderForm() {
   const [selectedLpoId, setSelectedLpoId] = useState('')
   
   const [formData, setFormData] = useState({
-    poNum: `PO-2023-${Math.floor(Math.random() * 1000)}`,
+    poNum: 'PO-001',
     supplier: '',
     tender_id: '',
     expected_date: ''
@@ -19,7 +19,7 @@ export default function NewPurchaseOrderForm() {
 
   // Line items for Goods
   const [lineItems, setLineItems] = useState([
-    { id: 1, name: '', qty: 1, unitPrice: 0 }
+    { id: 1, name: '', qty: 1, unit: 'PCS', unitPrice: 0 }
   ])
 
   // Placeholder for Services
@@ -27,6 +27,13 @@ export default function NewPurchaseOrderForm() {
   const [serviceTotal, setServiceTotal] = useState(0)
 
   useEffect(() => {
+    fetch('http://localhost:5000/api/next-id/po')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.id) setFormData(prev => ({ ...prev, poNum: data.id }))
+      })
+      .catch(err => console.error("Could not fetch next PO ID:", err))
+
     fetch('http://localhost:5000/api/tenders')
       .then(res => res.json())
       .then(data => setTenders(data))
@@ -61,6 +68,7 @@ export default function NewPurchaseOrderForm() {
             id: Date.now() + index,
             name: item.desc || item.description || '',
             qty: item.qty || item.quantity || 1,
+            unit: item.unit || 'PCS',
             unitPrice: 0 // Default to 0 since we're sourcing from a supplier now
           }));
           
@@ -76,7 +84,7 @@ export default function NewPurchaseOrderForm() {
   }
 
   const addLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now(), name: '', qty: 1, unitPrice: 0 }])
+    setLineItems([...lineItems, { id: Date.now(), name: '', qty: 1, unit: 'PCS', unitPrice: 0 }])
   }
 
   const removeLineItem = (id) => {
@@ -107,7 +115,7 @@ export default function NewPurchaseOrderForm() {
         expected_date: formData.expected_date,
         total_value: calculateTotal(),
         status: currentRole === 'Staff' ? 'Awaiting Approval' : 'Pending Delivery',
-        items: poType === 'Goods' ? JSON.stringify(lineItems) : JSON.stringify([{ desc: serviceDescription }])
+        items: poType === 'Goods' ? JSON.stringify(lineItems) : JSON.stringify([{ desc: serviceDescription, unit: 'LOT' }])
       };
 
       const res = await fetch('http://localhost:5000/api/pos', {
@@ -120,7 +128,7 @@ export default function NewPurchaseOrderForm() {
         if (currentRole === 'Staff') {
           alert('Purchase Order drafted successfully and sent to Manager for approval.');
         } else {
-          alert('Purchase Order raised and dispatched successfully!');
+          alert(`✅ Purchase Order '${formData.poNum}' raised and dispatched successfully!`);
         }
         window.location.reload();
       } else {
@@ -140,8 +148,8 @@ export default function NewPurchaseOrderForm() {
       {/* HEADER SECTION */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
         <div className="form-group">
-          <label>PO Number (Auto)</label>
-          <input type="text" className="form-control" value={formData.poNum} disabled />
+          <label>PO Number (Linear Generator)</label>
+          <input type="text" className="form-control" value={formData.poNum} disabled style={{ fontWeight: 'bold', color: '#38bdf8' }} />
         </div>
         <div className="form-group">
           <label>Supplier</label>
@@ -216,14 +224,15 @@ export default function NewPurchaseOrderForm() {
       {/* DYNAMIC CONTENTS: GOODS OR SERVICES */}
       {poType === 'Goods' ? (
         <div style={{ background: 'var(--bg-card)', padding: '1rem', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)' }}>
-          <h4 style={{ margin: '0 0 1rem 0' }}>Line Items</h4>
+          <h4 style={{ margin: '0 0 1rem 0' }}>Line Items & Units of Measurement</h4>
           
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left' }}>
-                <th style={{ paddingBottom: '0.5rem', width: '50%' }}>Item Description</th>
+                <th style={{ paddingBottom: '0.5rem', width: '40%' }}>Item Description</th>
                 <th style={{ paddingBottom: '0.5rem', width: '15%' }}>Qty</th>
-                <th style={{ paddingBottom: '0.5rem', width: '25%' }}>Unit Price ($)</th>
+                <th style={{ paddingBottom: '0.5rem', width: '15%' }}>Unit</th>
+                <th style={{ paddingBottom: '0.5rem', width: '20%' }}>Unit Price ($)</th>
                 <th style={{ paddingBottom: '0.5rem', width: '10%' }}></th>
               </tr>
             </thead>
@@ -235,6 +244,25 @@ export default function NewPurchaseOrderForm() {
                   </td>
                   <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
                     <input type="number" className="form-control" min="1" value={item.qty} onChange={e => updateLineItem(item.id, 'qty', e.target.value)} required />
+                  </td>
+                  <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
+                    <select className="form-control" value={item.unit || 'PCS'} onChange={e => updateLineItem(item.id, 'unit', e.target.value)}>
+                      <option value="PCS">PCS</option>
+                      <option value="KG">KG</option>
+                      <option value="TONS">TONS</option>
+                      <option value="MTRS">MTRS</option>
+                      <option value="BAGS">BAGS</option>
+                      <option value="LOT">LOT</option>
+                      <option value="SETS">SETS</option>
+                      <option value="HRS">HRS</option>
+                      <option value="DAYS">DAYS</option>
+                      <option value="MONTHS">MONTHS</option>
+                      <option value="TRIPS">TRIPS</option>
+                      <option value="SQM">SQM</option>
+                      <option value="CBM">CBM</option>
+                      <option value="LTRS">LTRS</option>
+                      <option value="BOX">BOX</option>
+                    </select>
                   </td>
                   <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
                     <input type="number" className="form-control" min="0" step="0.01" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', e.target.value)} required />
@@ -276,14 +304,14 @@ export default function NewPurchaseOrderForm() {
         
         {poType === 'Service' ? (
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Total Value (USD)</label>
+            <label>Total Value (KSh)</label>
             <input type="number" className="form-control" min="0" step="0.01" required value={serviceTotal} onChange={e => setServiceTotal(e.target.value)} />
           </div>
         ) : (
           <div style={{ padding: '1rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', textAlign: 'right', border: '1px solid hsl(var(--border))' }}>
             <span style={{ fontSize: '0.875rem', color: 'hsl(var(--text-secondary))' }}>Calculated Total Value</span>
             <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
-              ${calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              KSh {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         )}

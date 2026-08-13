@@ -14,6 +14,12 @@ import ApprovalWorkflowForm from './components/ApprovalWorkflowForm'
 import LegalContractForm from './components/LegalContractForm'
 import RecordTransactionForm from './components/RecordTransactionForm'
 import CompanyProfileDossier from './components/CompanyProfileDossier'
+import NewTenderForm from './components/NewTenderForm'
+import UploadDocumentForm from './components/UploadDocumentForm'
+import NewPurchaseOrderForm from './components/NewPurchaseOrderForm'
+import NewSupplierForm from './components/NewSupplierForm'
+import NewClientForm from './components/NewClientForm'
+import OperationalDocumentGeneratorModal from './components/OperationalDocumentGeneratorModal'
 import { printElement } from './utils/printHelper'
 import { CurrencyProvider, useCurrency } from './context/CurrencyContext'
 import { RoleProvider, useRole } from './context/RoleContext'
@@ -216,8 +222,14 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
                 
                 <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 'bold', padding: '0.2rem 0.5rem' }}>⚡ QUICK LAUNCHERS</div>
 
-                <button className="btn" style={{ justifyContent: 'flex-start', background: '#1e293b', color: '#38bdf8', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/tenders'); setMenuOpen(false); }}>
+                <button className="btn" style={{ justifyContent: 'flex-start', background: '#1e293b', color: '#38bdf8', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/tenders'); setGlobalDrawer('tender'); setMenuOpen(false); }}>
                   <PlusCircle size={15} /> + Create New Tender
+                </button>
+                <button className="btn" style={{ justifyContent: 'flex-start', background: '#1e293b', color: '#a855f7', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { setGlobalDrawer('new_po'); setMenuOpen(false); }}>
+                  <PlusCircle size={15} /> + Raise Purchase Order (PO)
+                </button>
+                <button className="btn" style={{ justifyContent: 'flex-start', background: '#1e293b', color: '#ec4899', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { setGlobalDrawer('op_documents'); setMenuOpen(false); }}>
+                  <FileText size={15} /> ⚡ Operational Documents Generator
                 </button>
                 <button className="btn" style={{ justifyContent: 'flex-start', background: '#1e293b', color: '#10b981', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/finances'); setMenuOpen(false); }}>
                   <PlusCircle size={15} /> + Post Journal Entry
@@ -476,6 +488,184 @@ function CorporateDossierModal({ isOpen, onClose }) {
   )
 }
 
+function SystemSOPModal({ isOpen, onClose }) {
+  const [activeTab, setActiveTab] = useState('tenders')
+
+  return (
+    <Drawer isOpen={isOpen} onClose={onClose} title="📖 Akpali Corporate ERP - Standard Operating Procedures (SOPs) & User Manual" isModal={true} width="900px">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        
+        {/* SOP MODULE NAVIGATION TABS */}
+        <div style={{ display: 'flex', gap: '0.4rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem', flexWrap: 'wrap' }}>
+          {[
+            { id: 'tenders', label: '📜 Tenders & Sales' },
+            { id: 'procurement', label: '🛒 Procurement & POs' },
+            { id: 'finances', label: '🏛️ Bookkeeping & VAT' },
+            { id: 'governance', label: '🏢 Corporate & Dossier' },
+            { id: 'shortcuts', label: '⚡ System Shortcuts' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '0.45rem 0.95rem',
+                borderRadius: '6px',
+                border: 'none',
+                background: activeTab === tab.id ? '#4A8BCE' : 'hsla(var(--border), 0.3)',
+                color: activeTab === tab.id ? '#fff' : 'inherit',
+                fontSize: '0.85rem',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* SOP CONTENT PANEL */}
+        <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1.5rem', color: '#0f172a', lineHeight: '1.6' }}>
+          
+          {activeTab === 'tenders' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#4A8BCE' }}>📜 Tenders & Sales Operations SOP</h3>
+              
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#0284c7', fontSize: '0.95rem' }}>1. Logging New Tenders & Sales Quotations</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Navigate to <strong>Tenders & Projects</strong> → click <strong>+ New Tender / Project Bidding</strong>. Enter project details, tender category, estimated budget, client details, and itemized line items.
+                </p>
+              </div>
+
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#0284c7', fontSize: '0.95rem' }}>2. Generating Sales Quotations (SQ) & KES Currency</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Click <strong>🖨️ Print Sales Quotation</strong> under any tender. Quotations automatically format amounts in KES with 16% VAT, official company tax PIN, stamp, and payment terms ready for export to PDF.
+                </p>
+              </div>
+
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#0284c7', fontSize: '0.95rem' }}>3. Recording Client LPOs & Site Milestone Deliveries</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Upon winning a bid, attach the incoming Client Local Purchase Order (LPO). Upload milestone photo evidence and site delivery receipts under Deliverables.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'procurement' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#4A8BCE' }}>🛒 Procurement & Supply Chain SOP</h3>
+              
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#d97706', fontSize: '0.95rem' }}>1. Sourcing Supplier Quotations & Raising POs</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Navigate to <strong>Procurement</strong> → click <strong>+ Generate RFQ from LPO</strong> or <strong>+ Raise Purchase Order (PO)</strong>. Select supplier, line item quantities, and agreed rates.
+                </p>
+              </div>
+
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#d97706', fontSize: '0.95rem' }}>2. Goods Receipt Notes (GRN) & Site Receiving</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  When materials arrive on site, click <strong>Record GRN</strong> to log batch numbers, driver details, and quantity received vs ordered.
+                </p>
+              </div>
+
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#d97706', fontSize: '0.95rem' }}>3. AI 3-Way Match Verification</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Before approving supplier invoices, the system automatically compares the Purchase Order (PO) vs Goods Receipt Note (GRN) vs Supplier Invoice. Any price or quantity discrepancy triggers a Maker-Checker alert in your Inbox.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'finances' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#4A8BCE' }}>🏛️ Corporate Bookkeeping & Finance SOP</h3>
+              
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#16a34a', fontSize: '0.95rem' }}>1. Double-Entry General Ledger Postings</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Navigate to <strong>Corporate Bookkeeping</strong> → <strong>General Ledger</strong>. Click <strong>+ Post Journal Entry</strong> to log balanced debit and credit transactions across chart of accounts.
+                </p>
+              </div>
+
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#16a34a', fontSize: '0.95rem' }}>2. Treasury Accounts & Cashbook Payments</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Record incoming client payments or supplier disbursements via <strong>+ Record Cashbook Payment</strong>. Balances automatically update corporate bank ledger accounts.
+                </p>
+              </div>
+
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#16a34a', fontSize: '0.95rem' }}>3. 16% VAT Ledger & Monthly KRA Returns</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Access the <strong>16% VAT Ledger</strong> tab to view output VAT collected vs input VAT paid. Export filing audit logs for monthly KRA returns.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'governance' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#4A8BCE' }}>🏢 Corporate Governance & Master Dossier SOP</h3>
+              
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#0284c7', fontSize: '0.95rem' }}>1. Statutory Certificates & Expiry Tracking</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Under <strong>Corporate Hub</strong> → <strong>Statutory Vault</strong>, upload Tax PINs, CR12s, Business Permits, and NCA licenses. The system tracks expiry dates and sends reminder notifications before licenses expire.
+                </p>
+              </div>
+
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#0284c7', fontSize: '0.95rem' }}>2. Compiling 1-Click Master Qualification Dossiers</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Click <strong>📋 Corporate Dossier</strong> in the top Master Menu to generate a unified, print-ready prequalification dossier ready for instant printing, PDF download, or email dispatch to clients.
+                </p>
+              </div>
+
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                <strong style={{ color: '#0284c7', fontSize: '0.95rem' }}>3. Inviting Users & Granting Authorized Task Allocations</strong>
+                <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#334155' }}>
+                  Under <strong>System Settings</strong>, click <strong>+ Invite / Add User</strong>. Select the user's role and allocate their authorized module tasks. Invited users are strictly limited to their allocated permissions upon login.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'shortcuts' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#4A8BCE' }}>⚡ System Shortcuts & Power Tips</h3>
+              
+              <div style={{ background: '#fff', padding: '1rem', borderRadius: '6px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.4rem' }}>
+                  <span style={{ fontWeight: 'bold', color: '#0f172a' }}>Global Real-Time ERP Search</span>
+                  <kbd style={{ background: '#0f172a', color: '#38bdf8', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>Ctrl + K</kbd>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.4rem' }}>
+                  <span style={{ fontWeight: 'bold', color: '#0f172a' }}>Maker-Checker Approval Inbox</span>
+                  <span style={{ color: '#ef4444', fontWeight: 'bold' }}>Top Bar 📥 Inbox Badge</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.4rem' }}>
+                  <span style={{ fontWeight: 'bold', color: '#0f172a' }}>Instant Master Corporate Dossier</span>
+                  <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>Master Menu ☰ → 📋 Corporate Dossier</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 'bold', color: '#0f172a' }}>Base Currency Math</span>
+                  <span style={{ color: '#10b981', fontWeight: 'bold' }}>Uniform Kenya Shillings (KES 1:1)</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </Drawer>
+  )
+}
+
 function Sidebar({ onNavigate }) {
   const location = useLocation()
   const activePath = location.pathname
@@ -540,7 +730,7 @@ function App() {
             <main style={{ flex: 1, padding: '1.5rem' }}>
               <Routes>
                 <Route path="/" element={<Dashboard setGlobalDrawer={setGlobalDrawer} />} />
-                <Route path="/tenders" element={<Tenders />} />
+                <Route path="/tenders" element={<Tenders setGlobalDrawer={setGlobalDrawer} />} />
                 <Route path="/procurement" element={<Procurement setGlobalDrawer={setGlobalDrawer} />} />
                 <Route path="/finances" element={<Finances setGlobalDrawer={setGlobalDrawer} />} />
                 <Route path="/corporate" element={<CorporateHub setGlobalDrawer={setGlobalDrawer} />} />
@@ -550,6 +740,15 @@ function App() {
 
           {/* DRAWERS FOR GLOBAL FORMS */}
           <CorporateDossierModal isOpen={globalDrawer === 'dossier'} onClose={() => setGlobalDrawer(null)} />
+          <SystemSOPModal isOpen={globalDrawer === 'help'} onClose={() => setGlobalDrawer(null)} />
+
+          <Drawer isOpen={globalDrawer === 'tender'} onClose={() => setGlobalDrawer(null)} title="Create New Tender / Project Bidding">
+            <NewTenderForm onSuccess={() => setGlobalDrawer(null)} />
+          </Drawer>
+
+          <Drawer isOpen={globalDrawer === 'upload_document'} onClose={() => setGlobalDrawer(null)} title="Upload Statutory & Governance Document">
+            <UploadDocumentForm onSuccess={() => setGlobalDrawer(null)} />
+          </Drawer>
 
           <Drawer isOpen={globalDrawer === 'invite_user'} onClose={() => setGlobalDrawer(null)} title="Invite User to System">
             <InviteUserForm onSuccess={() => setGlobalDrawer(null)} />
@@ -574,6 +773,22 @@ function App() {
           <Drawer isOpen={globalDrawer === 'profile'} onClose={() => setGlobalDrawer(null)} title="User Profile Settings">
             <EditProfileForm onClose={() => setGlobalDrawer(null)} />
           </Drawer>
+
+          <Drawer isOpen={globalDrawer === 'new_po'} onClose={() => setGlobalDrawer(null)} title="Raise New Purchase Order (PO)" width="850px">
+            <NewPurchaseOrderForm onSuccess={() => setGlobalDrawer(null)} />
+          </Drawer>
+
+          <Drawer isOpen={globalDrawer === 'new_supplier'} onClose={() => setGlobalDrawer(null)} title="Register New Supplier / Vendor">
+            <NewSupplierForm onSuccess={() => setGlobalDrawer(null)} />
+          </Drawer>
+
+          <Drawer isOpen={globalDrawer === 'new_client'} onClose={() => setGlobalDrawer(null)} title="Register New Client / Customer Organization">
+            <NewClientForm onSuccess={() => setGlobalDrawer(null)} />
+          </Drawer>
+
+          {(globalDrawer === 'op_documents' || globalDrawer === 'op_doc') && (
+            <OperationalDocumentGeneratorModal onClose={() => setGlobalDrawer(null)} />
+          )}
 
         </div>
       </RoleProvider>

@@ -1,17 +1,58 @@
 import React, { useState, useEffect } from 'react'
 import { printElement } from '../utils/printHelper'
 import { useCurrency } from '../context/CurrencyContext'
+import DocumentPreviewModal from '../components/DocumentPreviewModal'
 
 export default function Tenders({ setGlobalDrawer }) {
   const { formatAmount } = useCurrency()
   const [selectedTender, setSelectedTender] = useState(null)
   const [expandedDeliverable, setExpandedDeliverable] = useState(null)
-  const [expandedLPO, setExpandedLPO] = useState(null)
-  const [expandedSQ, setExpandedSQ] = useState(null)
   const [tenders, setTenders] = useState([])
   const [loading, setLoading] = useState(true)
   const [usingMockData, setUsingMockData] = useState(false)
   const [companyProfile, setCompanyProfile] = useState(null)
+  const [editingTender, setEditingTender] = useState(null)
+  const [previewModalDoc, setPreviewModalDoc] = useState({ isOpen: false, doc: null, type: '' })
+
+  const handleDeleteTender = async (t) => {
+    if (window.confirm(`Are you sure you want to delete Tender '${t.name}' (${t.id})?\nThis will permanently remove associated LPOs and RFQs.`)) {
+      try {
+        const res = await fetch(`http://localhost:5000/api/tenders/${t.id}`, { method: 'DELETE' });
+        if (res.ok) {
+          alert(`✅ Tender '${t.id}' deleted successfully!`);
+          window.location.reload();
+        } else { alert('Failed to delete tender'); }
+      } catch(err) { console.error(err); alert('Error deleting tender'); }
+    }
+  }
+
+  const handleDeleteLPO = async (lpoId) => {
+    if (window.confirm(`Are you sure you want to delete Client LPO '${lpoId}'?`)) {
+      try {
+        const res = await fetch(`http://localhost:5000/api/lpos/${lpoId}`, { method: 'DELETE' });
+        if (res.ok) {
+          alert(`✅ Client LPO '${lpoId}' deleted successfully!`);
+          window.location.reload();
+        } else { alert('Failed to delete LPO'); }
+      } catch(err) { console.error(err); alert('Error deleting LPO'); }
+    }
+  }
+
+  const handleSaveTenderEdit = async (e) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`http://localhost:5000/api/tenders/${editingTender.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingTender)
+      });
+      if (res.ok) {
+        alert(`✅ Tender '${editingTender.id}' updated successfully!`);
+        setEditingTender(null);
+        window.location.reload();
+      } else { alert('Failed to update tender'); }
+    } catch(err) { console.error(err); alert('Error updating tender'); }
+  }
 
   useEffect(() => {
     fetch('http://localhost:5000/api/company-profile')
@@ -36,16 +77,18 @@ export default function Tenders({ setGlobalDrawer }) {
           <div style={{ width: '100%', display: 'flex', flexDirection: 'column', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-sm)' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', background: 'hsla(var(--border), 0.2)', borderBottom: '2px solid hsl(var(--border))', fontWeight: 'bold', fontSize: '0.875rem' }}>
               <div style={{ padding: '0.75rem' }}>Description</div>
-              <div style={{ padding: '0.75rem' }}>Quantity</div>
-              <div style={{ padding: '0.75rem' }}>Details (Price/Unit)</div>
+              <div style={{ padding: '0.75rem' }}>Quantity / Unit</div>
+              <div style={{ padding: '0.75rem' }}>Unit Price</div>
             </div>
             
             {items.map((item, idx) => (
               <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', borderBottom: idx === items.length - 1 ? 'none' : '1px solid hsl(var(--border))', fontSize: '0.875rem' }}>
                 <div style={{ padding: '0.75rem' }}>{item.desc || item.description || item.name || '-'}</div>
-                <div style={{ padding: '0.75rem' }}>{item.qty || item.quantity || 1}</div>
+                <div style={{ padding: '0.75rem', fontWeight: 'bold' }}>
+                  {item.qty || item.quantity ? `${item.qty || item.quantity} (${item.unit || 'PCS'})` : (item.unit || 'PCS')}
+                </div>
                 <div style={{ padding: '0.75rem' }}>
-                  {item.unitPrice !== undefined ? `$${Number(item.unitPrice).toLocaleString()}` : (item.unit || '-')}
+                  {(item.unitPrice !== undefined || item.price !== undefined) ? `$${Number(item.unitPrice || item.price || 0).toLocaleString()}` : '-'}
                 </div>
               </div>
             ))}
@@ -106,16 +149,21 @@ export default function Tenders({ setGlobalDrawer }) {
 
         <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <div className="card stat-card">
-            <span className="stat-label">Contract Value</span>
-            <span className="stat-value">{formatAmount(selectedTender.contract_value)}</span>
+            <span className="stat-label">Contract Value / Ceiling</span>
+            <span className="stat-value">{formatAmount(selectedTender.effective_contract_value || selectedTender.contract_value || selectedTender.lpo_total || 0)}</span>
+            {selectedTender.contract_value > 0 ? (
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Fixed Ceiling Budget</span>
+            ) : (
+              <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 'bold' }}>⚡ Auto-Calculated (LPOs)</span>
+            )}
           </div>
           <div className="card stat-card">
-            <span className="stat-label">Committed Costs (POs) + Actual</span>
+            <span className="stat-label">Committed Costs (POs)</span>
             <span className="stat-value" style={{ color: 'hsl(var(--danger))' }}>{formatAmount(selectedTender.total_cost || 0)}</span>
           </div>
           <div className="card stat-card">
-            <span className="stat-label">Total Revenue</span>
-            <span className="stat-value" style={{ color: 'hsl(var(--success))' }}>{formatAmount(selectedTender.total_revenue || 0)}</span>
+            <span className="stat-label">Total Revenue (LPOs)</span>
+            <span className="stat-value" style={{ color: 'hsl(var(--success))' }}>{formatAmount(selectedTender.lpo_total || selectedTender.total_revenue || 0)}</span>
           </div>
           <div className="card stat-card">
             <span className="stat-label">Project Profit</span>
@@ -137,100 +185,21 @@ export default function Tenders({ setGlobalDrawer }) {
                     <tr><td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>No Quotes sent yet.</td></tr>
                   ) : selectedTender.sales_quotes.map(sq => (
                     <React.Fragment key={sq.id}>
-                      <tr style={{ borderBottom: expandedSQ === sq.id ? 'none' : '1px solid hsl(var(--border))', cursor: 'pointer' }}>
-                        <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }} onClick={() => setExpandedSQ(expandedSQ === sq.id ? null : sq.id)}>{sq.id}</td>
-                        <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }} onClick={() => setExpandedSQ(expandedSQ === sq.id ? null : sq.id)}>{sq.issue_date}</td>
+                      <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                        <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{sq.id}</td>
+                        <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>{sq.issue_date}</td>
                         <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                          <span style={{ color: 'hsl(var(--primary))', marginRight: '0.5rem' }}>${Number(sq.total_value).toLocaleString()}</span>
-                          <div style={{ display: 'flex', gap: '0.25rem' }}>
-                            <button className="btn" onClick={(e) => { e.stopPropagation(); setExpandedSQ(sq.id); printElement('.print-only', 'SQ'); }} style={{ background: 'hsla(var(--text-secondary), 0.1)', color: 'hsl(var(--text-primary))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="Print / Save PDF">🖨️</button>
-                            <button className="btn" onClick={(e) => { e.stopPropagation(); alert('Dispatching Quote via Email...'); }} style={{ background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="Email Quote">📧</button>
-                            <button className="btn" onClick={(e) => { e.stopPropagation(); alert('Dispatching Quote via WhatsApp...'); }} style={{ background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="WhatsApp Quote">💬</button>
-                          </div>
+                          <span style={{ color: 'hsl(var(--primary))', marginRight: '0.5rem', fontWeight: 'bold' }}>{formatAmount(sq.total_value)}</span>
+                          <button 
+                            className="btn" 
+                            onClick={() => setPreviewModalDoc({ isOpen: true, doc: sq, type: 'SALES QUOTATION' })} 
+                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)' }}
+                            title="Preview Sales Quote"
+                          >
+                            👁️
+                          </button>
                         </td>
                       </tr>
-                      {expandedSQ === sq.id && (
-                        <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
-                          <td colSpan="3" style={{ padding: '1rem' }}>
-                            <div className="print-only" style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
-                              {/* SINGLE UNIFIED HEADER BANNER */}
-                              <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-                                {/* CENTERED LOGO & COMPANY DETAILS */}
-                                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
-                                  <img 
-                                    src={companyProfile?.logo_url || '/logo.png'} 
-                                    alt="Company Logo" 
-                                    style={{ height: '140px', maxWidth: '320px', objectFit: 'contain' }} 
-                                    onError={(e) => e.target.style.display = 'none'} 
-                                  />
-                                  <h2 style={{ margin: '0.3rem 0 0 0', color: '#0f172a', fontSize: '1.5rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                                    {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
-                                  </h2>
-                                  <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
-                                    <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
-                                    <div style={{ fontWeight: '500' }}>
-                                      Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT) */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                                  <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                    OFFICIAL SALES QUOTATION
-                                  </div>
-                                  <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                    <span><strong>Doc Ref #:</strong> {sq.id}</span>
-                                    <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
-                                    <span><strong>Date Generated:</strong> {sq.issue_date || new Date().toISOString().split('T')[0]}</span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-                                <div>
-                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Tender / Project</p>
-                                  <strong style={{ fontSize: '1rem' }}>{selectedTender.name} ({selectedTender.id})</strong>
-                                </div>
-                                {selectedTender.client_reference && (
-                                  <div>
-                                    <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Client Tender Ref</p>
-                                    <strong style={{ fontSize: '1rem', color: 'hsl(var(--primary))' }}>{selectedTender.client_reference}</strong>
-                                  </div>
-                                )}
-                                <div>
-                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Quoted To</p>
-                                  <strong style={{ fontSize: '1rem' }}>{selectedTender.client}</strong>
-                                </div>
-                                <div>
-                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Date Issued</p>
-                                  <strong style={{ fontSize: '1rem' }}>{sq.issue_date}</strong>
-                                </div>
-                                <div>
-                                  <p style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--text-secondary))' }}>Total Quoted Value</p>
-                                  <strong style={{ fontSize: '1rem' }}>${Number(sq.total_value).toLocaleString()}</strong>
-                                </div>
-                              </div>
-                              {renderItems(sq.items)}
-
-                              {/* AUTHORIZED SIGNATURE & STAMP BLOCK */}
-                              <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid hsl(var(--border))', paddingTop: '1.5rem' }}>
-                                <div>
-                                  <p style={{ color: 'hsl(var(--text-secondary))', margin: '0 0 0.5rem 0', fontSize: '0.8rem' }}>Terms & Validity:</p>
-                                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-muted))' }}>1. Valid for 30 days from issue date.<br/>2. Prices inclusive of applicable statutory taxes.</p>
-                                </div>
-                                <div style={{ textAlign: 'center', width: '220px' }}>
-                                  <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <img src="/stamp.png" alt="Official Stamp" style={{ height: '90px', objectFit: 'contain', opacity: 0.88 }} onError={(e) => e.target.style.display = 'none'} />
-                                  </div>
-                                  <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.3rem' }}></div>
-                                  <strong style={{ fontSize: '0.85rem' }}>Authorized Signatory & Stamp</strong>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
                     </React.Fragment>
                   ))}
                 </tbody>
@@ -249,8 +218,8 @@ export default function Tenders({ setGlobalDrawer }) {
                   <tr><td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>No Client LPOs linked.</td></tr>
                 ) : selectedTender.lpos.map(lpo => (
                   <React.Fragment key={lpo.id}>
-                    <tr style={{ borderBottom: expandedLPO === lpo.id ? 'none' : '1px solid hsl(var(--border))', cursor: 'pointer' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }} onClick={() => setExpandedLPO(expandedLPO === lpo.id ? null : lpo.id)}>
+                    <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                      <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>
                         {lpo.id}
                         {lpo.client_reference && (
                           <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.25rem', fontWeight: 'normal' }}>
@@ -258,99 +227,22 @@ export default function Tenders({ setGlobalDrawer }) {
                           </div>
                         )}
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }} onClick={() => setExpandedLPO(expandedLPO === lpo.id ? null : lpo.id)}>Due: {lpo.due_date}</td>
+                      <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>Due: {lpo.due_date}</td>
                       <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <span style={{ color: 'hsl(var(--success))', marginRight: '0.5rem' }}>${Number(lpo.total_value).toLocaleString()}</span>
-                        <div style={{ display: 'flex', gap: '0.25rem' }}>
-                          <button className="btn" onClick={(e) => { e.stopPropagation(); setExpandedLPO(lpo.id); printElement('.print-only', 'LPO'); }} style={{ background: 'hsla(var(--text-secondary), 0.1)', color: 'hsl(var(--text-primary))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="Print / Save PDF">🖨️</button>
-                          <button className="btn" onClick={(e) => { e.stopPropagation(); alert('Dispatching LPO via Email...'); }} style={{ background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="Email LPO">📧</button>
-                          <button className="btn" onClick={(e) => { e.stopPropagation(); alert('Dispatching LPO via WhatsApp...'); }} style={{ background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))', padding: '0.2rem 0.4rem', fontSize: '0.75rem' }} title="WhatsApp LPO">💬</button>
+                        <span style={{ color: 'hsl(var(--success))', marginRight: '0.5rem', fontWeight: 'bold' }}>{formatAmount(lpo.total_value)}</span>
+                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                          <button 
+                            className="btn" 
+                            onClick={() => setPreviewModalDoc({ isOpen: true, doc: lpo, type: 'CLIENT LOCAL PURCHASE ORDER' })} 
+                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)' }}
+                            title="Preview Client LPO"
+                          >
+                            👁️
+                          </button>
+                          <button className="btn" onClick={() => handleDeleteLPO(lpo.id)} style={{ background: '#f43f5e', color: '#fff', padding: '0.2rem 0.5rem', fontSize: '0.75rem' }} title="Delete LPO">🗑️</button>
                         </div>
                       </td>
                     </tr>
-                    {expandedLPO === lpo.id && (
-                      <tr style={{ borderBottom: '1px solid hsl(var(--border))', background: 'var(--bg-app)' }}>
-                        <td colSpan="3" style={{ padding: '1rem' }}>
-                          <div className="print-only" style={{ background: '#ffffff', color: '#0f172a', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
-                            {/* SINGLE UNIFIED HEADER BANNER */}
-                            <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-                              {/* CENTERED LOGO & COMPANY DETAILS */}
-                              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
-                                <img 
-                                  src={companyProfile?.logo_url || '/logo.png'} 
-                                  alt="Company Logo" 
-                                  style={{ height: '140px', maxWidth: '320px', objectFit: 'contain' }} 
-                                  onError={(e) => e.target.style.display = 'none'} 
-                                />
-                                <h2 style={{ margin: '0.3rem 0 0 0', color: '#0f172a', fontSize: '1.5rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                                  {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
-                                </h2>
-                                <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
-                                  <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
-                                  <div style={{ fontWeight: '500' }}>
-                                    Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT) */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                                <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                  CLIENT LOCAL PURCHASE ORDER: {lpo.id}
-                                </div>
-                                <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                  <span><strong>Doc Ref #:</strong> {lpo.id}</span>
-                                  <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
-                                  <span><strong>Date Generated:</strong> {lpo.issue_date || new Date().toISOString().split('T')[0]}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* HIGH-CONTRAST METADATA GRID */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1.5rem', fontSize: '0.875rem' }}>
-                              <div>
-                                <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Tender / Project</p>
-                                <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{selectedTender.name} ({selectedTender.id})</strong>
-                              </div>
-                              <div>
-                                <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Client Name</p>
-                                <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{selectedTender.client}</strong>
-                              </div>
-                              <div>
-                                <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Due Date</p>
-                                <strong style={{ fontSize: '1rem', color: '#0f172a' }}>{lpo.due_date}</strong>
-                              </div>
-                              {lpo.client_reference && (
-                                <div>
-                                  <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Client LPO Ref</p>
-                                  <strong style={{ fontSize: '1rem', color: '#0284c7' }}>{lpo.client_reference}</strong>
-                                </div>
-                              )}
-                              <div>
-                                <p style={{ margin: '0 0 0.25rem 0', color: '#475569', fontWeight: '500' }}>Total Value</p>
-                                <strong style={{ fontSize: '1rem', color: '#16a34a' }}>${Number(lpo.total_value).toLocaleString()}</strong>
-                              </div>
-                            </div>
-                            {renderItems(lpo.items)}
-
-                            {/* AUTHORIZED SIGNATURE & STAMP BLOCK */}
-                            <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #cbd5e1', paddingTop: '1.5rem' }}>
-                              <div>
-                                <p style={{ color: '#475569', margin: '0 0 0.5rem 0', fontSize: '0.8rem' }}>Order Confirmation:</p>
-                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>1. Local Purchase Order accepted under corporate terms.<br/>2. Subject to delivery and milestone acceptance criteria.</p>
-                              </div>
-                              <div style={{ textAlign: 'center', width: '220px' }}>
-                                <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <img src="/stamp.png" alt="Official Stamp" style={{ height: '90px', objectFit: 'contain', opacity: 0.88 }} onError={(e) => e.target.style.display = 'none'} />
-                                </div>
-                                <div style={{ borderBottom: '1px solid #cbd5e1', width: '100%', marginBottom: '0.3rem' }}></div>
-                                <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>Authorized Signatory & Stamp</strong>
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
                   </React.Fragment>
                 ))}
               </tbody>
@@ -369,7 +261,17 @@ export default function Tenders({ setGlobalDrawer }) {
                   <tr key={po.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
                     <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{po.id}</td>
                     <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>{po.supplier_name}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'hsl(var(--danger))' }}>${Number(po.total_value).toLocaleString()}</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'hsl(var(--danger))', fontWeight: 'bold' }}>{formatAmount(po.total_value)}</td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
+                      <button 
+                        className="btn" 
+                        onClick={() => setPreviewModalDoc({ isOpen: true, doc: po, type: 'PURCHASE ORDER' })} 
+                        style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)' }}
+                        title="Preview Purchase Order"
+                      >
+                        👁️
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -402,187 +304,69 @@ export default function Tenders({ setGlobalDrawer }) {
                 <tr><td colSpan="8" style={{ padding: '2rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No deliverables created for this tender yet.</td></tr>
               ) : currentDeliverables.map(dlv => (
                 <React.Fragment key={dlv.id}>
-                  <tr 
-                    style={{ borderBottom: '1px solid hsl(var(--border))', cursor: 'pointer', background: expandedDeliverable === dlv.id ? 'hsla(var(--primary), 0.05)' : 'transparent' }}
-                    onClick={() => setExpandedDeliverable(expandedDeliverable === dlv.id ? null : dlv.id)}
-                  >
+                  <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
                     <td style={{ padding: '1rem 1.5rem', fontWeight: '500', color: 'hsl(var(--primary))' }}>
-                      <span style={{ display: 'inline-block', width: '20px' }}>{expandedDeliverable === dlv.id ? '▼' : '▶'}</span> {dlv.id}
+                      {dlv.id}
                     </td>
                     <td style={{ padding: '1rem', fontWeight: '500' }}>{dlv.description}</td>
                     <td style={{ padding: '1rem' }}>
                       <span className={`badge ${dlv.type === 'Goods' ? 'badge-info' : dlv.type === 'Service' ? 'badge-warning' : 'badge-danger'}`} style={{ opacity: 0.8 }}>{dlv.type}</span>
                     </td>
                     <td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>{dlv.billing_method}</td>
-                    <td style={{ padding: '1rem', textAlign: 'right', color: 'hsl(var(--success))' }}>${Number(dlv.revenue).toLocaleString()}</td>
-                    <td style={{ padding: '1rem', textAlign: 'right', color: 'hsl(var(--danger))' }}>${Number(dlv.cost).toLocaleString()}</td>
-                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>${Number(dlv.profit).toLocaleString()}</td>
-                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right' }}>
+                    <td style={{ padding: '1rem', textAlign: 'right', color: 'hsl(var(--success))' }}>{formatAmount(dlv.revenue)}</td>
+                    <td style={{ padding: '1rem', textAlign: 'right', color: 'hsl(var(--danger))' }}>{formatAmount(dlv.cost)}</td>
+                    <td style={{ padding: '1rem', textAlign: 'right', fontWeight: 'bold' }}>{formatAmount(dlv.profit)}</td>
+                    <td style={{ padding: '1rem 1.5rem', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
                       <span className={`badge ${dlv.status === 'Approved' || dlv.status === 'Invoiced' ? 'badge-success' : dlv.status === 'Planned' ? 'badge-info' : 'badge-warning'}`}>
                         {dlv.status}
                       </span>
+                      <button 
+                        type="button" 
+                        className="btn" 
+                        onClick={(e) => { e.stopPropagation(); setPreviewModalDoc({ isOpen: true, doc: { ...dlv, client: selectedTender.client, client_name: selectedTender.client, tender_name: selectedTender.name }, type: 'GOODS DELIVERY NOTE' }); }} 
+                        style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)' }}
+                        title="Preview Goods Delivery Note"
+                      >
+                        👁️
+                      </button>
+                      {dlv.status !== 'Approved' && dlv.status !== 'Invoiced' && (
+                        <button 
+                          className="btn" 
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`Auto-fulfill deliverable '${dlv.description}' and generate Goods Delivery Note?`)) {
+                              try {
+                                const res = await fetch(`http://localhost:5000/api/deliverables/${dlv.id}/auto-fulfill`, { method: 'POST' });
+                                const data = await res.json();
+                                if (res.ok) {
+                                  alert(`✅ ${data.message}`);
+                                  window.location.reload();
+                                } else { alert(data.error || 'Failed to auto-fulfill'); }
+                              } catch(err) { console.error(err); alert('Error fulfilling deliverable'); }
+                            }
+                          }}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: 'hsla(var(--success), 0.15)', color: 'hsl(var(--success))', border: '1px solid hsla(var(--success), 0.3)', fontWeight: 'bold' }}
+                          title="1-Click Auto Fulfill Delivery & Auto Generate Delivery Note"
+                        >
+                          ⚡ 1-Click Fulfill
+                        </button>
+                      )}
                     </td>
                   </tr>
-                  {expandedDeliverable === dlv.id && (
-                    <tr style={{ background: 'hsla(var(--bg-app), 0.5)' }}>
-                      <td colSpan="8" style={{ padding: '1.5rem' }}>
-                        <div style={{ padding: '1.5rem', border: '1px dashed hsl(var(--border))', borderRadius: 'var(--radius-md)', background: 'var(--bg-card)' }}>
-                          
-                          <div style={{ display: 'flex', gap: '3rem', marginBottom: '1.5rem', borderBottom: '1px solid hsla(var(--border), 0.5)', paddingBottom: '1.5rem' }}>
-                            <div>
-                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Planned Date</p>
-                              <strong>{dlv.planned_date || 'N/A'}</strong>
-                            </div>
-                            <div>
-                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Due Date</p>
-                              <strong>{dlv.due_date || 'N/A'}</strong>
-                            </div>
-                            <div>
-                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase' }}>Assigned Staff</p>
-                              <strong>System Admin</strong>
-                            </div>
-                          </div>
-
-                          <h4 style={{ margin: '0 0 1rem 0', color: 'hsl(var(--text-secondary))' }}>Submitted Evidence History</h4>
-                          {dlv.evidence && dlv.evidence.length > 0 ? (
-                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                              <thead>
-                                <tr style={{ textAlign: 'left', color: 'hsl(var(--text-secondary))', borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
-                                  <th style={{ paddingBottom: '0.5rem' }}>Reference ID</th>
-                                  <th style={{ paddingBottom: '0.5rem' }}>Date Submitted</th>
-                                  <th style={{ paddingBottom: '0.5rem' }}>Fulfillment Details</th>
-                                  <th style={{ paddingBottom: '0.5rem', textAlign: 'right' }}>Evidence Type</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {dlv.evidence.map((ev, idx) => (
-                                  <tr key={idx} style={{ borderBottom: '1px solid hsla(var(--border), 0.3)' }}>
-                                    <td style={{ padding: '0.75rem 0', fontWeight: '500', color: 'hsl(var(--primary))' }}>{ev.id}</td>
-                                    <td style={{ padding: '0.75rem 0' }}>{ev.date_submitted}</td>
-                                    <td style={{ padding: '0.75rem 0' }}>{ev.details}</td>
-                                    <td style={{ padding: '0.75rem 0', textAlign: 'right' }}>
-                                      <span style={{ background: 'hsla(var(--text-secondary), 0.2)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem' }}>
-                                        {ev.type}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          ) : (
-                            <p style={{ color: 'hsl(var(--text-muted))', fontSize: '0.875rem', margin: 0 }}>No evidence submitted for this deliverable yet.</p>
-                          )}
-
-                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.5rem', borderTop: '1px solid hsla(var(--border), 0.5)', paddingTop: '1.5rem' }}>
-                            <button className="btn" onClick={() => { printElement('.print-only', 'DELIVERY'); }} style={{ background: 'hsla(var(--text-secondary), 0.1)', color: 'hsl(var(--text-primary))', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              🖨️ Print / Save PDF
-                            </button>
-                            <button className="btn" onClick={() => alert('Dispatching Delivery Note via Email...')} style={{ background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              📧 Email
-                            </button>
-                            <button className="btn" onClick={() => alert('Dispatching Delivery Note via WhatsApp...')} style={{ background: 'hsla(var(--success), 0.1)', color: 'hsl(var(--success))', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              💬 WhatsApp
-                            </button>
-                          </div>
-
-                          <div className="print-only" style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: 'var(--radius-md)' }}>
-                            {/* SINGLE UNIFIED HEADER BANNER */}
-                            <div style={{ borderBottom: '2px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-                              {/* CENTERED LOGO & COMPANY DETAILS */}
-                              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.3rem', marginBottom: '0.85rem' }}>
-                                <img 
-                                  src={companyProfile?.logo_url || '/logo.png'} 
-                                  alt="Company Logo" 
-                                  style={{ height: '140px', maxWidth: '320px', objectFit: 'contain' }} 
-                                  onError={(e) => e.target.style.display = 'none'} 
-                                />
-                                <h2 style={{ margin: '0.3rem 0 0 0', color: '#0f172a', fontSize: '1.5rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
-                                  {companyProfile?.legal_name || companyProfile?.trading_name || 'AKPALI COMPANY LIMITED'}
-                                </h2>
-                                <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: '1.4' }}>
-                                  <div>{companyProfile?.postal_address || companyProfile?.address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
-                                  <div style={{ fontWeight: '500' }}>
-                                    Tel: {companyProfile?.phone || '+254705365996'} &bull; Email: {companyProfile?.email || 'info@akpalimited.co.ke'}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* BOTTOM HEADER BAR: DOCUMENT TITLE (LEFT) + DOC REF & DATE (FAR RIGHT) */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
-                                <div style={{ fontSize: '0.95rem', fontWeight: '800', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                                  GOODS DELIVERY NOTE
-                                </div>
-                                <div style={{ fontSize: '0.78rem', color: '#334155', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                                  <span><strong>Doc Ref #:</strong> {dlv.id}</span>
-                                  <span style={{ margin: '0 0.5rem', color: '#94a3b8' }}>|</span>
-                                  <span><strong>Date Generated:</strong> {dlv.date_submitted || new Date().toISOString().split('T')[0]}</span>
-                                </div>
-                              </div>
-                            </div>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginBottom: '2rem' }}>
-                              <div>
-                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'hsl(var(--text-secondary))' }}>To Client:</h4>
-                                <strong style={{ fontSize: '1.25rem' }}>{selectedTender.client}</strong>
-                              </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'hsl(var(--text-secondary))' }}>Project / Tender:</h4>
-                                <strong>{selectedTender.name} ({selectedTender.id})</strong>
-                              </div>
-                            </div>
-
-                            <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '3rem' }}>
-                              <thead>
-                                <tr style={{ borderBottom: '2px solid hsl(var(--border))', textAlign: 'left' }}>
-                                  <th style={{ padding: '1rem' }}>Deliverable Ref</th>
-                                  <th style={{ padding: '1rem' }}>{dlv.type === 'Goods' ? 'Quantity' : 'Type'}</th>
-                                  <th style={{ padding: '1rem' }}>Description of Goods/Services</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(dlv.type === 'Goods' && dlv.items && dlv.items.length > 0) ? (
-                                  dlv.items.map((item, idx) => (
-                                    <tr key={idx}>
-                                      <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}><strong>{dlv.id}-{idx+1}</strong></td>
-                                      <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>{item.qty} Unit(s)</td>
-                                      <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>{item.desc}</td>
-                                    </tr>
-                                  ))
-                                ) : (
-                                  <tr>
-                                    <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}><strong>{dlv.id}</strong></td>
-                                    <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>{dlv.type}</td>
-                                    <td style={{ padding: '1rem', borderBottom: '1px solid hsl(var(--border))' }}>{dlv.description}</td>
-                                  </tr>
-                                )}
-                              </tbody>
-                            </table>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', marginTop: '3rem', borderTop: '1px solid hsl(var(--border))', paddingTop: '2rem' }}>
-                              <div style={{ textAlign: 'center' }}>
-                                <div style={{ minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                  <img src="/stamp.png" alt="Official Stamp" style={{ height: '90px', objectFit: 'contain', opacity: 0.88 }} onError={(e) => e.target.style.display = 'none'} />
-                                </div>
-                                <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.5rem' }}></div>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}><strong>Authorized Dispatcher & Stamp</strong></p>
-                              </div>
-                              <div>
-                                <p style={{ color: 'hsl(var(--text-secondary))', marginBottom: '2rem' }}>Received in Good Condition By (Client):</p>
-                                <div style={{ borderBottom: '1px solid hsl(var(--border))', width: '100%', marginBottom: '0.5rem', height: '2rem' }}></div>
-                                <p style={{ margin: 0, fontSize: '0.875rem' }}>Name, Signature, & Date</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </React.Fragment>
               ))}
             </tbody>
           </table>
         </div>
 
+        {/* DOCUMENT PREVIEW MODAL FOR 360 TENDER VIEW */}
+        <DocumentPreviewModal 
+          isOpen={previewModalDoc.isOpen} 
+          onClose={() => setPreviewModalDoc({ isOpen: false, doc: null, type: '' })} 
+          doc={previewModalDoc.doc} 
+          docType={previewModalDoc.type} 
+          companyProfile={companyProfile} 
+        />
       </div>
     )
   }
@@ -632,7 +416,16 @@ export default function Tenders({ setGlobalDrawer }) {
                     {t.category}
                   </span>
                 </td>
-                <td style={{ padding: '1rem' }}>{formatAmount(t.contract_value)}</td>
+                <td style={{ padding: '1rem' }}>
+                  <div>
+                    <strong>{formatAmount(t.effective_contract_value || t.contract_value || t.lpo_total || 0)}</strong>
+                    {t.contract_value > 0 ? (
+                      <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Ceiling Budget</div>
+                    ) : (
+                      <div style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 'bold' }}>⚡ Auto-Calculated (LPOs)</div>
+                    )}
+                  </div>
+                </td>
                 <td style={{ padding: '1rem' }}>
                   <div style={{ width: '100%', height: '8px', background: 'hsl(var(--border))', borderRadius: '4px' }}>
                     <div style={{ width: `${t.progress}%`, height: '100%', background: 'hsl(var(--primary))', borderRadius: '4px' }} />
@@ -640,13 +433,70 @@ export default function Tenders({ setGlobalDrawer }) {
                 </td>
                 <td style={{ padding: '1rem' }}><span className={`badge ${t.status === 'Active' ? 'badge-info' : t.status === 'Completed' ? 'badge-success' : 'badge-warning'}`}>{t.status}</span></td>
                 <td style={{ padding: '1rem' }}>
-                  <button className="btn" style={{ padding: '0.4rem 0.8rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))' }} onClick={() => setSelectedTender(t)}>View 360</button>
+                  <div style={{ display: 'flex', gap: '0.35rem' }}>
+                    <button className="btn" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', fontWeight: 'bold' }} onClick={() => setSelectedTender(t)}>View 360</button>
+                    <button className="btn" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', background: '#0284c7', color: '#fff', fontWeight: 'bold' }} onClick={() => setEditingTender(t)}>✏️ Edit</button>
+                    <button className="btn" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', background: '#f43f5e', color: '#fff', fontWeight: 'bold' }} onClick={() => handleDeleteTender(t)}>🗑️ Remove</button>
+                  </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {/* EDIT TENDER MODAL */}
+      {editingTender && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+          <div className="card" style={{ width: '550px', background: '#0f172a', border: '1px solid #38bdf8', padding: '1.5rem', color: '#fff', borderRadius: '10px' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#38bdf8' }}>✏️ Edit Tender Details ({editingTender.id})</h3>
+            <form onSubmit={handleSaveTenderEdit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div>
+                <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Tender / Project Name *</label>
+                <input type="text" className="form-control" required value={editingTender.name} onChange={e => setEditingTender({...editingTender, name: e.target.value})} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Client Organization *</label>
+                  <input type="text" className="form-control" required value={editingTender.client_name || editingTender.client || ''} onChange={e => setEditingTender({...editingTender, client: e.target.value, client_name: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Client Ref #</label>
+                  <input type="text" className="form-control" value={editingTender.client_reference || ''} onChange={e => setEditingTender({...editingTender, client_reference: e.target.value})} />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Contract Value (KES) *</label>
+                  <input type="number" className="form-control" required value={editingTender.contract_value} onChange={e => setEditingTender({...editingTender, contract_value: e.target.value})} />
+                </div>
+                <div>
+                  <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Status *</label>
+                  <select className="form-control" value={editingTender.status} onChange={e => setEditingTender({...editingTender, status: e.target.value})}>
+                    <option value="Active">Active</option>
+                    <option value="Draft">Draft</option>
+                    <option value="On Hold">On Hold</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                <button type="button" className="btn" style={{ background: '#334155', color: '#fff' }} onClick={() => setEditingTender(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ fontWeight: 'bold' }}>Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* DOCUMENT PREVIEW MODAL */}
+      <DocumentPreviewModal 
+        isOpen={previewModalDoc.isOpen} 
+        onClose={() => setPreviewModalDoc({ isOpen: false, doc: null, type: '' })} 
+        doc={previewModalDoc.doc} 
+        docType={previewModalDoc.type} 
+        companyProfile={companyProfile} 
+      />
     </div>
   )
 }

@@ -7,7 +7,7 @@ export default function GenerateRFQForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
-    id: `RFQ-2026-${Math.floor(Math.random() * 10000)}`,
+    id: 'Loading RFQ ID...',
     lpo_id: '',
     tender_id: '',
     deadline: '',
@@ -18,6 +18,11 @@ export default function GenerateRFQForm() {
     fetch('http://localhost:5000/api/tenders')
       .then(res => res.json())
       .then(data => setTenders(data))
+      .catch(err => console.error(err));
+
+    fetch('http://localhost:5000/api/next-id/rfq')
+      .then(res => res.json())
+      .then(data => { if (data && data.id) setFormData(prev => ({ ...prev, id: data.id })) })
       .catch(err => console.error(err));
   }, []);
 
@@ -49,12 +54,12 @@ export default function GenerateRFQForm() {
         const rawItems = typeof lpo.items === 'string' ? JSON.parse(lpo.items) : lpo.items;
         cleanedItems = rawItems.map(item => ({
           description: item.desc || item.description || '',
-          quantity: item.qty || item.quantity || 0,
-          unit: item.unit || 'unit'
-          // Note: purposefully omitting unit_price and total_price
+          quantity: item.qty || item.quantity || 1,
+          unit: item.unit || 'PCS'
+          // Note: purposefully omitting unit_price and total_price for competitive vendor bidding
         }));
       } catch (e) {
-        cleanedItems = [{ description: lpo.items || '', quantity: 1, unit: 'lump sum' }];
+        cleanedItems = [{ description: lpo.items || '', quantity: 1, unit: 'LOT' }];
       }
 
       setFormData({
@@ -118,7 +123,7 @@ export default function GenerateRFQForm() {
         <select className="form-control" required value={formData.lpo_id} onChange={handleLPOSelect} disabled={!selectedTenderId || lpos.length === 0}>
           <option value="">{lpos.length === 0 && selectedTenderId ? 'No LPOs found for this Tender' : 'Select an LPO to extract items from...'}</option>
           {lpos.map(lpo => (
-            <option key={lpo.id} value={lpo.id}>{lpo.id} - Value: ${lpo.total_value}</option>
+            <option key={lpo.id} value={lpo.id}>{lpo.id} - Value: KSh {Number(lpo.total_value || 0).toLocaleString()}</option>
           ))}
         </select>
         <small style={{ color: 'hsl(var(--text-secondary))', display: 'block', marginTop: '0.25rem' }}>
