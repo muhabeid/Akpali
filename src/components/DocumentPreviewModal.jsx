@@ -34,13 +34,41 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
     (targetClientName && c.name && (c.name.toLowerCase().includes(targetClientName.toLowerCase()) || targetClientName.toLowerCase().includes(c.name.toLowerCase())))
   );
 
-  // Match supplier directory record
-  const targetSupplierName = doc.supplier_name || doc.supplier || '';
-  const matchedSupplier = suppliersDirectory.find(s => 
-    (s.id && s.id === doc.supplier_id) || 
-    (s.name && targetSupplierName && s.name.toLowerCase() === targetSupplierName.toLowerCase()) ||
-    (targetSupplierName && s.name && (s.name.toLowerCase().includes(targetSupplierName.toLowerCase()) || targetSupplierName.toLowerCase().includes(s.name.toLowerCase())))
-  );
+  // Standardize & Clean Document Type Title
+  const cleanDocTypeName = (type) => {
+    if (!type) return 'OFFICIAL ERP DOCUMENT';
+    const t = type.toUpperCase();
+    if (t.includes('CLIENT LPO') || t.includes('CLIENT PURCHASE ORDER')) return 'CLIENT LPO';
+    if (t.includes('PURCHASE ORDER')) return 'PURCHASE ORDER';
+    if (t.includes('QUOTATION') || t.includes('QUOTE')) return 'SALES QUOTATION';
+    if (t.includes('DELIVERY') || t.includes('GRN') || t.includes('GOODS')) return 'GOODS DELIVERY NOTE';
+    if (t.includes('RFQ') || t.includes('REQUEST FOR QUOTATION')) return 'REQUEST FOR QUOTATION';
+    return type.replace(/\s*\([^)]*\)/g, '').trim();
+  };
+
+  // Clean Document Ref to prevent duplicate "LPO #LPO-..." prefixes
+  const formatCleanDocRef = (id, type) => {
+    if (!id) return 'DOC-001';
+    let raw = String(id).trim().replace(/^(?:LPO|PO|SQ|RFQ|GDN|GRN|Doc Ref|Ref)\s*#?\s*/i, '');
+    const cleanType = cleanDocTypeName(type);
+    if (cleanType === 'CLIENT LPO') return raw.startsWith('LPO-') ? raw : `LPO-${raw}`;
+    if (cleanType === 'PURCHASE ORDER') return raw.startsWith('PO-') ? raw : `PO-${raw}`;
+    if (cleanType === 'SALES QUOTATION') return raw.startsWith('SQ-') ? raw : `SQ-${raw}`;
+    if (cleanType === 'GOODS DELIVERY NOTE') return raw.startsWith('GDN-') ? raw : `GDN-${raw}`;
+    return raw;
+  };
+
+  // Shorten long Tender Name / Description to avoid bloated titles
+  const shortenTenderName = (name) => {
+    if (!name) return '';
+    let clean = name
+      .replace(/^(?:Supply\s+and\s+Delivery\s+of|Supply\s+of|Delivery\s+of|Provision\s+of|Tender\s+for|Contract\s+for)\s+/i, '')
+      .trim();
+    if (clean.length > 55) {
+      clean = clean.substring(0, 52).trim() + '...';
+    }
+    return clean ? (clean.charAt(0).toUpperCase() + clean.slice(1)) : name;
+  };
 
   // Dynamic Item Schedule Title
   const getScheduleTitle = (type) => {
@@ -64,6 +92,9 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
     const num = Number(val) || 0;
     return `KSh ${num.toLocaleString()}`;
   };
+
+  const currentDocTypeLabel = cleanDocTypeName(docType);
+  const currentDocRefLabel = formatCleanDocRef(doc.id || doc.doc_ref, docType);
 
   return (
     <div style={{
@@ -103,20 +134,20 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
         }}>
           <div>
             <div style={{ fontSize: '0.725rem', textTransform: 'uppercase', color: '#94a3b8', fontWeight: 'bold', letterSpacing: '0.05em' }}>
-              {docType || 'Document'} Quick Preview
+              {currentDocTypeLabel} Quick Preview
             </div>
             <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#38bdf8' }}>
-              {doc.id || doc.client_reference || 'ERP DOCUMENT'}
+              {currentDocRefLabel}
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <button onClick={handlePrint} className="btn" style={{ background: '#38bdf8', color: '#0f172a', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
               <Printer size={15} /> Print / PDF
             </button>
-            <button onClick={() => alert(`Dispatching ${doc.id || docType} via Email...`)} className="btn" style={{ background: 'hsla(217, 91%, 60%, 0.2)', color: '#60a5fa', border: '1px solid #3b82f6', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', borderRadius: '6px', cursor: 'pointer' }}>
+            <button onClick={() => alert(`Dispatching ${currentDocRefLabel} via Email...`)} className="btn" style={{ background: 'hsla(217, 91%, 60%, 0.2)', color: '#60a5fa', border: '1px solid #3b82f6', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', borderRadius: '6px', cursor: 'pointer' }}>
               <Send size={15} /> Email
             </button>
-            <button onClick={() => alert(`Dispatching ${doc.id || docType} via WhatsApp...`)} className="btn" style={{ background: 'hsla(142, 71%, 45%, 0.2)', color: '#4ade80', border: '1px solid #22c55e', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', borderRadius: '6px', cursor: 'pointer' }}>
+            <button onClick={() => alert(`Dispatching ${currentDocRefLabel} via WhatsApp...`)} className="btn" style={{ background: 'hsla(142, 71%, 45%, 0.2)', color: '#4ade80', border: '1px solid #22c55e', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', borderRadius: '6px', cursor: 'pointer' }}>
               <MessageCircle size={15} /> WhatsApp
             </button>
             <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '0.25rem', marginLeft: '0.5rem' }}>
@@ -151,7 +182,7 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
                 {/* CENTERED DOCUMENT TITLE (BELOW TEL & EMAIL, OUTSIDE PLACEHOLDER) */}
                 <div style={{ marginTop: '0.75rem', marginBottom: '0.15rem' }}>
                   <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.15rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '2px solid #0f172a', display: 'inline-block', paddingBottom: '2px' }}>
-                    {docType || 'OFFICIAL ERP DOCUMENT'}
+                    {currentDocTypeLabel}
                   </h3>
                 </div>
               </div>
@@ -159,7 +190,7 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
               {/* PLACEHOLDER CONTAINER (DOC REF AT LEFT END, DATE AT RIGHT END) */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '0.5rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.825rem', color: '#334155' }}>
                 <div>
-                  <strong>Doc Ref #:</strong> {doc.id || doc.doc_ref || 'DOC-001'}
+                  <strong>Doc Ref #:</strong> {currentDocRefLabel}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <strong>Date Generated:</strong> {doc.issue_date || doc.expected_date || doc.deadline || new Date().toISOString().split('T')[0]}
@@ -196,12 +227,12 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
                   {doc.tender_name && (
                     <div style={{ marginBottom: '0.35rem' }}>
                       <strong>Tender / Project:</strong>
-                      <div style={{ color: '#0f172a', fontWeight: 'bold', fontSize: '0.9rem', marginTop: '0.1rem' }}>{doc.tender_name}</div>
+                      <div style={{ color: '#0f172a', fontWeight: 'bold', fontSize: '0.9rem', marginTop: '0.1rem' }}>{shortenTenderName(doc.tender_name)}</div>
                     </div>
                   )}
                   {doc.lpo_reference && (
                     <div style={{ marginBottom: '0.25rem' }}>
-                      <strong>Source LPO Ref #:</strong> <span style={{ color: '#0f172a', fontWeight: '600' }}>{doc.lpo_reference}</span>
+                      <strong>Source LPO Ref #:</strong> <span style={{ color: '#0f172a', fontWeight: '600' }}>{formatCleanDocRef(doc.lpo_reference, 'CLIENT LPO')}</span>
                     </div>
                   )}
                   {doc.id && (docType?.includes('DELIVERY') || docType?.includes('GOODS') || docType?.includes('GRN')) && (
