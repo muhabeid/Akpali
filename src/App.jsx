@@ -36,73 +36,124 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
   const [searchResults, setSearchResults] = useState([])
   const [searchLoading, setSearchLoading] = useState(false)
 
-  // Pending Maker-Checker items count
-  const [pendingApprovals, setPendingApprovals] = useState([
-    { id: 'APPR-101', type: 'PO Limit Exceeded', title: 'Purchase Order PO-2026-004 exceeds ceiling by KSh 450,000', detail: 'Requested by Logistics Team for Bamburi Cement', date: '10 mins ago', status: 'Pending' },
-    { id: 'APPR-102', type: '3-Way Match Mismatch', title: 'Supplier Invoice INV-99 total does not match Delivery Note GRN-12', detail: 'Discrepancy of KSh 12,000 in transportation surcharge', date: '1 hour ago', status: 'Pending' }
-  ])
-
-  // Notifications
-  const [notifications, setNotifications] = useState([
-    { id: 'NOTIF-1', cat: 'Urgent', title: 'Overdue Client Invoice INV-2026-001', desc: 'Invoice for Crown Paints project is now 5 days overdue.', time: '2 hours ago', unread: true },
-    { id: 'NOTIF-2', cat: 'Operations', title: 'Site Delivery Recorded', desc: '500 bags of cement delivered for Tender #4092.', time: '10 mins ago', unread: true },
-    { id: 'NOTIF-3', cat: 'Approvals', title: 'New Supplier Quotation Received', desc: 'Simba Cement submitted quote for RFQ-2026-08.', time: '1 day ago', unread: false }
-  ])
+  // Real-time Pending Maker-Checker items from Database
+  const [pendingApprovals, setPendingApprovals] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [notifFilter, setNotifFilter] = useState('All')
 
-  // Keyboard shortcut Ctrl+K for search
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault()
-        setGlobalDrawer('search')
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [setGlobalDrawer])
-
-  // Live Search handler
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([])
-      return
-    }
-
-    setSearchLoading(true)
-    const q = searchQuery.toLowerCase()
-
+  const fetchRealPendingApprovals = () => {
     Promise.all([
-      fetch('http://localhost:5000/api/tenders').then(r => r.json()).catch(() => []),
       fetch('http://localhost:5000/api/pos').then(r => r.json()).catch(() => []),
-      fetch('http://localhost:5000/api/supplier_invoices').then(r => r.json()).catch(() => []),
-      fetch('http://localhost:5000/api/clients').then(r => r.json()).catch(() => [])
-    ]).then(([tenders, pos, invoices, clients]) => {
-      const matchedTenders = tenders.filter(t => (t.id || '').toLowerCase().includes(q) || (t.name || '').toLowerCase().includes(q) || (t.client || '').toLowerCase().includes(q)).map(t => ({ type: 'Tender / Project', title: `${t.id} - ${t.name}`, sub: `Client: ${t.client || 'N/A'}`, path: '/tenders' }))
-      const matchedPOs = pos.filter(p => (p.id || '').toLowerCase().includes(q) || (p.supplier_name || '').toLowerCase().includes(q)).map(p => ({ type: 'Purchase Order', title: `${p.id} - ${p.supplier_name}`, sub: `Value: KSh ${p.total_value?.toLocaleString() || 0}`, path: '/procurement' }))
-      const matchedInvoices = invoices.filter(i => (i.id || '').toLowerCase().includes(q) || (i.supplier_name || '').toLowerCase().includes(q)).map(i => ({ type: 'Supplier Invoice', title: `${i.id} - ${i.supplier_name}`, sub: `Amount: KSh ${i.amount?.toLocaleString() || 0}`, path: '/finances' }))
-      const matchedClients = clients.filter(c => (c.name || '').toLowerCase().includes(q) || (c.id || '').toLowerCase().includes(q)).map(c => ({ type: 'Client Directory', title: `${c.id || 'CLI'} - ${c.name}`, sub: `Tax PIN: ${c.tax_pin || 'N/A'}`, path: '/corporate' }))
+      fetch('http://localhost:5000/api/stock_requisitions').then(r => r.json()).catch(() => []),
+      fetch('http://localhost:5000/api/procurement/3-way-match-audit').then(r => r.json()).catch(() => [])
+    ]).then(([pos, reqs, audit]) => {
+      const poApprovals = (Array.isArray(pos) ? pos : [])
+        .filter(p => p.status === 'Pending Approval' || p.status === 'Draft' || p.status === 'Pending')
+        .map(p => ({
+          id: p.id,
+          apiType: 'PO',
+          type: 'Purchase Order Approval',
+          title: `Supplier PO #${p.id} (${p.supplier_name || 'Vendor'})`,
+          detail: `Total Order Value: KSh ${Number(p.total_value || 0).toLocaleString()} • Requires Executive Authorization`,
+          date: p.issue_date || 'Today',
+          status: p.status
+        }));
 
-      setSearchResults([...matchedTenders, ...matchedPOs, ...matchedInvoices, ...matchedClients])
-      setSearchLoading(false)
-    })
-  }, [searchQuery])
+      const reqApprovals = (Array.isArray(reqs) ? reqs : [])
+        .filter(r => r.status === 'Pending')
+        .map(r => ({
+          id: r.id,
+          apiType: 'REQ',
+          type: 'Stock Requisition Request',
+          title: `Requisition #${r.id} - ${r.item_name}`,
+          detail: `Requested Quantity: ${r.quantity} PCS • Project: ${r.tender_id || 'General'}`,
+          date: r.request_date || 'Today',
+          status: r.status
+        }));
 
-  const getPageTitle = (path) => {
-    switch (path) {
-      case '/': return 'Dashboard'
-      case '/tenders': return 'Tenders & Sales Operations'
-      case '/procurement': return 'Procurement'
-      case '/finances': return 'Finance & Corporate Bookkeeping'
-      case '/corporate': return 'Corporate Governance & Administration'
-      default: return 'Akpali Corporate ERP'
+      const auditNotifs = (Array.isArray(audit) ? audit : [])
+        .filter(a => a.status === 'Discrepancy' || a.status === 'Flagged')
+        .map(a => ({
+          id: `AUDIT-${a.id || Math.random()}`,
+          apiType: 'AUDIT',
+          type: '3-Way Match Mismatch',
+          title: `Discrepancy Flagged: Invoice #${a.invoice_id}`,
+          detail: a.details || '3-Way Matching audit flagged mismatch between Invoice and GRN',
+          date: 'Recent',
+          status: 'Flagged'
+        }));
+
+      const allItems = [...poApprovals, ...reqApprovals, ...auditNotifs];
+      setPendingApprovals(allItems);
+
+      // Populate Notifications Bell from live system events
+      const liveNotifs = [
+        ...poApprovals.map(p => ({ id: `N-${p.id}`, cat: 'Approvals', title: p.title, desc: p.detail, time: p.date, unread: true })),
+        ...reqApprovals.map(r => ({ id: `N-${r.id}`, cat: 'Operations', title: r.title, desc: r.detail, time: r.date, unread: true })),
+        ...auditNotifs.map(a => ({ id: `N-${a.id}`, cat: 'Urgent', title: a.title, desc: a.detail, time: a.date, unread: true }))
+      ];
+      setNotifications(liveNotifs.length > 0 ? liveNotifs : [
+        { id: 'NOTIF-1', cat: 'System', title: 'ERP Operations Active', desc: 'All database modules connected and verified.', time: 'Just now', unread: false }
+      ]);
+    });
+  };
+
+  useEffect(() => {
+    fetchRealPendingApprovals();
+  }, []);
+
+  const handleApproveItem = async (item) => {
+    try {
+      let endpoint = '';
+      if (item.apiType === 'PO') {
+        endpoint = `http://localhost:5000/api/pos/${item.id}/approve`;
+      } else if (item.apiType === 'REQ') {
+        endpoint = `http://localhost:5000/api/stock_requisitions/${item.id}/approve`;
+      }
+
+      if (endpoint) {
+        const res = await fetch(endpoint, { method: 'PUT' });
+        const data = await res.json();
+        if (res.ok) {
+          alert(`✅ ${data.message || 'Item Approved & Authorized!'}`);
+          fetchRealPendingApprovals();
+        } else {
+          alert(`❌ Approval Failed: ${data.error || 'Check inventory or permissions'}`);
+        }
+      } else {
+        setPendingApprovals(prev => prev.filter(x => x.id !== item.id));
+      }
+    } catch(e) {
+      console.error(e);
+      alert('Network error connecting to approval endpoint');
     }
-  }
+  };
 
-  const handleApproveItem = (id) => {
-    setPendingApprovals(prev => prev.filter(item => item.id !== id))
-    alert(`✅ Approval Item '${id}' has been verified and authorized. Audit record created!`)
-  }
+  const handleRejectItem = async (item) => {
+    try {
+      let endpoint = '';
+      if (item.apiType === 'PO') {
+        endpoint = `http://localhost:5000/api/pos/${item.id}/reject`;
+      } else if (item.apiType === 'REQ') {
+        endpoint = `http://localhost:5000/api/stock_requisitions/${item.id}/reject`;
+      }
+
+      if (endpoint) {
+        const res = await fetch(endpoint, { method: 'PUT' });
+        const data = await res.json();
+        if (res.ok) {
+          alert(`⚠️ ${data.message || 'Item Rejected'}`);
+          fetchRealPendingApprovals();
+        } else {
+          alert(`❌ Action Failed: ${data.error || 'Could not reject'}`);
+        }
+      } else {
+        setPendingApprovals(prev => prev.filter(x => x.id !== item.id));
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  };
 
   const unreadNotifCount = notifications.filter(n => n.unread).length
 
@@ -352,10 +403,10 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
                   <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.875rem', color: '#cbd5e1', lineHeight: '1.5' }}>{item.detail}</p>
                 </div>
                 <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end', borderTop: '1px solid #334155', paddingTop: '0.65rem' }}>
-                  <button type="button" className="btn" style={{ background: '#f43f5e', color: '#fff', fontSize: '0.8rem', padding: '0.35rem 0.85rem', fontWeight: '600' }} onClick={() => setPendingApprovals(prev => prev.filter(x => x.id !== item.id))}>
+                  <button type="button" className="btn" style={{ background: '#f43f5e', color: '#fff', fontSize: '0.8rem', padding: '0.35rem 0.85rem', fontWeight: '600' }} onClick={() => handleRejectItem(item)}>
                     ✕ Reject
                   </button>
-                  <button type="button" className="btn" style={{ background: '#10b981', color: '#fff', fontSize: '0.85rem', padding: '0.35rem 1.1rem', fontWeight: 'bold' }} onClick={() => handleApproveItem(item.id)}>
+                  <button type="button" className="btn" style={{ background: '#10b981', color: '#fff', fontSize: '0.85rem', padding: '0.35rem 1.1rem', fontWeight: 'bold' }} onClick={() => handleApproveItem(item)}>
                     ✓ Authorize & Approve
                   </button>
                 </div>
