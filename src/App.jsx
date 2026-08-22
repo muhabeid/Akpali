@@ -45,9 +45,20 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
     Promise.all([
       fetch('http://localhost:5000/api/pos').then(r => r.json()).catch(() => []),
       fetch('http://localhost:5000/api/stock_requisitions').then(r => r.json()).catch(() => []),
-      fetch('http://localhost:5000/api/procurement/3-way-match-audit').then(r => r.json()).catch(() => [])
-    ]).then(([pos, reqs, audit]) => {
-      const poApprovals = (Array.isArray(pos) ? pos : [])
+      fetch('http://localhost:5000/api/procurement/3-way-match-audit').then(r => r.json()).catch(() => []),
+      fetch('http://localhost:5000/api/inventory').then(r => r.json()).catch(() => []),
+      fetch('http://localhost:5000/api/tenders').then(r => r.json()).catch(() => []),
+      fetch('http://localhost:5000/api/supplier_invoices').then(r => r.json()).catch(() => [])
+    ]).then(([pos, reqs, audit, inventory, tenders, invoices]) => {
+      const safePos = Array.isArray(pos) ? pos : [];
+      const safeReqs = Array.isArray(reqs) ? reqs : [];
+      const safeAudit = Array.isArray(audit) ? audit : [];
+      const safeInv = Array.isArray(inventory) ? inventory : [];
+      const safeTenders = Array.isArray(tenders) ? tenders : [];
+      const safeInvoices = Array.isArray(invoices) ? invoices : [];
+
+      // 1. Real Pending Approvals from Database
+      const poApprovals = safePos
         .filter(p => p.status === 'Pending Approval' || p.status === 'Draft' || p.status === 'Pending')
         .map(p => ({
           id: p.id,
@@ -59,7 +70,7 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
           status: p.status
         }));
 
-      const reqApprovals = (Array.isArray(reqs) ? reqs : [])
+      const reqApprovals = safeReqs
         .filter(r => r.status === 'Pending')
         .map(r => ({
           id: r.id,
@@ -71,7 +82,7 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
           status: r.status
         }));
 
-      const auditNotifs = (Array.isArray(audit) ? audit : [])
+      const auditApprovals = safeAudit
         .filter(a => a.status === 'Discrepancy' || a.status === 'Flagged')
         .map(a => ({
           id: `AUDIT-${a.id || Math.random()}`,
@@ -83,18 +94,64 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
           status: 'Flagged'
         }));
 
-      const allItems = [...poApprovals, ...reqApprovals, ...auditNotifs];
-      setPendingApprovals(allItems);
+      // Interactive Inbox Items (includes test items if DB pending count is 0)
+      const demoApprovals = (poApprovals.length === 0 && reqApprovals.length === 0 && auditApprovals.length === 0) ? [
+        {
+          id: 'PO-2026-088',
+          apiType: 'PO_DEMO',
+          type: 'PO Ceiling Authorization',
+          title: 'Supplier PO #PO-2026-088 (Bamburi Cement Ltd)',
+          detail: 'Total Order Value: KSh 450,000 • Exceeds standard buyer threshold',
+          date: 'Just now',
+          status: 'Pending'
+        },
+        {
+          id: 'SR-4092',
+          apiType: 'REQ_DEMO',
+          type: 'Stock Requisition Request',
+          title: 'Requisition #SR-4092 - PVC Pipes (2-inch)',
+          detail: 'Requested Quantity: 150 PCS • Project: Region 4 Water Infrastructure',
+          date: '10 mins ago',
+          status: 'Pending'
+        }
+      ] : [];
 
-      // Populate Notifications Bell from live system events
-      const liveNotifs = [
-        ...poApprovals.map(p => ({ id: `N-${p.id}`, cat: 'Approvals', title: p.title, desc: p.detail, time: p.date, unread: true })),
-        ...reqApprovals.map(r => ({ id: `N-${r.id}`, cat: 'Operations', title: r.title, desc: r.detail, time: r.date, unread: true })),
-        ...auditNotifs.map(a => ({ id: `N-${a.id}`, cat: 'Urgent', title: a.title, desc: a.detail, time: a.date, unread: true }))
-      ];
-      setNotifications(liveNotifs.length > 0 ? liveNotifs : [
-        { id: 'NOTIF-1', cat: 'System', title: 'ERP Operations Active', desc: 'All database modules connected and verified.', time: 'Just now', unread: false }
-      ]);
+      const allInboxItems = [...poApprovals, ...reqApprovals, ...auditApprovals, ...demoApprovals];
+      setPendingApprovals(allInboxItems);
+
+      // 2. Comprehensive System Notifications
+      const notifList = [];
+
+      // Urgent Discrepancies
+      safeAudit.forEach(a => {
+        notifList.push({ id: `N-AUD-${a.id}`, cat: 'Urgent', title: `3-Way Match Discrepancy: Invoice #${a.invoice_id}`, desc: a.details || 'Mismatch detected between Invoice and GRN', time: 'Urgent', unread: true });
+      });
+
+      // Low Stock Warnings
+      safeInv.filter(i => (i.quantity || 0) < 50).slice(0, 3).forEach(i => {
+        notifList.push({ id: `N-INV-${i.id}`, cat: 'Urgent', title: `Low Stock Alert: ${i.item_name}`, desc: `Current quantity is ${i.quantity} ${i.unit || 'PCS'} (Below reorder threshold 50)`, time: 'Stock Warning', unread: true });
+      });
+
+      // Pending Approvals
+      allInboxItems.forEach(item => {
+        notifList.push({ id: `N-APPR-${item.id}`, cat: 'Approvals', title: item.title, desc: item.detail, time: item.date, unread: true });
+      });
+
+      // Active Tenders
+      safeTenders.slice(0, 3).forEach(t => {
+        notifList.push({ id: `N-TEN-${t.id}`, cat: 'Operations', title: `Tender Active: ${t.id} - ${t.name}`, desc: `Client: ${t.client || 'Government'} • Contract Value: KSh ${Number(t.contract_value || 0).toLocaleString()}`, time: t.status || 'Active', unread: false });
+      });
+
+      // Recent Supplier Invoices
+      safeInvoices.slice(0, 2).forEach(inv => {
+        notifList.push({ id: `N-INV-${inv.id}`, cat: 'Operations', title: `Supplier Invoice Received #${inv.id}`, desc: `Supplier: ${inv.supplier_name || 'Vendor'} • Amount: KSh ${Number(inv.amount || 0).toLocaleString()}`, time: inv.status || 'Processed', unread: false });
+      });
+
+      if (notifList.length === 0) {
+        notifList.push({ id: 'N-SYS-1', cat: 'System', title: 'AKPALI ERP Active', desc: 'All corporate procurement and finance modules connected.', time: 'Just now', unread: false });
+      }
+
+      setNotifications(notifList);
     });
   };
 

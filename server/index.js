@@ -1321,8 +1321,15 @@ app.put('/api/pos/:id/approve', async (req, res) => {
 
 app.put('/api/pos/:id/reject', async (req, res) => {
   const { id } = req.params;
+  const po = await db.get('SELECT tender_id, total_value FROM purchase_orders WHERE id = ?', [id]);
   await db.run('UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', ['Rejected', id]);
-  res.json({ message: 'Purchase Order Rejected.' });
+  
+  if (po && po.tender_id) {
+    const costRow = await db.get("SELECT COALESCE(SUM(total_value), 0) as total FROM purchase_orders WHERE tender_id = ? AND status != 'Rejected'", [po.tender_id]);
+    await db.run('UPDATE tenders SET total_cost = ?, profit = total_revenue - ? WHERE id = ?', [costRow.total, costRow.total, po.tender_id]);
+  }
+
+  res.json({ message: `Purchase Order #${id} Rejected and committed costs released.` });
 });
 
 app.delete('/api/pos/:id', async (req, res) => {
