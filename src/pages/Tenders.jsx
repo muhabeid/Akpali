@@ -379,6 +379,19 @@ export default function Tenders({ setGlobalDrawer }) {
           </table>
         </div>
 
+        {/* EDIT SALES QUOTATION DRAWER FOR 360 TENDER VIEW */}
+        <Drawer isOpen={Boolean(editingQuote)} onClose={() => setEditingQuote(null)} title={`✏️ Edit Sales Quotation (${editingQuote?.id})`}>
+          {editingQuote && (
+            <SalesQuoteForm 
+              quoteToEdit={editingQuote} 
+              onSuccess={() => {
+                setEditingQuote(null);
+                window.location.reload();
+              }} 
+            />
+          )}
+        </Drawer>
+
         {/* DOCUMENT PREVIEW MODAL FOR 360 TENDER VIEW */}
         <DocumentPreviewModal 
           isOpen={previewModalDoc.isOpen} 
