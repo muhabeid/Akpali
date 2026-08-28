@@ -123,28 +123,28 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
       const notifList = [];
 
       // Urgent Discrepancies
-      safeAudit.forEach(a => {
-        notifList.push({ id: `N-AUD-${a.id}`, cat: 'Urgent', title: `3-Way Match Discrepancy: Invoice #${a.invoice_id}`, desc: a.details || 'Mismatch detected between Invoice and GRN', time: 'Urgent', unread: true });
+      safeAudit.forEach((a, idx) => {
+        notifList.push({ id: `N-AUD-${a.id || idx}`, cat: 'Urgent', title: `3-Way Match Discrepancy: Invoice #${a.invoice_id || 'AUD'}`, desc: a.details || 'Mismatch detected between Invoice and GRN', time: 'Urgent', unread: true });
       });
 
       // Low Stock Warnings
-      safeInv.filter(i => (i.quantity || 0) < 50).slice(0, 3).forEach(i => {
-        notifList.push({ id: `N-INV-${i.id}`, cat: 'Urgent', title: `Low Stock Alert: ${i.item_name}`, desc: `Current quantity is ${i.quantity} ${i.unit || 'PCS'} (Below reorder threshold 50)`, time: 'Stock Warning', unread: true });
+      safeInv.filter(i => (i.quantity || 0) < 50).slice(0, 3).forEach((i, idx) => {
+        notifList.push({ id: `N-STOCK-${i.id || idx}`, cat: 'Urgent', title: `Low Stock Alert: ${i.item_name}`, desc: `Current quantity is ${i.quantity} ${i.unit || 'PCS'} (Below reorder threshold 50)`, time: 'Stock Warning', unread: true });
       });
 
       // Pending Approvals
-      allInboxItems.forEach(item => {
-        notifList.push({ id: `N-APPR-${item.id}`, cat: 'Approvals', title: item.title, desc: item.detail, time: item.date, unread: true });
+      allInboxItems.forEach((item, idx) => {
+        notifList.push({ id: `N-APPR-${item.id || idx}`, cat: 'Approvals', title: item.title, desc: item.detail, time: item.date, unread: true });
       });
 
       // Active Tenders
-      safeTenders.slice(0, 3).forEach(t => {
-        notifList.push({ id: `N-TEN-${t.id}`, cat: 'Operations', title: `Tender Active: ${t.id} - ${t.name}`, desc: `Client: ${t.client || 'Government'} • Contract Value: KSh ${Number(t.contract_value || 0).toLocaleString()}`, time: t.status || 'Active', unread: false });
+      safeTenders.slice(0, 3).forEach((t, idx) => {
+        notifList.push({ id: `N-TEN-${t.id || idx}`, cat: 'Operations', title: `Tender Active: ${t.id} - ${t.name}`, desc: `Client: ${t.client || 'Government'} • Contract Value: KSh ${Number(t.contract_value || 0).toLocaleString()}`, time: t.status || 'Active', unread: false });
       });
 
       // Recent Supplier Invoices
-      safeInvoices.slice(0, 2).forEach(inv => {
-        notifList.push({ id: `N-INV-${inv.id}`, cat: 'Operations', title: `Supplier Invoice Received #${inv.id}`, desc: `Supplier: ${inv.supplier_name || 'Vendor'} • Amount: KSh ${Number(inv.amount || 0).toLocaleString()}`, time: inv.status || 'Processed', unread: false });
+      safeInvoices.slice(0, 2).forEach((inv, idx) => {
+        notifList.push({ id: `N-INVOICE-${inv.id || idx}`, cat: 'Operations', title: `Supplier Invoice Received #${inv.id}`, desc: `Supplier: ${inv.supplier_name || 'Vendor'} • Amount: KSh ${Number(inv.amount || 0).toLocaleString()}`, time: inv.status || 'Processed', unread: false });
       });
 
       if (notifList.length === 0) {
@@ -225,7 +225,7 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
           <Menu size={22} />
         </button>
         <h2 className="topbar-title" style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: 'hsl(var(--primary))' }}>
-          {getPageTitle(location.pathname)}
+          {getPageTitle(location?.pathname)}
         </h2>
       </div>
       
