@@ -28,9 +28,9 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
     }
   }, [isOpen]);
 
-  if (!isOpen || !currentDoc) return null;
-
   const activeDoc = currentDoc || doc;
+
+  if (!isOpen || !activeDoc) return null;
 
   const handlePrint = () => {
     printElement('#document-preview-print-area', docType || 'Official_Document');
@@ -227,7 +227,7 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
                   <strong>Doc Ref #:</strong> {currentDocRefLabel}
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <strong>Date Generated:</strong> {doc.issue_date || doc.expected_date || doc.deadline || new Date().toISOString().split('T')[0]}
+                  <strong>Date Generated:</strong> {activeDoc.issue_date || activeDoc.expected_date || activeDoc.deadline || new Date().toISOString().split('T')[0]}
                 </div>
               </div>
             </div>
@@ -237,17 +237,17 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
               {/* LEFT COLUMN: PARTY DETAILS (CLIENT OR SUPPLIER) */}
               <div>
                 <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', textTransform: 'uppercase', color: '#0284c7', letterSpacing: '0.05em', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.25rem' }}>
-                  {doc.supplier_name || doc.supplier ? 'Supplier / Vendor Details' : 'Client / Recipient Details'}
+                  {activeDoc.supplier_name || activeDoc.supplier ? 'Supplier / Vendor Details' : 'Client / Recipient Details'}
                 </h5>
                 <strong style={{ fontSize: '0.95rem', color: '#0f172a', display: 'block', marginBottom: '0.35rem' }}>
-                  {matchedClient?.name || doc.client_name || doc.client || matchedSupplier?.name || doc.supplier_name || doc.supplier || 'Client Organization'}
+                  {matchedClient?.name || activeDoc.client_name || activeDoc.client || matchedSupplier?.name || activeDoc.supplier_name || activeDoc.supplier || 'Client Organization'}
                 </strong>
                 <div style={{ color: '#475569', lineHeight: '1.55', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                  <div>{matchedClient?.address || matchedSupplier?.address || doc.client_address || doc.supplier_address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
-                  <div>{matchedClient?.phone || matchedSupplier?.phone || doc.client_phone || doc.supplier_phone || '+254 700 000 000'}</div>
+                  <div>{matchedClient?.address || matchedSupplier?.address || activeDoc.client_address || activeDoc.supplier_address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
+                  <div>{matchedClient?.phone || matchedSupplier?.phone || activeDoc.client_phone || activeDoc.supplier_phone || '+254 700 000 000'}</div>
                   <div>
                     {(matchedClient?.email || matchedSupplier?.email) ? <span>{matchedClient?.email || matchedSupplier?.email} </span> : ''}
-                    {(matchedClient?.tax_pin || matchedSupplier?.tax_pin || matchedSupplier?.kra_pin || doc.client_pin || doc.supplier_pin) ? <span>{(matchedClient?.email || matchedSupplier?.email) ? '&bull; ' : ''}PIN: {matchedClient?.tax_pin || matchedSupplier?.tax_pin || matchedSupplier?.kra_pin || doc.client_pin || doc.supplier_pin}</span> : ''}
+                    {(matchedClient?.tax_pin || matchedSupplier?.tax_pin || matchedSupplier?.kra_pin || activeDoc.client_pin || activeDoc.supplier_pin) ? <span>{(matchedClient?.email || matchedSupplier?.email) ? '&bull; ' : ''}PIN: {matchedClient?.tax_pin || matchedSupplier?.tax_pin || matchedSupplier?.kra_pin || activeDoc.client_pin || activeDoc.supplier_pin}</span> : ''}
                   </div>
                 </div>
               </div>
@@ -258,31 +258,31 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
                   Project & Contract Reference
                 </h5>
                 <div style={{ color: '#475569', lineHeight: '1.55', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                  {doc.tender_name && (
+                  {activeDoc.tender_name && (
                     <div style={{ marginBottom: '0.35rem' }}>
                       <strong>Tender / Project:</strong>
-                      <div style={{ color: '#0f172a', fontWeight: 'bold', fontSize: '0.9rem', marginTop: '0.1rem' }}>{shortenTenderName(doc.tender_name)}</div>
+                      <div style={{ color: '#0f172a', fontWeight: 'bold', fontSize: '0.9rem', marginTop: '0.1rem' }}>{shortenTenderName(activeDoc.tender_name)}</div>
                     </div>
                   )}
-                  {doc.lpo_reference && (
+                  {activeDoc.lpo_reference && (
                     <div style={{ marginBottom: '0.25rem' }}>
-                      <strong>Source LPO Ref #:</strong> <span style={{ color: '#0f172a', fontWeight: '600' }}>{formatCleanDocRef(doc.lpo_reference, 'CLIENT LPO')}</span>
+                      <strong>Source LPO Ref #:</strong> <span style={{ color: '#0f172a', fontWeight: '600' }}>{formatCleanDocRef(activeDoc.lpo_reference, 'CLIENT LPO')}</span>
                     </div>
                   )}
-                  {doc.id && (docType?.includes('DELIVERY') || docType?.includes('GOODS') || docType?.includes('GRN')) && (
+                  {activeDoc.id && (docType?.includes('DELIVERY') || docType?.includes('GOODS') || docType?.includes('GRN')) && (
                     <div style={{ marginBottom: '0.35rem' }}>
-                      <strong>Deliverable Ref #:</strong> <span style={{ color: '#0f172a', fontWeight: 'bold' }}>#{String(doc.id).replace(/[^0-9]/g, '') || doc.id}</span>
+                      <strong>Deliverable Ref #:</strong> <span style={{ color: '#0f172a', fontWeight: 'bold' }}>#{String(activeDoc.id).replace(/[^0-9]/g, '') || activeDoc.id}</span>
                     </div>
                   )}
-                  {doc.deadline && <div style={{ marginTop: '0.15rem' }}><strong>Bidding Deadline:</strong> {doc.deadline}</div>}
-                  {doc.status && (
+                  {activeDoc.deadline && <div style={{ marginTop: '0.15rem' }}><strong>Bidding Deadline:</strong> {activeDoc.deadline}</div>}
+                  {activeDoc.status && (
                     <div style={{ marginTop: '0.15rem' }}>
-                      <strong>Document Status:</strong> <span style={{ fontWeight: 'bold', color: '#0284c7' }}>{doc.status}</span>
+                      <strong>Document Status:</strong> <span style={{ fontWeight: 'bold', color: '#0284c7' }}>{activeDoc.status}</span>
                     </div>
                   )}
-                  {doc.total_value !== undefined && doc.total_value !== null && (
+                  {activeDoc.total_value !== undefined && activeDoc.total_value !== null && (
                     <div style={{ marginTop: '0.25rem' }}>
-                      <strong>Total Contract Value:</strong> <span style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.9rem' }}>{formatAmount(doc.total_value)}</span>
+                      <strong>Total Contract Value:</strong> <span style={{ fontWeight: '800', color: '#16a34a', fontSize: '0.9rem' }}>{formatAmount(activeDoc.total_value)}</span>
                     </div>
                   )}
                 </div>
@@ -345,10 +345,10 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
                 })()}
               </div>
             ) : (
-              doc.items && typeof doc.items === 'string' && (
+              activeDoc.items && typeof activeDoc.items === 'string' && (
                 <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f1f5f9', borderRadius: '6px' }}>
                   <strong style={{ fontSize: '0.825rem', color: '#475569' }}>Document Specifications:</strong>
-                  <pre style={{ fontSize: '0.825rem', margin: '0.5rem 0 0 0', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{doc.items}</pre>
+                  <pre style={{ fontSize: '0.825rem', margin: '0.5rem 0 0 0', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>{activeDoc.items}</pre>
                 </div>
               )
             )}
