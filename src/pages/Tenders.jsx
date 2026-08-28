@@ -190,7 +190,17 @@ export default function Tenders({ setGlobalDrawer }) {
                           <span style={{ color: 'hsl(var(--primary))', marginRight: '0.5rem', fontWeight: 'bold' }}>{formatAmount(sq.total_value)}</span>
                           <button 
                             className="btn" 
-                            onClick={() => setPreviewModalDoc({ isOpen: true, doc: sq, type: 'SALES QUOTATION' })} 
+                            onClick={() => setPreviewModalDoc({ 
+                              isOpen: true, 
+                              doc: { 
+                                ...sq, 
+                                tender_id: sq.tender_id || selectedTender.id, 
+                                tender_name: selectedTender.name, 
+                                client: selectedTender.client, 
+                                client_name: selectedTender.client 
+                              }, 
+                              type: 'SALES QUOTATION' 
+                            })} 
                             style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)' }}
                             title="Preview Sales Quote"
                           >
@@ -198,7 +208,11 @@ export default function Tenders({ setGlobalDrawer }) {
                           </button>
                           <button 
                             className="btn" 
-                            onClick={() => setEditingQuote(sq)} 
+                            onClick={() => setEditingQuote({ 
+                              ...sq, 
+                              tender_id: sq.tender_id || selectedTender.id, 
+                              tender_name: selectedTender.name 
+                            })} 
                             style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--warning), 0.15)', color: 'hsl(var(--warning))', border: '1px solid hsla(var(--warning), 0.3)' }}
                             title="Edit / Add Line Items to Sales Quote"
                           >
