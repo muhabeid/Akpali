@@ -212,6 +212,18 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
     }
   };
 
+  const getPageTitle = (path) => {
+    if (!path) return 'Akpali Corporate ERP';
+    switch (path) {
+      case '/': return 'Dashboard'
+      case '/tenders': return 'Tenders & Sales Operations'
+      case '/procurement': return 'Procurement'
+      case '/finances': return 'Finance & Corporate Bookkeeping'
+      case '/corporate': return 'Corporate Governance & Administration'
+      default: return 'Akpali Corporate ERP'
+    }
+  }
+
   const unreadNotifCount = notifications.filter(n => n.unread).length
 
   return (
