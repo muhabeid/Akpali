@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react'
-import { X, Printer, Send, MessageCircle } from 'lucide-react'
+import { X, Printer, Send, MessageCircle, Edit3 } from 'lucide-react'
 import { printElement } from '../utils/printHelper'
+import SalesQuoteForm from './SalesQuoteForm'
 
 export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, companyProfile }) {
   const [clientsDirectory, setClientsDirectory] = useState([]);
   const [suppliersDirectory, setSuppliersDirectory] = useState([]);
+  const [currentDoc, setCurrentDoc] = useState(doc);
+  const [isEditingQuote, setIsEditingQuote] = useState(false);
+
+  useEffect(() => {
+    setCurrentDoc(doc);
+    setIsEditingQuote(false);
+  }, [doc]);
 
   useEffect(() => {
     if (isOpen) {
@@ -20,16 +28,18 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
     }
   }, [isOpen]);
 
-  if (!isOpen || !doc) return null;
+  if (!isOpen || !currentDoc) return null;
+
+  const activeDoc = currentDoc || doc;
 
   const handlePrint = () => {
     printElement('#document-preview-print-area', docType || 'Official_Document');
   };
 
   // Match client directory record
-  const targetClientName = doc.client_name || doc.client || '';
+  const targetClientName = activeDoc.client_name || activeDoc.client || '';
   const matchedClient = clientsDirectory.find(c => 
-    (c.id && c.id === doc.client_id) || 
+    (c.id && c.id === activeDoc.client_id) || 
     (c.name && targetClientName && c.name.toLowerCase() === targetClientName.toLowerCase()) ||
     (targetClientName && c.name && (c.name.toLowerCase().includes(targetClientName.toLowerCase()) || targetClientName.toLowerCase().includes(c.name.toLowerCase())))
   );
@@ -86,7 +96,7 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
   // Parse items safely
   let items = [];
   try {
-    const parsed = typeof doc.items === 'string' ? JSON.parse(doc.items) : doc.items;
+    const parsed = typeof activeDoc.items === 'string' ? JSON.parse(activeDoc.items) : activeDoc.items;
     items = Array.isArray(parsed) ? parsed : [];
   } catch (e) {
     items = [];
@@ -98,7 +108,7 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
   };
 
   const currentDocTypeLabel = cleanDocTypeName(docType);
-  const currentDocRefLabel = formatCleanDocRef(doc.id || doc.doc_ref, docType);
+  const currentDocRefLabel = formatCleanDocRef(activeDoc.id || activeDoc.doc_ref, docType);
 
   return (
     <div style={{
@@ -145,6 +155,11 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {currentDocTypeLabel === 'QUOTATION' && (
+              <button onClick={() => setIsEditingQuote(!isEditingQuote)} className="btn" style={{ background: 'rgba(245, 158, 11, 0.2)', color: '#f59e0b', border: '1px solid #f59e0b', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                <Edit3 size={15} /> {isEditingQuote ? 'Hide Editor' : 'Edit Quote Items'}
+              </button>
+            )}
             <button onClick={handlePrint} className="btn" style={{ background: '#38bdf8', color: '#0f172a', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
               <Printer size={15} /> Print / PDF
             </button>
@@ -162,6 +177,21 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
 
         {/* MODAL BODY PREVIEW AREA */}
         <div style={{ overflowY: 'auto', padding: '1.5rem', background: '#f8fafc', flex: 1 }}>
+          {isEditingQuote && currentDocTypeLabel === 'QUOTATION' && (
+            <div style={{ marginBottom: '1.5rem', background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '1.25rem', color: '#ffffff' }}>
+              <h4 style={{ margin: '0 0 1rem 0', color: '#f59e0b', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Edit3 size={18} /> Edit Sales Quotation Line Items & Rates ({currentDocRefLabel})
+              </h4>
+              <SalesQuoteForm 
+                quoteToEdit={activeDoc} 
+                onSuccess={(updatedQuote) => {
+                  setCurrentDoc(updatedQuote);
+                  setIsEditingQuote(false);
+                }} 
+              />
+            </div>
+          )}
+
           <div id="document-preview-print-area" style={{ background: '#ffffff', padding: '2rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', color: '#0f172a' }}>
             
             {/* CORPORATE LETTERHEAD */}

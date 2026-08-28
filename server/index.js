@@ -975,13 +975,37 @@ app.get('/api/sales-quotes', async (req, res) => {
 });
 
 app.post('/api/sales-quotes', async (req, res) => {
-  const { tender_id, issue_date, total_value, items } = req.body;
-  const id = `SQ-${Date.now().toString().slice(-6)}`;
+  const { id, tender_id, issue_date, total_value, items } = req.body;
+  const finalId = id || `SQ-${Date.now().toString().slice(-6)}`;
   await db.run(
-    'INSERT INTO sales_quotes (id, tender_id, issue_date, total_value, items) VALUES (?, ?, ?, ?, ?)',
-    [id, tender_id, issue_date, total_value, items]
+    'INSERT OR REPLACE INTO sales_quotes (id, tender_id, issue_date, total_value, items) VALUES (?, ?, ?, ?, ?)',
+    [finalId, tender_id, issue_date, total_value, typeof items === 'object' ? JSON.stringify(items) : items]
   );
-  res.json({ id });
+  res.json({ id: finalId });
+});
+
+app.put('/api/sales-quotes/:id', async (req, res) => {
+  const { id } = req.params;
+  const { tender_id, issue_date, total_value, items } = req.body;
+  
+  const existing = await db.get('SELECT * FROM sales_quotes WHERE id = ?', [id]);
+  if (!existing) {
+    return res.status(404).json({ error: 'Sales Quotation not found' });
+  }
+
+  await db.run(
+    'UPDATE sales_quotes SET tender_id = COALESCE(?, tender_id), issue_date = COALESCE(?, issue_date), total_value = COALESCE(?, total_value), items = COALESCE(?, items), updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [tender_id, issue_date, total_value, typeof items === 'object' ? JSON.stringify(items) : items, id]
+  );
+
+  const updated = await db.get('SELECT * FROM sales_quotes WHERE id = ?', [id]);
+  res.json({ message: `Sales Quotation ${id} updated successfully.`, quote: updated });
+});
+
+app.delete('/api/sales-quotes/:id', async (req, res) => {
+  const { id } = req.params;
+  await db.run('DELETE FROM sales_quotes WHERE id = ?', [id]);
+  res.json({ message: `Sales Quotation ${id} deleted successfully.` });
 });
 
 // GET /api/tenders - Optimized O(1) query using SQLite JSON aggregation

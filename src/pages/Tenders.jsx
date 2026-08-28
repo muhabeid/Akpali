@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { printElement } from '../utils/printHelper'
 import { useCurrency } from '../context/CurrencyContext'
 import DocumentPreviewModal from '../components/DocumentPreviewModal'
+import Drawer from '../components/Drawer'
+import SalesQuoteForm from '../components/SalesQuoteForm'
 
 export default function Tenders({ setGlobalDrawer }) {
   const { formatAmount } = useCurrency()
@@ -12,6 +14,7 @@ export default function Tenders({ setGlobalDrawer }) {
   const [usingMockData, setUsingMockData] = useState(false)
   const [companyProfile, setCompanyProfile] = useState(null)
   const [editingTender, setEditingTender] = useState(null)
+  const [editingQuote, setEditingQuote] = useState(null)
   const [previewModalDoc, setPreviewModalDoc] = useState({ isOpen: false, doc: null, type: '' })
 
   const handleDeleteTender = async (t) => {
@@ -183,7 +186,7 @@ export default function Tenders({ setGlobalDrawer }) {
                       <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
                         <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{sq.id}</td>
                         <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>{sq.issue_date}</td>
-                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                           <span style={{ color: 'hsl(var(--primary))', marginRight: '0.5rem', fontWeight: 'bold' }}>{formatAmount(sq.total_value)}</span>
                           <button 
                             className="btn" 
@@ -192,6 +195,14 @@ export default function Tenders({ setGlobalDrawer }) {
                             title="Preview Sales Quote"
                           >
                             👁️
+                          </button>
+                          <button 
+                            className="btn" 
+                            onClick={() => setEditingQuote(sq)} 
+                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--warning), 0.15)', color: 'hsl(var(--warning))', border: '1px solid hsla(var(--warning), 0.3)' }}
+                            title="Edit / Add Line Items to Sales Quote"
+                          >
+                            ✏️ Edit
                           </button>
                         </td>
                       </tr>
@@ -477,6 +488,19 @@ export default function Tenders({ setGlobalDrawer }) {
           </div>
         </div>
       )}
+      {/* EDIT SALES QUOTATION DRAWER */}
+      <Drawer isOpen={Boolean(editingQuote)} onClose={() => setEditingQuote(null)} title={`✏️ Edit Sales Quotation (${editingQuote?.id})`}>
+        {editingQuote && (
+          <SalesQuoteForm 
+            quoteToEdit={editingQuote} 
+            onSuccess={() => {
+              setEditingQuote(null);
+              window.location.reload();
+            }} 
+          />
+        )}
+      </Drawer>
+
       {/* DOCUMENT PREVIEW MODAL */}
       <DocumentPreviewModal 
         isOpen={previewModalDoc.isOpen} 
