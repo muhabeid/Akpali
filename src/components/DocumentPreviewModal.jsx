@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import ReactDOM from 'react-dom'
 import { X, Printer, Send, MessageCircle, Edit3 } from 'lucide-react'
 import { printElement } from '../utils/printHelper'
 import SalesQuoteForm from './SalesQuoteForm'
@@ -110,7 +111,7 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
   const currentDocTypeLabel = cleanDocTypeName(docType);
   const currentDocRefLabel = formatCleanDocRef(activeDoc.id || activeDoc.doc_ref, docType);
 
-  return (
+  const modalContent = (
     <div style={{
       position: 'fixed',
       top: 0,
@@ -119,12 +120,12 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
       bottom: 0,
       background: 'rgba(15, 23, 42, 0.75)',
       backdropFilter: 'blur(4px)',
-      zIndex: 9999,
+      zIndex: 99999,
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       padding: '1.5rem'
-    }}>
+    }} onClick={onClose}>
       <div style={{
         background: '#ffffff',
         width: '100%',
@@ -136,7 +137,7 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
         flexDirection: 'column',
         overflow: 'hidden',
         border: '1px solid #cbd5e1'
-      }}>
+      }} onClick={e => e.stopPropagation()}>
         {/* MODAL ACTION HEADER */}
         <div style={{
           display: 'flex',
@@ -388,4 +389,6 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
       </div>
     </div>
   );
+
+  return ReactDOM.createPortal(modalContent, document.body);
 }
