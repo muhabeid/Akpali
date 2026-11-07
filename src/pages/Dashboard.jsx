@@ -91,7 +91,7 @@ export default function Dashboard({ setGlobalDrawer }) {
       </Drawer>
 
       <Drawer isOpen={openDrawer === 'rfq'} onClose={() => setOpenDrawer(null)} title="Generate Request for Quotation (RFQ)">
-        <GenerateRFQForm />
+        <GenerateRFQForm onSuccess={() => setOpenDrawer(null)} />
       </Drawer>
 
       <Drawer isOpen={openDrawer === 'grn'} onClose={() => setOpenDrawer(null)} title="Record Goods Receipt Note (GRN)">

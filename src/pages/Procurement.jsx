@@ -235,7 +235,13 @@ export default function Procurement({ setGlobalDrawer }) {
       </Drawer>
 
       <Drawer isOpen={isRFQDrawerOpen} onClose={() => setRFQDrawerOpen(false)} title="Generate Request for Quotation (RFQ)">
-        <GenerateRFQForm />
+        <GenerateRFQForm onSuccess={() => {
+          setRFQDrawerOpen(false);
+          fetch('http://localhost:5000/api/rfqs')
+            .then(r => r.json())
+            .then(data => setRfqs(Array.isArray(data) ? data : []))
+            .catch(err => console.error(err));
+        }} />
       </Drawer>
 
       {/* DYNAMIC STAT CARDS WITH RESPONSIVE AUTO-FIT GRID */}
