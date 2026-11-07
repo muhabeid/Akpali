@@ -78,6 +78,7 @@ h1, h2, h3, h4, h5, h6 {
   flex-direction: column;
   padding: 1.5rem;
   z-index: 10;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s ease, padding 0.3s ease;
 }
 
 .brand {
@@ -443,15 +444,23 @@ select.form-control {
   }
 }
 
-/* Mobile Navigation & Responsive App Shell Layout */
+/* Mobile & Responsive Navigation Layout */
 .mobile-nav-toggle {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 1px solid hsl(var(--border));
   color: hsl(var(--text-primary));
   padding: 0.4rem 0.6rem;
   border-radius: 6px;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-nav-toggle:hover {
+  background: hsla(var(--border), 0.5);
+  color: hsl(var(--primary));
 }
 
 .mobile-close-btn {
@@ -465,9 +474,9 @@ select.form-control {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(15, 23, 42, 0.7);
   backdrop-filter: blur(4px);
-  z-index: 99;
+  z-index: 9999;
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
@@ -477,6 +486,18 @@ select.form-control {
   display: block;
   opacity: 1;
   pointer-events: auto;
+}
+
+@media (min-width: 993px) {
+  .sidebar.collapsed {
+    width: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    overflow: hidden !important;
+    border-right: none !important;
+    transform: translateX(-100%);
+    opacity: 0;
+  }
 }
 
 @media (max-width: 992px) {
@@ -494,13 +515,11 @@ select.form-control {
   }
 
   .mobile-close-btn {
-    display: block;
-    position: absolute;
-    right: 1rem;
-    top: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: transparent;
     border: none;
-    font-size: 1.2rem;
     color: hsl(var(--text-secondary));
     cursor: pointer;
   }
@@ -516,11 +535,11 @@ select.form-control {
     transform: translateX(-100%);
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: var(--shadow-lg);
-    z-index: 100;
+    z-index: 10000;
   }
 
   .sidebar.mobile-open {
-    transform: translateX(0);
+    transform: translateX(0) !important;
   }
 
   .main-content {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileSearch, PackageCheck, FileText, Check, AlertCircle } from 'lucide-react';
 import { useCurrency } from '../context/CurrencyContext';
+import { VAT_RATES, calculateDocumentVatSummary } from '../utils/vatHelper';
 
 export default function RecordSupplierInvoiceForm() {
   const { formatAmount } = useCurrency();
@@ -24,6 +25,18 @@ export default function RecordSupplierInvoiceForm() {
     items: []
   });
 
+  const [vatSummary, setVatSummary] = useState({
+    netSubtotal: 0,
+    vat16Base: 0,
+    vat16Amount: 0,
+    vat8Base: 0,
+    vat8Amount: 0,
+    zeroRatedBase: 0,
+    exemptBase: 0,
+    totalVat: 0,
+    grandTotal: 0
+  });
+
   useEffect(() => {
     // Load POs/LPOs and Deliveries (GRNs)
     Promise.all([
@@ -37,17 +50,23 @@ export default function RecordSupplierInvoiceForm() {
 
   // Recalculate Subtotal, VAT, and Grand Total whenever items or include_vat changes
   const updateAmounts = (itemsList, includeVat) => {
-    const sub = itemsList.reduce((sum, item) => sum + (Number(item.total) || (Number(item.qty || 1) * Number(item.unit_price || 0))), 0);
-    const vat = includeVat ? sub * 0.16 : 0;
-    const total = sub + vat;
+    const summary = calculateDocumentVatSummary(
+      itemsList.map(i => ({
+        qty: Number(i.qty || 1),
+        unitPrice: Number(i.unit_price || 0),
+        vat_rate: i.vat_rate !== undefined ? String(i.vat_rate) : '16'
+      })),
+      includeVat
+    );
 
+    setVatSummary(summary);
     setFormData(prev => ({
       ...prev,
       items: itemsList,
-      subtotal: sub,
+      subtotal: summary.netSubtotal,
       include_vat: includeVat,
-      vat_amount: vat,
-      amount: total
+      vat_amount: summary.totalVat,
+      amount: summary.grandTotal
     }));
   };
 
@@ -61,10 +80,11 @@ export default function RecordSupplierInvoiceForm() {
       let extractedItems = [];
       if (Array.isArray(po.items) && po.items.length > 0) {
         extractedItems = po.items.map(i => ({
-          description: i.description || i.item_name || 'Supplies',
+          description: i.description || i.item_name || i.desc || 'Supplies',
           qty: Number(i.quantity || i.qty || 1),
-          unit_price: Number(i.unit_price || i.price || (po.total_value / (i.quantity || 1))),
-          total: Number(i.total || (i.quantity * i.unit_price) || po.total_value)
+          unit_price: Number(i.unit_price || i.price || i.unitPrice || (po.total_value / (i.quantity || 1))),
+          total: Number(i.total || (i.quantity * i.unit_price) || po.total_value),
+          vat_rate: i.vat_rate !== undefined ? String(i.vat_rate) : '16'
         }));
       } else {
         extractedItems = [
@@ -72,7 +92,8 @@ export default function RecordSupplierInvoiceForm() {
             description: `Supplies for LPO/PO ${po.id}`,
             qty: 1,
             unit_price: Number(po.total_value || 0),
-            total: Number(po.total_value || 0)
+            total: Number(po.total_value || 0),
+            vat_rate: '16'
           }
         ];
       }
@@ -99,34 +120,33 @@ export default function RecordSupplierInvoiceForm() {
     if (del) {
       const extractedItems = [
         {
-          description: del.deliverable_name || `Delivered Goods for ${del.tender_name || 'Tender'}`,
+          description: del.deliverable_name || `Delivered items for ${del.tender_name || 'Tender'}`,
           qty: 1,
           unit_price: Number(del.revenue_generated || 0),
-          total: Number(del.revenue_generated || 0)
+          total: Number(del.revenue_generated || 0),
+          vat_rate: '16'
         }
       ];
 
       setFormData(prev => ({
         ...prev,
         delivery_id: delId,
-        po_id: del.po_id || '',
-        supplier_name: del.supplier_name || del.client_name || 'Supplier'
+        po_id: '',
+        supplier_name: del.client_name || del.tender_name || 'Site Vendor'
       }));
 
       updateAmounts(extractedItems, formData.include_vat);
     } else {
-      setFormData(prev => ({ ...prev, delivery_id: '' }));
+      setFormData(prev => ({ ...prev, delivery_id: '', supplier_name: '' }));
       updateAmounts([], formData.include_vat);
     }
   };
 
-  // Toggle VAT inclusion
   const handleVatToggle = (e) => {
     const checked = e.target.checked;
     updateAmounts(formData.items, checked);
   };
 
-  // Manual line item changes
   const handleItemChange = (idx, field, val) => {
     const newItems = [...formData.items];
     newItems[idx][field] = val;
@@ -139,7 +159,7 @@ export default function RecordSupplierInvoiceForm() {
   };
 
   const handleAddLineItem = () => {
-    const newItems = [...formData.items, { description: '', qty: 1, unit_price: 0, total: 0 }];
+    const newItems = [...formData.items, { description: '', qty: 1, unit_price: 0, total: 0, vat_rate: '16' }];
     updateAmounts(newItems, formData.include_vat);
   };
 
@@ -154,14 +174,14 @@ export default function RecordSupplierInvoiceForm() {
 
     const payload = {
       id: formData.id,
-      po_id: formData.po_id,
-      delivery_id: formData.delivery_id,
+      po_id: formData.po_id || null,
+      delivery_id: formData.delivery_id || null,
       supplier_name: formData.supplier_name,
-      invoice_date: formData.invoice_date,
-      subtotal: formData.subtotal,
-      include_vat: formData.include_vat,
-      vat_amount: formData.vat_amount,
       amount: formData.amount,
+      subtotal: formData.subtotal,
+      vat_amount: formData.vat_amount,
+      include_vat: formData.include_vat,
+      invoice_date: formData.invoice_date,
       items: formData.items
     };
 
@@ -173,72 +193,32 @@ export default function RecordSupplierInvoiceForm() {
       });
 
       if (res.ok) {
-        alert('✅ Supplier Invoice Recorded Successfully! Line items and 16% VAT logged into system.');
+        alert(`✅ Supplier Invoice '${formData.id}' recorded successfully! 3-Way Match Audit Updated.`);
         window.location.reload();
       } else {
-        alert('Failed to record invoice.');
+        const err = await res.json();
+        alert('Failed to record invoice: ' + (err.error || 'Server error'));
       }
     } catch (err) {
       console.error(err);
-      alert('Error recording invoice.');
+      alert('Network error recording supplier invoice');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const simulateOCRScan = (e) => {
-    e.preventDefault();
-    setIsScanning(true);
-    setTimeout(() => {
-      setIsScanning(false);
-      const mockItems = [
-        { description: 'Class 32.5 Bamburi Cement 50kg', qty: 50, unit_price: 850, total: 42500 },
-        { description: 'Transport & Offloading Fee', qty: 1, unit_price: 2500, total: 2500 }
-      ];
-      setFormData(prev => ({
-        ...prev,
-        supplier_name: 'Simba Cement Distro Ltd',
-        invoice_date: new Date().toISOString().split('T')[0]
-      }));
-      updateAmounts(mockItems, true);
-      alert('AI Scan Complete: Pulled line items & totals from uploaded Supplier Invoice!');
-    }, 1800);
-  };
-
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       
-      {/* AI OCR SCANNER DROPZONE */}
-      <div 
-        style={{ 
-          border: '2px dashed hsl(var(--warning))', 
-          borderRadius: 'var(--radius-md)', 
-          padding: '1.25rem', 
-          textAlign: 'center',
-          background: isScanning ? 'hsla(var(--warning), 0.1)' : 'hsla(var(--warning), 0.02)',
-          cursor: 'pointer',
-          transition: 'all 0.3s ease'
-        }}
-        onClick={simulateOCRScan}
-      >
-        <FileSearch size={28} style={{ color: 'hsl(var(--warning))', marginBottom: '0.4rem' }} />
-        <h4 style={{ margin: '0 0 0.25rem 0', color: 'hsl(var(--warning))', fontSize: '0.95rem' }}>
-          {isScanning ? 'Extracting Invoice Line Items via AI...' : 'Drag & Drop Supplier Invoice / ETR to Auto-Fill'}
-        </h4>
-        <p style={{ margin: 0, fontSize: '0.8rem', color: 'hsl(var(--text-secondary))' }}>
-          {isScanning ? 'Processing...' : 'Auto-extracts items, quantities, subtotal & 16% VAT.'}
-        </p>
-      </div>
-
-      {/* SOURCE DOCUMENT SELECTOR (LPO VS DELIVERY VS MANUAL) */}
+      {/* SOURCE SELECTION */}
       <div>
-        <label style={{ fontSize: '0.8rem', fontWeight: 'bold', display: 'block', marginBottom: '0.4rem' }}>
-          Pull Content From ERP Document:
+        <label style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+          Select Verification & Source Document:
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
           <button
             type="button"
-            onClick={() => setSourceType('lpo')}
+            onClick={() => { setSourceType('lpo'); updateAmounts([], formData.include_vat); }}
             style={{
               padding: '0.6rem',
               borderRadius: '6px',
@@ -250,11 +230,12 @@ export default function RecordSupplierInvoiceForm() {
               cursor: 'pointer'
             }}
           >
-            📋 From LPO / PO
+            📋 Purchase Order (PO)
           </button>
+          
           <button
             type="button"
-            onClick={() => setSourceType('delivery')}
+            onClick={() => { setSourceType('delivery'); updateAmounts([], formData.include_vat); }}
             style={{
               padding: '0.6rem',
               borderRadius: '6px',
@@ -266,11 +247,12 @@ export default function RecordSupplierInvoiceForm() {
               cursor: 'pointer'
             }}
           >
-            🚚 From Delivery (GRN)
+            🚚 Site Delivery Note (GRN)
           </button>
+
           <button
             type="button"
-            onClick={() => setSourceType('manual')}
+            onClick={() => { setSourceType('manual'); updateAmounts([], formData.include_vat); }}
             style={{
               padding: '0.6rem',
               borderRadius: '6px',
@@ -282,17 +264,16 @@ export default function RecordSupplierInvoiceForm() {
               cursor: 'pointer'
             }}
           >
-            ✏️ Manual Item Entry
+            ✍️ Manual / Direct Entry
           </button>
         </div>
       </div>
 
-      {/* SOURCE DOCUMENT DROPDOWNS */}
       {sourceType === 'lpo' && (
         <div className="form-group">
-          <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Select LPO / Purchase Order *</label>
+          <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Select Supplier Purchase Order (PO) *</label>
           <select className="form-control" required value={formData.po_id} onChange={handlePOSelect}>
-            <option value="">Choose LPO to pull items from...</option>
+            <option value="">Select a Purchase Order to match...</option>
             {pos.map(po => (
               <option key={po.id} value={po.id}>
                 {po.id} - {po.supplier_name} ({formatAmount(po.total_value)})
@@ -304,9 +285,9 @@ export default function RecordSupplierInvoiceForm() {
 
       {sourceType === 'delivery' && (
         <div className="form-group">
-          <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Select Delivery Note / Goods Receipt Note (GRN) *</label>
+          <label style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>Select Goods Received Note (GRN) / Delivery *</label>
           <select className="form-control" required value={formData.delivery_id} onChange={handleDeliverySelect}>
-            <option value="">Choose Delivery to pull items from...</option>
+            <option value="">Select an approved site delivery...</option>
             {deliveries.map(del => (
               <option key={del.id} value={del.id}>
                 {del.id} - {del.deliverable_name} ({formatAmount(del.revenue_generated)})
@@ -328,7 +309,7 @@ export default function RecordSupplierInvoiceForm() {
         </div>
       </div>
 
-      {/* INVOICE LINE ITEMS TABLE (AUTO-PULLED FROM LPO/DELIVERY OR MANUALLY ADDED) */}
+      {/* INVOICE LINE ITEMS TABLE */}
       <div style={{ background: '#0f172a11', padding: '1rem', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
           <strong style={{ fontSize: '0.85rem', color: 'hsl(var(--primary))' }}>📦 Invoiced Line Items ({formData.items.length})</strong>
@@ -344,25 +325,38 @@ export default function RecordSupplierInvoiceForm() {
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left' }}>
+              <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left', color: 'hsl(var(--text-secondary))' }}>
                 <th style={{ padding: '0.4rem' }}>Item Description</th>
-                <th style={{ padding: '0.4rem', width: '70px' }}>Qty</th>
-                <th style={{ padding: '0.4rem', width: '110px' }}>Unit Price</th>
-                <th style={{ padding: '0.4rem', width: '110px', textAlign: 'right' }}>Total (KSh)</th>
-                <th style={{ padding: '0.4rem', width: '40px' }}></th>
+                <th style={{ padding: '0.4rem', width: '65px' }}>Qty</th>
+                <th style={{ padding: '0.4rem', width: '95px' }}>Unit Price</th>
+                <th style={{ padding: '0.4rem', width: '130px' }}>VAT Rate</th>
+                <th style={{ padding: '0.4rem', width: '100px', textAlign: 'right' }}>Total (KSh)</th>
+                <th style={{ padding: '0.4rem', width: '35px' }}></th>
               </tr>
             </thead>
             <tbody>
               {formData.items.map((item, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid hsla(var(--border), 0.4)' }}>
                   <td style={{ padding: '0.4rem' }}>
-                    <input type="text" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Item description..." />
+                    <input type="text" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Item description..." required />
                   </td>
                   <td style={{ padding: '0.4rem' }}>
-                    <input type="number" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.qty} onChange={e => handleItemChange(idx, 'qty', e.target.value)} />
+                    <input type="number" min="1" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.qty} onChange={e => handleItemChange(idx, 'qty', e.target.value)} required />
                   </td>
                   <td style={{ padding: '0.4rem' }}>
-                    <input type="number" step="0.01" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.unit_price} onChange={e => handleItemChange(idx, 'unit_price', e.target.value)} />
+                    <input type="number" step="0.01" min="0" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.unit_price} onChange={e => handleItemChange(idx, 'unit_price', e.target.value)} required />
+                  </td>
+                  <td style={{ padding: '0.4rem' }}>
+                    <select
+                      className="form-control"
+                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.4rem' }}
+                      value={item.vat_rate || '16'}
+                      onChange={e => handleItemChange(idx, 'vat_rate', e.target.value)}
+                    >
+                      {VAT_RATES.map(v => (
+                        <option key={v.id} value={v.id}>{v.shortLabel} - {v.label.split(' ')[0]}</option>
+                      ))}
+                    </select>
                   </td>
                   <td style={{ padding: '0.4rem', textAlign: 'right', fontWeight: 'bold' }}>
                     {formatAmount(item.total || 0)}
@@ -377,9 +371,8 @@ export default function RecordSupplierInvoiceForm() {
         )}
       </div>
 
-      {/* VAT 16% TOGGLE & TAX BREAKDOWN */}
-      <div style={{ background: 'hsla(var(--primary), 0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid hsl(var(--primary))', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        
+      {/* AUTO-CALCULATED STATUTORY VAT BREAKDOWN BOX */}
+      <div style={{ background: '#0f172a', padding: '1rem 1.25rem', borderRadius: '8px', border: '1px solid #334155', color: '#fff', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontWeight: 'bold', fontSize: '0.875rem', cursor: 'pointer' }}>
           <input 
             type="checkbox" 
@@ -387,26 +380,50 @@ export default function RecordSupplierInvoiceForm() {
             onChange={handleVatToggle}
             style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'hsl(var(--primary))' }}
           />
-          <span>Include 16% VAT in Total Invoiced Amount</span>
+          <span style={{ color: '#38bdf8' }}>Enable Statutory Input VAT Claim (KRA Tax Deductible)</span>
         </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', borderTop: '1px solid hsla(var(--border), 0.6)', paddingTop: '0.75rem', fontSize: '0.85rem' }}>
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>Subtotal (Net Amount)</span>
-            <strong>{formatAmount(formData.subtotal)}</strong>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#94a3b8', borderTop: '1px solid #334155', paddingTop: '0.5rem' }}>
+          <span>Invoice Subtotal (Exclusive of VAT):</span>
+          <span style={{ fontWeight: '600', color: '#e2e8f0' }}>{formatAmount(vatSummary.netSubtotal)}</span>
+        </div>
 
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>16% Input VAT Portion</span>
-            <strong style={{ color: formData.include_vat ? '#38bdf8' : 'hsl(var(--text-secondary))' }}>
-              {formData.include_vat ? formatAmount(formData.vat_amount) : 'KSh 0.00 (Exempt)'}
-            </strong>
+        {formData.include_vat && vatSummary.vat16Base > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#38bdf8', paddingLeft: '0.75rem', borderLeft: '2px solid #0284c7' }}>
+            <span>Standard Rate VAT (16% on {formatAmount(vatSummary.vat16Base)}):</span>
+            <span style={{ fontWeight: '600' }}>{formatAmount(vatSummary.vat16Amount)}</span>
           </div>
+        )}
 
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>Grand Invoiced Total</span>
-            <strong style={{ fontSize: '1.05rem', color: '#10b981' }}>{formatAmount(formData.amount)}</strong>
+        {formData.include_vat && vatSummary.vat8Base > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#f59e0b', paddingLeft: '0.75rem', borderLeft: '2px solid #d97706' }}>
+            <span>Reduced Rate VAT (8% Petroleum on {formatAmount(vatSummary.vat8Base)}):</span>
+            <span style={{ fontWeight: '600' }}>{formatAmount(vatSummary.vat8Amount)}</span>
           </div>
+        )}
+
+        {formData.include_vat && vatSummary.zeroRatedBase > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#10b981', paddingLeft: '0.75rem', borderLeft: '2px solid #059669' }}>
+            <span>Zero-Rated Supplies (0% on {formatAmount(vatSummary.zeroRatedBase)}):</span>
+            <span style={{ fontWeight: '600' }}>KSh 0</span>
+          </div>
+        )}
+
+        {formData.include_vat && vatSummary.exemptBase > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#a855f7', paddingLeft: '0.75rem', borderLeft: '2px solid #7c3aed' }}>
+            <span>Exempt Supplies (No VAT on {formatAmount(vatSummary.exemptBase)}):</span>
+            <span style={{ fontWeight: '600' }}>KSh 0</span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#f59e0b', borderTop: '1px dashed #334155', paddingTop: '0.4rem', fontWeight: 'bold' }}>
+          <span>Total Input VAT:</span>
+          <span>{formData.include_vat ? formatAmount(vatSummary.totalVat) : 'KSh 0.00 (Exempt)'}</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '0.65rem', marginTop: '0.2rem' }}>
+          <strong style={{ fontSize: '1rem', color: '#22c55e' }}>Grand Invoice Total (Gross Payable):</strong>
+          <span style={{ fontSize: '1.35rem', fontWeight: '800', color: '#22c55e' }}>{formatAmount(formData.amount)}</span>
         </div>
       </div>
 

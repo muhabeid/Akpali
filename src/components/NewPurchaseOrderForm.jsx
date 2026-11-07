@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react'
 import { Trash2, PlusCircle } from 'lucide-react'
 import { useRole } from '../context/RoleContext'
+import { VAT_RATES, calculateLineVat, calculateDocumentVatSummary } from '../utils/vatHelper'
 
 export default function NewPurchaseOrderForm({ onSuccess }) {
   const { currentRole } = useRole();
@@ -17,14 +18,15 @@ export default function NewPurchaseOrderForm({ onSuccess }) {
     expected_date: ''
   })
 
-  // Line items for Goods
+  // Line items for Goods with statutory VAT rate
   const [lineItems, setLineItems] = useState([
-    { id: 1, name: '', qty: 1, unit: 'PCS', unitPrice: 0 }
+    { id: 1, name: '', qty: 1, unit: 'PCS', unitPrice: 0, vat_rate: '16' }
   ])
 
   // Placeholder for Services
   const [serviceDescription, setServiceDescription] = useState('')
   const [serviceTotal, setServiceTotal] = useState(0)
+  const [serviceVatRate, setServiceVatRate] = useState('16')
 
   useEffect(() => {
     fetch('http://localhost:5000/api/next-id/po')
@@ -69,7 +71,8 @@ export default function NewPurchaseOrderForm({ onSuccess }) {
             name: item.desc || item.description || '',
             qty: item.qty || item.quantity || 1,
             unit: item.unit || 'PCS',
-            unitPrice: 0 // Default to 0 since we're sourcing from a supplier now
+            unitPrice: 0, // Default to 0 since we're sourcing from a supplier now
+            vat_rate: item.vat_rate !== undefined ? String(item.vat_rate) : '16'
           }));
           
           if (mappedItems.length > 0) {
@@ -84,7 +87,7 @@ export default function NewPurchaseOrderForm({ onSuccess }) {
   }
 
   const addLineItem = () => {
-    setLineItems([...lineItems, { id: Date.now(), name: '', qty: 1, unit: 'PCS', unitPrice: 0 }])
+    setLineItems([...lineItems, { id: Date.now(), name: '', qty: 1, unit: 'PCS', unitPrice: 0, vat_rate: '16' }])
   }
 
   const removeLineItem = (id) => {
@@ -97,10 +100,10 @@ export default function NewPurchaseOrderForm({ onSuccess }) {
     setLineItems(lineItems.map(item => item.id === id ? { ...item, [field]: value } : item))
   }
 
-  const calculateTotal = () => {
-    if (poType === 'Service') return Number(serviceTotal);
-    return lineItems.reduce((sum, item) => sum + (Number(item.qty) * Number(item.unitPrice)), 0);
-  }
+  // Live VAT Calculations
+  const vatSummary = poType === 'Goods' 
+    ? calculateDocumentVatSummary(lineItems)
+    : calculateDocumentVatSummary([{ qty: 1, unitPrice: serviceTotal, vat_rate: serviceVatRate }]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -113,9 +116,13 @@ export default function NewPurchaseOrderForm({ onSuccess }) {
         supplier_name: formData.supplier,
         type: poType,
         expected_date: formData.expected_date,
-        total_value: calculateTotal(),
+        total_value: vatSummary.grandTotal,
+        subtotal: vatSummary.netSubtotal,
+        vat_amount: vatSummary.totalVat,
         status: currentRole === 'Staff' ? 'Awaiting Approval' : 'Pending Delivery',
-        items: poType === 'Goods' ? JSON.stringify(lineItems) : JSON.stringify([{ desc: serviceDescription, unit: 'LOT' }])
+        items: poType === 'Goods' 
+          ? JSON.stringify(lineItems) 
+          : JSON.stringify([{ desc: serviceDescription, unit: 'LOT', qty: 1, unitPrice: Number(serviceTotal), vat_rate: serviceVatRate }])
       };
 
       const res = await fetch('http://localhost:5000/api/pos', {
@@ -224,56 +231,79 @@ export default function NewPurchaseOrderForm({ onSuccess }) {
       {/* DYNAMIC CONTENTS: GOODS OR SERVICES */}
       {poType === 'Goods' ? (
         <div style={{ background: 'var(--bg-card)', padding: '1rem', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)' }}>
-          <h4 style={{ margin: '0 0 1rem 0' }}>Line Items & Units of Measurement</h4>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h4 style={{ margin: 0 }}>Line Items & Statutory VAT Treatment</h4>
+            <span style={{ fontSize: '0.75rem', color: '#38bdf8' }}>16% Standard &bull; 8% Fuel &bull; 0% Zero &bull; Exempt</span>
+          </div>
           
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left' }}>
-                <th style={{ paddingBottom: '0.5rem', width: '40%' }}>Item Description</th>
-                <th style={{ paddingBottom: '0.5rem', width: '15%' }}>Qty</th>
-                <th style={{ paddingBottom: '0.5rem', width: '15%' }}>Unit</th>
-                <th style={{ paddingBottom: '0.5rem', width: '20%' }}>Unit Price ($)</th>
-                <th style={{ paddingBottom: '0.5rem', width: '10%' }}></th>
+              <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left', fontSize: '0.75rem', textTransform: 'uppercase', color: 'hsl(var(--text-secondary))' }}>
+                <th style={{ paddingBottom: '0.5rem', width: '32%' }}>Item Description</th>
+                <th style={{ paddingBottom: '0.5rem', width: '10%' }}>Qty</th>
+                <th style={{ paddingBottom: '0.5rem', width: '12%' }}>Unit</th>
+                <th style={{ paddingBottom: '0.5rem', width: '16%' }}>Rate (KSh)</th>
+                <th style={{ paddingBottom: '0.5rem', width: '18%' }}>VAT Rate</th>
+                <th style={{ paddingBottom: '0.5rem', width: '12%', textAlign: 'right' }}>Subtotal</th>
+                <th style={{ paddingBottom: '0.5rem', width: '4%' }}></th>
               </tr>
             </thead>
             <tbody>
-              {lineItems.map((item, index) => (
-                <tr key={item.id}>
-                  <td style={{ padding: '0.5rem 0' }}>
-                    <input type="text" className="form-control" placeholder="e.g. Bags of Cement" value={item.name} onChange={e => updateLineItem(item.id, 'name', e.target.value)} required />
-                  </td>
-                  <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
-                    <input type="number" className="form-control" min="1" value={item.qty} onChange={e => updateLineItem(item.id, 'qty', e.target.value)} required />
-                  </td>
-                  <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
-                    <select className="form-control" value={item.unit || 'PCS'} onChange={e => updateLineItem(item.id, 'unit', e.target.value)}>
-                      <option value="PCS">PCS</option>
-                      <option value="KG">KG</option>
-                      <option value="TONS">TONS</option>
-                      <option value="MTRS">MTRS</option>
-                      <option value="BAGS">BAGS</option>
-                      <option value="LOT">LOT</option>
-                      <option value="SETS">SETS</option>
-                      <option value="HRS">HRS</option>
-                      <option value="DAYS">DAYS</option>
-                      <option value="MONTHS">MONTHS</option>
-                      <option value="TRIPS">TRIPS</option>
-                      <option value="SQM">SQM</option>
-                      <option value="CBM">CBM</option>
-                      <option value="LTRS">LTRS</option>
-                      <option value="BOX">BOX</option>
-                    </select>
-                  </td>
-                  <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
-                    <input type="number" className="form-control" min="0" step="0.01" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', e.target.value)} required />
-                  </td>
-                  <td style={{ padding: '0.5rem 0 0.5rem 0.5rem', textAlign: 'right' }}>
-                    <button type="button" className="btn" style={{ padding: '0.5rem', color: 'hsl(var(--danger))', background: 'transparent' }} onClick={() => removeLineItem(item.id)} disabled={lineItems.length === 1}>
-                      <Trash2 size={18} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {lineItems.map((item, index) => {
+                const sub = (Number(item.qty) || 0) * (Number(item.unitPrice) || 0)
+                return (
+                  <tr key={item.id}>
+                    <td style={{ padding: '0.5rem 0' }}>
+                      <input type="text" className="form-control" placeholder="e.g. Bags of Cement" value={item.name} onChange={e => updateLineItem(item.id, 'name', e.target.value)} required />
+                    </td>
+                    <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
+                      <input type="number" className="form-control" min="1" value={item.qty} onChange={e => updateLineItem(item.id, 'qty', e.target.value)} required />
+                    </td>
+                    <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
+                      <select className="form-control" value={item.unit || 'PCS'} onChange={e => updateLineItem(item.id, 'unit', e.target.value)}>
+                        <option value="PCS">PCS</option>
+                        <option value="KG">KG</option>
+                        <option value="TONS">TONS</option>
+                        <option value="MTRS">MTRS</option>
+                        <option value="BAGS">BAGS</option>
+                        <option value="LOT">LOT</option>
+                        <option value="SETS">SETS</option>
+                        <option value="HRS">HRS</option>
+                        <option value="DAYS">DAYS</option>
+                        <option value="MONTHS">MONTHS</option>
+                        <option value="TRIPS">TRIPS</option>
+                        <option value="SQM">SQM</option>
+                        <option value="CBM">CBM</option>
+                        <option value="LTRS">LTRS</option>
+                        <option value="BOX">BOX</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
+                      <input type="number" className="form-control" min="0" step="0.01" value={item.unitPrice} onChange={e => updateLineItem(item.id, 'unitPrice', e.target.value)} required />
+                    </td>
+                    <td style={{ padding: '0.5rem 0 0.5rem 0.5rem' }}>
+                      <select 
+                        className="form-control" 
+                        value={item.vat_rate || '16'} 
+                        onChange={e => updateLineItem(item.id, 'vat_rate', e.target.value)}
+                        style={{ fontSize: '0.8rem' }}
+                      >
+                        {VAT_RATES.map(v => (
+                          <option key={v.id} value={v.id}>{v.shortLabel} - {v.label.split(' ')[0]}</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td style={{ padding: '0.5rem 0 0.5rem 0.5rem', textAlign: 'right', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                      KSh {sub.toLocaleString()}
+                    </td>
+                    <td style={{ padding: '0.5rem 0 0.5rem 0.5rem', textAlign: 'right' }}>
+                      <button type="button" className="btn" style={{ padding: '0.5rem', color: 'hsl(var(--danger))', background: 'transparent' }} onClick={() => removeLineItem(item.id)} disabled={lineItems.length === 1}>
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
           
@@ -282,42 +312,90 @@ export default function NewPurchaseOrderForm({ onSuccess }) {
           </button>
         </div>
       ) : (
-        <div className="form-group">
-          <label>Detailed Description of Service Required</label>
-          <textarea 
-            className="form-control" 
-            rows="4" 
-            placeholder="e.g. Legal auditing for Q3, software maintenance contract, transport services..." 
-            required 
-            value={serviceDescription} 
-            onChange={e => setServiceDescription(e.target.value)}
-          />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-card)', padding: '1rem', border: '1px solid hsl(var(--border))', borderRadius: 'var(--radius-md)' }}>
+          <div className="form-group">
+            <label>Detailed Description of Service Required</label>
+            <textarea 
+              className="form-control" 
+              rows="4" 
+              placeholder="e.g. Legal auditing for Q3, software maintenance contract, transport services..." 
+              required 
+              value={serviceDescription} 
+              onChange={e => setServiceDescription(e.target.value)}
+            />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label>Service Cost / Fee (Excl. VAT)</label>
+              <input type="number" className="form-control" min="0" step="0.01" required value={serviceTotal} onChange={e => setServiceTotal(e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>Service VAT Rate</label>
+              <select className="form-control" value={serviceVatRate} onChange={e => setServiceVatRate(e.target.value)}>
+                {VAT_RATES.map(v => (
+                  <option key={v.id} value={v.id}>{v.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* FOOTER: TOTAL & DATE */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignItems: 'end' }}>
+      {/* AUTO-CALCULATED STATUTORY VAT BREAKDOWN BOX */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: '#0f172a', border: '1px solid #334155', padding: '1rem 1.25rem', borderRadius: 'var(--radius-md)', color: '#ffffff' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#94a3b8' }}>
+          <span>Order Subtotal (Exclusive of VAT):</span>
+          <span style={{ fontWeight: '600', color: '#e2e8f0' }}>KSh {vatSummary.netSubtotal.toLocaleString()}</span>
+        </div>
+
+        {vatSummary.vat16Base > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#38bdf8', paddingLeft: '0.75rem', borderLeft: '2px solid #0284c7' }}>
+            <span>Standard Rate VAT (16% on KSh {vatSummary.vat16Base.toLocaleString()}):</span>
+            <span style={{ fontWeight: '600' }}>KSh {vatSummary.vat16Amount.toLocaleString()}</span>
+          </div>
+        )}
+
+        {vatSummary.vat8Base > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#f59e0b', paddingLeft: '0.75rem', borderLeft: '2px solid #d97706' }}>
+            <span>Reduced Rate VAT (8% Petroleum on KSh {vatSummary.vat8Base.toLocaleString()}):</span>
+            <span style={{ fontWeight: '600' }}>KSh {vatSummary.vat8Amount.toLocaleString()}</span>
+          </div>
+        )}
+
+        {vatSummary.zeroRatedBase > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#10b981', paddingLeft: '0.75rem', borderLeft: '2px solid #059669' }}>
+            <span>Zero-Rated Supplies (0% on KSh {vatSummary.zeroRatedBase.toLocaleString()}):</span>
+            <span style={{ fontWeight: '600' }}>KSh 0</span>
+          </div>
+        )}
+
+        {vatSummary.exemptBase > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#a855f7', paddingLeft: '0.75rem', borderLeft: '2px solid #7c3aed' }}>
+            <span>Exempt Supplies (No VAT on KSh {vatSummary.exemptBase.toLocaleString()}):</span>
+            <span style={{ fontWeight: '600' }}>KSh 0</span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#f59e0b', borderTop: '1px dashed #334155', paddingTop: '0.4rem', fontWeight: 'bold' }}>
+          <span>Total Calculated VAT:</span>
+          <span>KSh {vatSummary.totalVat.toLocaleString()}</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '0.65rem', marginTop: '0.2rem' }}>
+          <strong style={{ fontSize: '1rem', color: '#38bdf8' }}>Total Purchase Order Value (Incl. VAT):</strong>
+          <span style={{ fontSize: '1.35rem', fontWeight: '800', color: '#38bdf8' }}>KSh {vatSummary.grandTotal.toLocaleString()}</span>
+        </div>
+      </div>
+
+      {/* FOOTER: EXPECTED DATE & SUBMIT */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
         <div className="form-group" style={{ marginBottom: 0 }}>
           <label>Expected Delivery / Completion Date</label>
           <input type="date" className="form-control" required value={formData.expected_date} onChange={e => setFormData({...formData, expected_date: e.target.value})} />
         </div>
-        
-        {poType === 'Service' ? (
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Total Value (KSh)</label>
-            <input type="number" className="form-control" min="0" step="0.01" required value={serviceTotal} onChange={e => setServiceTotal(e.target.value)} />
-          </div>
-        ) : (
-          <div style={{ padding: '1rem', background: 'var(--bg-main)', borderRadius: 'var(--radius-sm)', textAlign: 'right', border: '1px solid hsl(var(--border))' }}>
-            <span style={{ fontSize: '0.875rem', color: 'hsl(var(--text-secondary))' }}>Calculated Total Value</span>
-            <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
-              KSh {calculateTotal().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </div>
-          </div>
-        )}
       </div>
 
-      <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={isSubmitting}>
+      <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', fontWeight: 'bold', padding: '0.75rem' }} disabled={isSubmitting}>
         {isSubmitting ? 'Raising PO...' : 'Raise Purchase Order'}
       </button>
     </form>

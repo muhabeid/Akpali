@@ -24,7 +24,7 @@ import { printElement } from './utils/printHelper'
 import { CurrencyProvider, useCurrency } from './context/CurrencyContext'
 import { RoleProvider, useRole } from './context/RoleContext'
 
-function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, onLogout }) {
+function Header({ onOpenMobileNav, onToggleSidebar, globalDrawer, setGlobalDrawer, userSession, onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
   const { currency, setCurrency, rates } = useCurrency()
@@ -230,9 +230,10 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
     <header className="topbar">
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
         <button 
+          type="button"
           className="mobile-nav-toggle btn" 
-          onClick={onOpenMobileNav}
-          title="Open Navigation Menu"
+          onClick={onToggleSidebar || onOpenMobileNav}
+          title="Toggle Navigation Menu (View Modules)"
         >
           <Menu size={22} />
         </button>
@@ -340,6 +341,26 @@ function Header({ onOpenMobileNav, globalDrawer, setGlobalDrawer, userSession, o
             <div style={{ position: 'absolute', top: '100%', right: 0, paddingTop: '0.5rem', width: '270px', zIndex: 100 }}>
               <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', boxShadow: '0 10px 25px rgba(0,0,0,0.4)', padding: '0.6rem', display: 'flex', flexDirection: 'column', gap: '0.35rem', color: '#fff' }}>
                 
+                <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 'bold', padding: '0.2rem 0.5rem' }}>🧭 SYSTEM MODULES</div>
+
+                <button className="btn" style={{ justifyContent: 'flex-start', background: location.pathname === '/' ? '#4A8BCE' : '#1e293b', color: '#fff', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/'); setMenuOpen(false); }}>
+                  <LayoutDashboard size={15} /> Dashboard
+                </button>
+                <button className="btn" style={{ justifyContent: 'flex-start', background: location.pathname === '/tenders' ? '#4A8BCE' : '#1e293b', color: '#fff', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/tenders'); setMenuOpen(false); }}>
+                  <FileText size={15} /> Tenders & Projects
+                </button>
+                <button className="btn" style={{ justifyContent: 'flex-start', background: location.pathname === '/procurement' ? '#4A8BCE' : '#1e293b', color: '#fff', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/procurement'); setMenuOpen(false); }}>
+                  <ShoppingCart size={15} /> Procurement
+                </button>
+                <button className="btn" style={{ justifyContent: 'flex-start', background: location.pathname === '/finances' ? '#4A8BCE' : '#1e293b', color: '#fff', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/finances'); setMenuOpen(false); }}>
+                  <Landmark size={15} /> Corporate Bookkeeping
+                </button>
+                <button className="btn" style={{ justifyContent: 'flex-start', background: location.pathname === '/corporate' ? '#4A8BCE' : '#1e293b', color: '#fff', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/corporate'); setMenuOpen(false); }}>
+                  <Building2 size={15} /> Corporate Governance Hub
+                </button>
+
+                <div style={{ height: '1px', background: '#334155', margin: '0.2rem 0' }} />
+
                 <div style={{ fontSize: '0.7rem', color: '#94a3b8', fontWeight: 'bold', padding: '0.2rem 0.5rem' }}>⚡ QUICK LAUNCHERS</div>
 
                 <button className="btn" style={{ justifyContent: 'flex-start', background: '#1e293b', color: '#38bdf8', fontSize: '0.8rem', border: '1px solid #334155' }} onClick={() => { navigate('/tenders'); setGlobalDrawer('tender'); setMenuOpen(false); }}>
@@ -786,42 +807,61 @@ function SystemSOPModal({ isOpen, onClose }) {
   )
 }
 
-function Sidebar({ onNavigate }) {
+function Sidebar({ isOpen, isCollapsed, onClose, onNavigate }) {
   const location = useLocation()
   const activePath = location.pathname
 
   return (
-    <aside className="sidebar">
-      <div className="brand" style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>
-        <h2 style={{ margin: 0, color: '#4A8BCE', fontSize: '1.4rem', fontWeight: '900', letterSpacing: '0.5px' }}>
-          AKPALI <span style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', fontWeight: '400', display: 'block' }}>Corporate ERP Platform</span>
-        </h2>
-      </div>
+    <>
+      <div 
+        className={`sidebar-overlay ${isOpen ? 'open' : ''}`} 
+        onClick={onClose} 
+      />
+      <aside className={`sidebar ${isOpen ? 'mobile-open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
+        <div className="brand" style={{ padding: '0 0 1rem 0', borderBottom: '1px solid hsl(var(--border))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <div>
+            <h2 style={{ margin: 0, color: '#4A8BCE', fontSize: '1.4rem', fontWeight: '900', letterSpacing: '0.5px' }}>
+              AKPALI
+            </h2>
+            <span style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', fontWeight: '400', display: 'block' }}>Corporate ERP Platform</span>
+          </div>
+          <button 
+            type="button" 
+            className="mobile-close-btn" 
+            onClick={onClose}
+            title="Close Navigation"
+            style={{ padding: '0.35rem', cursor: 'pointer', borderRadius: '4px' }}
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-      <nav style={{ padding: '1rem 0.75rem', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-        <Link to="/" onClick={onNavigate} className={`nav-item ${activePath === '/' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/' ? 'bold' : 'normal', textDecoration: 'none' }}>
-          <LayoutDashboard size={18} /> Dashboard
-        </Link>
-        <Link to="/tenders" onClick={onNavigate} className={`nav-item ${activePath === '/tenders' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/tenders' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/tenders' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/tenders' ? 'bold' : 'normal', textDecoration: 'none' }}>
-          <FileText size={18} /> Tenders & Projects
-        </Link>
-        <Link to="/procurement" onClick={onNavigate} className={`nav-item ${activePath === '/procurement' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/procurement' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/procurement' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/procurement' ? 'bold' : 'normal', textDecoration: 'none' }}>
-          <ShoppingCart size={18} /> Procurement
-        </Link>
-        <Link to="/finances" onClick={onNavigate} className={`nav-item ${activePath === '/finances' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/finances' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/finances' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/finances' ? 'bold' : 'normal', textDecoration: 'none' }}>
-          <Landmark size={18} /> Corporate Bookkeeping
-        </Link>
-        <Link to="/corporate" onClick={onNavigate} className={`nav-item ${activePath === '/corporate' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/corporate' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/corporate' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/corporate' ? 'bold' : 'normal', textDecoration: 'none' }}>
-          <Building2 size={18} /> Corporate Governance Hub
-        </Link>
-      </nav>
-    </aside>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+          <Link to="/" onClick={onNavigate} className={`nav-item ${activePath === '/' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/' ? 'bold' : 'normal', textDecoration: 'none' }}>
+            <LayoutDashboard size={18} /> Dashboard
+          </Link>
+          <Link to="/tenders" onClick={onNavigate} className={`nav-item ${activePath === '/tenders' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/tenders' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/tenders' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/tenders' ? 'bold' : 'normal', textDecoration: 'none' }}>
+            <FileText size={18} /> Tenders & Projects
+          </Link>
+          <Link to="/procurement" onClick={onNavigate} className={`nav-item ${activePath === '/procurement' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/procurement' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/procurement' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/procurement' ? 'bold' : 'normal', textDecoration: 'none' }}>
+            <ShoppingCart size={18} /> Procurement
+          </Link>
+          <Link to="/finances" onClick={onNavigate} className={`nav-item ${activePath === '/finances' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/finances' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/finances' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/finances' ? 'bold' : 'normal', textDecoration: 'none' }}>
+            <Landmark size={18} /> Corporate Bookkeeping
+          </Link>
+          <Link to="/corporate" onClick={onNavigate} className={`nav-item ${activePath === '/corporate' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/corporate' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/corporate' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/corporate' ? 'bold' : 'normal', textDecoration: 'none' }}>
+            <Building2 size={18} /> Corporate Governance Hub
+          </Link>
+        </nav>
+      </aside>
+    </>
   )
 }
 
 function App() {
   const [globalDrawer, setGlobalDrawer] = useState(null)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [userSession, setUserSession] = useState(() => {
     const saved = localStorage.getItem('akpali_user_session')
     return saved ? JSON.parse(saved) : { name: 'Eng. John Akpali', title: 'Executive Administrator' }
@@ -832,15 +872,29 @@ function App() {
     window.location.reload()
   }
 
+  const handleToggleNav = () => {
+    if (window.innerWidth <= 992) {
+      setIsMobileNavOpen(prev => !prev)
+    } else {
+      setIsSidebarCollapsed(prev => !prev)
+    }
+  }
+
   return (
     <CurrencyProvider>
       <RoleProvider>
         <div className="app-container" style={{ display: 'flex', minHeight: '100vh' }}>
-          <Sidebar onNavigate={() => setIsMobileNavOpen(false)} />
+          <Sidebar 
+            isOpen={isMobileNavOpen} 
+            isCollapsed={isSidebarCollapsed}
+            onClose={() => setIsMobileNavOpen(false)} 
+            onNavigate={() => setIsMobileNavOpen(false)} 
+          />
           
           <div className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <Header 
               onOpenMobileNav={() => setIsMobileNavOpen(true)} 
+              onToggleSidebar={handleToggleNav}
               globalDrawer={globalDrawer} 
               setGlobalDrawer={setGlobalDrawer} 
               userSession={userSession}

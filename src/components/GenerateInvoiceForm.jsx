@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCurrency } from '../context/CurrencyContext';
+import { VAT_RATES, calculateDocumentVatSummary } from '../utils/vatHelper';
 
 export default function GenerateInvoiceForm() {
   const { formatAmount } = useCurrency();
@@ -22,6 +23,18 @@ export default function GenerateInvoiceForm() {
     items: []
   });
 
+  const [vatSummary, setVatSummary] = useState({
+    netSubtotal: 0,
+    vat16Base: 0,
+    vat16Amount: 0,
+    vat8Base: 0,
+    vat8Amount: 0,
+    zeroRatedBase: 0,
+    exemptBase: 0,
+    totalVat: 0,
+    grandTotal: 0
+  });
+
   useEffect(() => {
     Promise.all([
       fetch('http://localhost:5000/api/evidence').then(res => res.json()).catch(() => []),
@@ -35,17 +48,23 @@ export default function GenerateInvoiceForm() {
   }, []);
 
   const updateAmounts = (itemsList, includeVat) => {
-    const sub = itemsList.reduce((sum, item) => sum + (Number(item.total) || (Number(item.qty || 1) * Number(item.unit_price || 0))), 0);
-    const vat = includeVat ? sub * 0.16 : 0;
-    const total = sub + vat;
+    const summary = calculateDocumentVatSummary(
+      itemsList.map(i => ({
+        qty: Number(i.qty || 1),
+        unitPrice: Number(i.unit_price || 0),
+        vat_rate: i.vat_rate !== undefined ? String(i.vat_rate) : '16'
+      })),
+      includeVat
+    );
 
+    setVatSummary(summary);
     setFormData(prev => ({
       ...prev,
       items: itemsList,
-      subtotal: sub,
+      subtotal: summary.netSubtotal,
       include_vat: includeVat,
-      vat_amount: vat,
-      amount: total
+      vat_amount: summary.totalVat,
+      amount: summary.grandTotal
     }));
   };
 
@@ -60,7 +79,8 @@ export default function GenerateInvoiceForm() {
           description: ev.deliverable_name || `Completed Delivery for Tender ${ev.tender_name || ''}`,
           qty: 1,
           unit_price: Number(ev.revenue_generated || 0),
-          total: Number(ev.revenue_generated || 0)
+          total: Number(ev.revenue_generated || 0),
+          vat_rate: '16'
         }
       ];
 
@@ -86,10 +106,11 @@ export default function GenerateInvoiceForm() {
       let extractedItems = [];
       if (Array.isArray(po.items) && po.items.length > 0) {
         extractedItems = po.items.map(i => ({
-          description: i.description || i.item_name || 'LPO Deliverable',
+          description: i.description || i.item_name || i.desc || 'LPO Deliverable',
           qty: Number(i.quantity || i.qty || 1),
-          unit_price: Number(i.unit_price || i.price || (po.total_value / (i.quantity || 1))),
-          total: Number(i.total || (i.quantity * i.unit_price) || po.total_value)
+          unit_price: Number(i.unit_price || i.unitPrice || i.price || (po.total_value / (i.quantity || 1))),
+          total: Number(i.total || (i.quantity * i.unit_price) || po.total_value),
+          vat_rate: i.vat_rate !== undefined ? String(i.vat_rate) : '16'
         }));
       } else {
         extractedItems = [
@@ -97,7 +118,8 @@ export default function GenerateInvoiceForm() {
             description: `Client Order LPO ${po.id}`,
             qty: 1,
             unit_price: Number(po.total_value || 0),
-            total: Number(po.total_value || 0)
+            total: Number(po.total_value || 0),
+            vat_rate: '16'
           }
         ];
       }
@@ -132,7 +154,7 @@ export default function GenerateInvoiceForm() {
   };
 
   const handleAddLineItem = () => {
-    const newItems = [...formData.items, { description: '', qty: 1, unit_price: 0, total: 0 }];
+    const newItems = [...formData.items, { description: '', qty: 1, unit_price: 0, total: 0, vat_rate: '16' }];
     updateAmounts(newItems, formData.include_vat);
   };
 
@@ -165,15 +187,17 @@ export default function GenerateInvoiceForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
       if (res.ok) {
-        alert('✅ Client Invoice Generated successfully!');
+        alert(`✅ Client Invoice '${formData.id}' generated successfully!`);
         window.location.reload();
       } else {
-        alert('Failed to generate invoice.');
+        const err = await res.json();
+        alert('Failed to generate invoice: ' + (err.error || 'Server error'));
       }
     } catch (err) {
       console.error(err);
-      alert('Error saving invoice');
+      alert('Network error generating invoice');
     } finally {
       setIsSubmitting(false);
     }
@@ -182,14 +206,14 @@ export default function GenerateInvoiceForm() {
   return (
     <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       
-      {/* SOURCE DOCUMENT SELECTOR */}
+      {/* SOURCE SELECTION */}
       <div>
-        <label style={{ fontSize: '0.8rem', fontWeight: 'bold', display: 'block', marginBottom: '0.4rem' }}>
-          Pull Content From ERP Source Document:
+        <label style={{ fontSize: '0.85rem', fontWeight: 'bold', display: 'block', marginBottom: '0.5rem' }}>
+          Invoice Billing Source:
         </label>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
-          <button 
-            type="button" 
+          <button
+            type="button"
             onClick={() => { setSourceType('delivery'); updateAmounts([], formData.include_vat); }}
             style={{
               padding: '0.6rem',
@@ -202,10 +226,11 @@ export default function GenerateInvoiceForm() {
               cursor: 'pointer'
             }}
           >
-            🚚 From Delivery Note
+            📦 Fulfilled Delivery
           </button>
-          <button 
-            type="button" 
+          
+          <button
+            type="button"
             onClick={() => { setSourceType('lpo'); updateAmounts([], formData.include_vat); }}
             style={{
               padding: '0.6rem',
@@ -218,10 +243,11 @@ export default function GenerateInvoiceForm() {
               cursor: 'pointer'
             }}
           >
-            📋 From LPO / Order
+            📋 Client LPO Order
           </button>
-          <button 
-            type="button" 
+
+          <button
+            type="button"
             onClick={() => { setSourceType('milestone'); updateAmounts([], formData.include_vat); }}
             style={{
               padding: '0.6rem',
@@ -312,25 +338,38 @@ export default function GenerateInvoiceForm() {
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left' }}>
+              <tr style={{ borderBottom: '1px solid hsl(var(--border))', textAlign: 'left', color: 'hsl(var(--text-secondary))' }}>
                 <th style={{ padding: '0.4rem' }}>Item Description</th>
-                <th style={{ padding: '0.4rem', width: '70px' }}>Qty</th>
-                <th style={{ padding: '0.4rem', width: '110px' }}>Unit Price</th>
-                <th style={{ padding: '0.4rem', width: '110px', textAlign: 'right' }}>Total (KSh)</th>
-                <th style={{ padding: '0.4rem', width: '40px' }}></th>
+                <th style={{ padding: '0.4rem', width: '65px' }}>Qty</th>
+                <th style={{ padding: '0.4rem', width: '95px' }}>Unit Price</th>
+                <th style={{ padding: '0.4rem', width: '130px' }}>VAT Treatment</th>
+                <th style={{ padding: '0.4rem', width: '100px', textAlign: 'right' }}>Total (KSh)</th>
+                <th style={{ padding: '0.4rem', width: '35px' }}></th>
               </tr>
             </thead>
             <tbody>
               {formData.items.map((item, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid hsla(var(--border), 0.4)' }}>
                   <td style={{ padding: '0.4rem' }}>
-                    <input type="text" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Item description..." />
+                    <input type="text" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)} placeholder="Item description..." required />
                   </td>
                   <td style={{ padding: '0.4rem' }}>
-                    <input type="number" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.qty} onChange={e => handleItemChange(idx, 'qty', e.target.value)} />
+                    <input type="number" min="1" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.qty} onChange={e => handleItemChange(idx, 'qty', e.target.value)} required />
                   </td>
                   <td style={{ padding: '0.4rem' }}>
-                    <input type="number" step="0.01" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.unit_price} onChange={e => handleItemChange(idx, 'unit_price', e.target.value)} />
+                    <input type="number" step="0.01" min="0" className="form-control" style={{ fontSize: '0.8rem', padding: '0.3rem 0.5rem' }} value={item.unit_price} onChange={e => handleItemChange(idx, 'unit_price', e.target.value)} required />
+                  </td>
+                  <td style={{ padding: '0.4rem' }}>
+                    <select
+                      className="form-control"
+                      style={{ fontSize: '0.75rem', padding: '0.3rem 0.4rem' }}
+                      value={item.vat_rate || '16'}
+                      onChange={e => handleItemChange(idx, 'vat_rate', e.target.value)}
+                    >
+                      {VAT_RATES.map(v => (
+                        <option key={v.id} value={v.id}>{v.shortLabel} - {v.label.split(' ')[0]}</option>
+                      ))}
+                    </select>
                   </td>
                   <td style={{ padding: '0.4rem', textAlign: 'right', fontWeight: 'bold' }}>
                     {formatAmount(item.total || 0)}
@@ -345,9 +384,8 @@ export default function GenerateInvoiceForm() {
         )}
       </div>
 
-      {/* VAT 16% TOGGLE & TAX BREAKDOWN */}
-      <div style={{ background: 'hsla(var(--primary), 0.05)', padding: '1rem', borderRadius: '8px', border: '1px solid hsl(var(--primary))', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-        
+      {/* AUTO-CALCULATED STATUTORY VAT BREAKDOWN BOX */}
+      <div style={{ background: '#0f172a', padding: '1rem 1.25rem', borderRadius: '8px', border: '1px solid #334155', color: '#fff', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontWeight: 'bold', fontSize: '0.875rem', cursor: 'pointer' }}>
           <input 
             type="checkbox" 
@@ -355,26 +393,50 @@ export default function GenerateInvoiceForm() {
             onChange={handleVatToggle}
             style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'hsl(var(--primary))' }}
           />
-          <span>Include 16% VAT in Total Invoiced Amount</span>
+          <span style={{ color: '#38bdf8' }}>Enable Statutory VAT Output Tax (KRA Compliant)</span>
         </label>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', borderTop: '1px solid hsla(var(--border), 0.6)', paddingTop: '0.75rem', fontSize: '0.85rem' }}>
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>Subtotal (Net Amount)</span>
-            <strong>{formatAmount(formData.subtotal)}</strong>
-          </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', color: '#94a3b8', borderTop: '1px solid #334155', paddingTop: '0.5rem' }}>
+          <span>Invoice Subtotal (Exclusive of VAT):</span>
+          <span style={{ fontWeight: '600', color: '#e2e8f0' }}>{formatAmount(vatSummary.netSubtotal)}</span>
+        </div>
 
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>16% Output VAT Portion</span>
-            <strong style={{ color: formData.include_vat ? '#f59e0b' : 'hsl(var(--text-secondary))' }}>
-              {formData.include_vat ? formatAmount(formData.vat_amount) : 'KSh 0.00 (Exempt)'}
-            </strong>
+        {formData.include_vat && vatSummary.vat16Base > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#38bdf8', paddingLeft: '0.75rem', borderLeft: '2px solid #0284c7' }}>
+            <span>Standard Rate VAT (16% on {formatAmount(vatSummary.vat16Base)}):</span>
+            <span style={{ fontWeight: '600' }}>{formatAmount(vatSummary.vat16Amount)}</span>
           </div>
+        )}
 
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', display: 'block' }}>Grand Invoiced Total</span>
-            <strong style={{ fontSize: '1.05rem', color: '#10b981' }}>{formatAmount(formData.amount)}</strong>
+        {formData.include_vat && vatSummary.vat8Base > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#f59e0b', paddingLeft: '0.75rem', borderLeft: '2px solid #d97706' }}>
+            <span>Reduced Rate VAT (8% Petroleum on {formatAmount(vatSummary.vat8Base)}):</span>
+            <span style={{ fontWeight: '600' }}>{formatAmount(vatSummary.vat8Amount)}</span>
           </div>
+        )}
+
+        {formData.include_vat && vatSummary.zeroRatedBase > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#10b981', paddingLeft: '0.75rem', borderLeft: '2px solid #059669' }}>
+            <span>Zero-Rated Supplies (0% on {formatAmount(vatSummary.zeroRatedBase)}):</span>
+            <span style={{ fontWeight: '600' }}>KSh 0</span>
+          </div>
+        )}
+
+        {formData.include_vat && vatSummary.exemptBase > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.825rem', color: '#a855f7', paddingLeft: '0.75rem', borderLeft: '2px solid #7c3aed' }}>
+            <span>Exempt Supplies (No VAT on {formatAmount(vatSummary.exemptBase)}):</span>
+            <span style={{ fontWeight: '600' }}>KSh 0</span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', color: '#f59e0b', borderTop: '1px dashed #334155', paddingTop: '0.4rem', fontWeight: 'bold' }}>
+          <span>Total Calculated VAT:</span>
+          <span>{formData.include_vat ? formatAmount(vatSummary.totalVat) : 'KSh 0.00 (Exempt)'}</span>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '0.65rem', marginTop: '0.2rem' }}>
+          <strong style={{ fontSize: '1rem', color: '#22c55e' }}>Grand Invoiced Total (Gross Payable):</strong>
+          <span style={{ fontSize: '1.35rem', fontWeight: '800', color: '#22c55e' }}>{formatAmount(formData.amount)}</span>
         </div>
       </div>
 

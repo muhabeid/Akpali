@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom'
 import { X, Printer, Send, MessageCircle, Edit3 } from 'lucide-react'
 import { printElement } from '../utils/printHelper'
 import SalesQuoteForm from './SalesQuoteForm'
+import { calculateDocumentVatSummary, VAT_RATES } from '../utils/vatHelper'
 
 export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, companyProfile }) {
   const [clientsDirectory, setClientsDirectory] = useState([]);
@@ -102,6 +103,18 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
   } catch (e) {
     items = [];
   }
+
+  // Calculate VAT summary across statutory rates
+  const isVatEnabled = activeDoc.vat_applicable !== false && activeDoc.include_vat !== false;
+  const vatSummary = calculateDocumentVatSummary(items, isVatEnabled);
+
+  const getVatLabel = (vatRate) => {
+    const rateStr = String(vatRate !== undefined ? vatRate : '16');
+    if (rateStr === '8' || rateStr === '0.08') return '8%';
+    if (rateStr === '0' || rateStr === 'ZERO') return '0%';
+    if (rateStr === 'EXEMPT') return 'Exempt';
+    return '16%';
+  };
 
   const formatAmount = (val) => {
     const num = Number(val) || 0;
@@ -299,49 +312,124 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
                 {(() => {
                   const hasPricing = items.some(i => i.unitPrice !== undefined || i.price !== undefined);
                   return (
-                    <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
-                      <thead>
-                        <tr style={{ background: '#f1f5f9', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>
-                          <th style={{ padding: '0.6rem 0.5rem', width: hasPricing ? '46%' : '75%' }}>Description</th>
-                          <th style={{ padding: '0.6rem 0.5rem', textAlign: 'center', width: hasPricing ? '18%' : '25%' }}>Qty / Unit</th>
-                          {hasPricing && (
-                            <th style={{ padding: '0.6rem 0.5rem', textAlign: 'right', width: '18%' }}>Unit Rate (KSh)</th>
-                          )}
-                          {hasPricing && (
-                            <th style={{ padding: '0.6rem 0.5rem', textAlign: 'right', width: '18%' }}>Subtotal (KSh)</th>
-                          )}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((item, idx) => {
-                          const desc = item.desc || item.description || item.name || '-';
-                          const qty = item.qty || item.quantity || '';
-                          const unit = item.unit || 'PCS';
-                          const unitPrice = item.unitPrice !== undefined ? item.unitPrice : item.price;
-                          const hasPrice = unitPrice !== undefined;
-                          const subtotal = hasPrice ? (Number(qty || 1) * Number(unitPrice)) : 0;
+                    <>
+                      <table style={{ width: '100%', tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: '0.825rem' }}>
+                        <thead>
+                          <tr style={{ background: '#f1f5f9', textAlign: 'left', borderBottom: '2px solid #cbd5e1' }}>
+                            <th style={{ padding: '0.6rem 0.5rem', width: hasPricing ? '38%' : '75%' }}>Description</th>
+                            <th style={{ padding: '0.6rem 0.5rem', textAlign: 'center', width: hasPricing ? '15%' : '25%' }}>Qty / Unit</th>
+                            {hasPricing && (
+                              <th style={{ padding: '0.6rem 0.5rem', textAlign: 'right', width: '17%' }}>Unit Rate (KSh)</th>
+                            )}
+                            {hasPricing && (
+                              <th style={{ padding: '0.6rem 0.5rem', textAlign: 'center', width: '13%' }}>VAT Rate</th>
+                            )}
+                            {hasPricing && (
+                              <th style={{ padding: '0.6rem 0.5rem', textAlign: 'right', width: '17%' }}>Subtotal (KSh)</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((item, idx) => {
+                            const desc = item.desc || item.description || item.name || '-';
+                            const qty = item.qty || item.quantity || '';
+                            const unit = item.unit || 'PCS';
+                            const unitPrice = item.unitPrice !== undefined ? item.unitPrice : item.price;
+                            const hasPrice = unitPrice !== undefined;
+                            const subtotal = hasPrice ? (Number(qty || 1) * Number(unitPrice)) : 0;
+                            const itemVat = getVatLabel(item.vat_rate);
 
-                          return (
-                            <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                              <td style={{ padding: '0.6rem 0.5rem', wordBreak: 'break-word' }}>{desc}</td>
-                              <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center', fontWeight: 'bold' }}>
-                                {qty ? `${qty} ${unit}` : unit}
-                              </td>
-                              {hasPricing && (
-                                <td style={{ padding: '0.6rem 0.5rem', textAlign: 'right' }}>
-                                  {hasPrice ? formatAmount(unitPrice) : '-'}
+                            return (
+                              <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                <td style={{ padding: '0.6rem 0.5rem', wordBreak: 'break-word' }}>{desc}</td>
+                                <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center', fontWeight: 'bold' }}>
+                                  {qty ? `${qty} ${unit}` : unit}
                                 </td>
-                              )}
-                              {hasPricing && (
-                                <td style={{ padding: '0.6rem 0.5rem', textAlign: 'right', fontWeight: 'bold' }}>
-                                  {hasPrice ? formatAmount(subtotal) : '-'}
-                                </td>
-                              )}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                {hasPricing && (
+                                  <td style={{ padding: '0.6rem 0.5rem', textAlign: 'right' }}>
+                                    {hasPrice ? formatAmount(unitPrice) : '-'}
+                                  </td>
+                                )}
+                                {hasPricing && (
+                                  <td style={{ padding: '0.6rem 0.5rem', textAlign: 'center' }}>
+                                    <span style={{ 
+                                      display: 'inline-block',
+                                      padding: '0.15rem 0.45rem', 
+                                      borderRadius: '4px', 
+                                      fontSize: '0.72rem', 
+                                      fontWeight: '600',
+                                      background: itemVat === '16%' ? '#f0fdf4' : itemVat === '8%' ? '#fff7ed' : itemVat === '0%' ? '#f0f9ff' : '#f1f5f9',
+                                      color: itemVat === '16%' ? '#16a34a' : itemVat === '8%' ? '#ea580c' : itemVat === '0%' ? '#0284c7' : '#64748b',
+                                      border: `1px solid ${itemVat === '16%' ? '#bbf7d0' : itemVat === '8%' ? '#fed7aa' : itemVat === '0%' ? '#bae6fd' : '#cbd5e1'}`
+                                    }}>
+                                      {itemVat}
+                                    </span>
+                                  </td>
+                                )}
+                                {hasPricing && (
+                                  <td style={{ padding: '0.6rem 0.5rem', textAlign: 'right', fontWeight: 'bold' }}>
+                                    {hasPrice ? formatAmount(subtotal) : '-'}
+                                  </td>
+                                )}
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+
+                      {/* STATUTORY VAT & FINANCIAL SUMMARY CARD */}
+                      {hasPricing && (
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+                          <div style={{ width: '380px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0.85rem 1.1rem', fontSize: '0.825rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.4rem', color: '#475569' }}>
+                              <span>Subtotal (Net / Excl. VAT):</span>
+                              <span style={{ fontWeight: '600', color: '#0f172a' }}>{formatAmount(vatSummary.netSubtotal)}</span>
+                            </div>
+
+                            {/* Multi-Tier Statutory VAT Breakdown */}
+                            {vatSummary.vat16Base > 0 && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', color: '#64748b', fontSize: '0.78rem' }}>
+                                <span>&bull; Standard Rate (16% on {formatAmount(vatSummary.vat16Base)}):</span>
+                                <span style={{ fontWeight: '600', color: '#16a34a' }}>+{formatAmount(vatSummary.vat16Amount)}</span>
+                              </div>
+                            )}
+
+                            {vatSummary.vat8Base > 0 && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', color: '#64748b', fontSize: '0.78rem' }}>
+                                <span>&bull; Petroleum Reduced (8% on {formatAmount(vatSummary.vat8Base)}):</span>
+                                <span style={{ fontWeight: '600', color: '#ea580c' }}>+{formatAmount(vatSummary.vat8Amount)}</span>
+                              </div>
+                            )}
+
+                            {vatSummary.zeroRatedBase > 0 && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', color: '#64748b', fontSize: '0.78rem' }}>
+                                <span>&bull; Zero-Rated (0% on {formatAmount(vatSummary.zeroRatedBase)}):</span>
+                                <span style={{ fontWeight: '600', color: '#0284c7' }}>KSh 0</span>
+                              </div>
+                            )}
+
+                            {vatSummary.exemptBase > 0 && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.25rem', color: '#64748b', fontSize: '0.78rem' }}>
+                                <span>&bull; Exempt Supplies ({formatAmount(vatSummary.exemptBase)}):</span>
+                                <span style={{ fontWeight: '600', color: '#64748b' }}>No VAT</span>
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderTop: '1px dashed #cbd5e1', borderBottom: '2px solid #0f172a', fontWeight: 'bold', color: '#0f172a', margin: '0.35rem 0' }}>
+                              <span>Total VAT Payable:</span>
+                              <span style={{ color: '#0284c7' }}>{formatAmount(vatSummary.totalVat)}</span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '0.4rem', fontSize: '0.95rem', fontWeight: '800', color: '#0f172a' }}>
+                              <span>Grand Total (Gross):</span>
+                              <span style={{ color: '#16a34a' }}>
+                                {formatAmount(vatSummary.grandTotal || activeDoc.total_value || activeDoc.amount || 0)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   );
                 })()}
               </div>
