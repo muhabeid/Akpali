@@ -8,7 +8,8 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
     name: user?.name || '',
     email: user?.email || '',
     role: user?.role || 'Operations',
-    password: ''
+    password: '',
+    must_change_password: user?.must_change_password || 0
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -91,6 +92,21 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
           Leave blank if you do not want to change the user's password.
         </span>
       </div>
+
+      {formData.role !== 'Admin' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f8fafc', padding: '0.6rem 0.85rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}>
+          <input 
+            type="checkbox" 
+            id="mandateChange"
+            checked={Boolean(formData.must_change_password)} 
+            onChange={e => setFormData({ ...formData, must_change_password: e.target.checked ? 1 : 0 })}
+            style={{ cursor: 'pointer' }}
+          />
+          <label htmlFor="mandateChange" style={{ fontSize: '0.78rem', color: '#334155', fontWeight: '600', margin: 0, cursor: 'pointer' }}>
+            Mandate user to change password on next sign in
+          </label>
+        </div>
+      )}
 
       <div className="form-group" style={{ marginBottom: 0 }}>
         <label style={{ fontWeight: '700' }}>Assigned System Role *</label>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { ROLES } from '../context/RoleContext'
-import { ShieldCheck, CheckCircle2 } from 'lucide-react'
+import { ShieldCheck, CheckCircle2, KeyRound } from 'lucide-react'
 
 export default function InviteUserForm({ onSuccess }) {
   const [formData, setFormData] = useState({
@@ -55,7 +55,7 @@ export default function InviteUserForm({ onSuccess }) {
 
       
       <div className="form-group" style={{ marginBottom: 0 }}>
-        <label style={{ fontWeight: '700' }}>Initial Account Password *</label>
+        <label style={{ fontWeight: '700' }}>Initial Temporary Password *</label>
         <input 
           type="text" 
           className="form-control" 
@@ -65,9 +65,18 @@ export default function InviteUserForm({ onSuccess }) {
           onChange={e => setFormData({...formData, password: e.target.value})} 
         />
         <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '0.2rem' }}>
-          Default: password123. The invited user will use this password to sign in to the portal.
+          {formData.role === 'Admin' 
+            ? 'Default: password123. Universal administrator password (no change mandated).' 
+            : 'Default: password123. Temporary password — user will be mandated to change this upon first login.'}
         </span>
       </div>
+
+      {formData.role !== 'Admin' && (
+        <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.6rem 0.85rem', fontSize: '0.78rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <KeyRound size={16} style={{ flexShrink: 0 }} />
+          <span><strong>Mandatory Security Policy:</strong> New users are mandated to set their personal password immediately upon first login. Admin passwords remain universal.</span>
+        </div>
+      )}
 
       <div className="form-group" style={{ marginBottom: 0 }}>
         <label style={{ fontWeight: '700' }}>Assign System Role & Reporting Line *</label>

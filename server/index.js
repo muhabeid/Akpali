@@ -200,6 +200,14 @@ async function initializeDB() {
     console.log('✅ Added password column to users table.');
   } catch(e) {}
 
+  try {
+    await db.exec('ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 0;');
+    console.log('✅ Added must_change_password column to users table.');
+  } catch(e) {}
+
+  // Ensure Admin user never requires password change (admin password stays universal)
+  await db.run('UPDATE users SET must_change_password = 0 WHERE LOWER(role) = "admin" OR LOWER(email) = "admin@akpali.com"');
+
     // Ensure default Admin user
   const adminUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "admin@akpali.com"');
   if (!adminUser) {
@@ -848,7 +856,7 @@ app.get('/api/export/:table', async (req, res) => {
 
 // Users
 app.get('/api/users', async (req, res) => {
-  const users = await db.all('SELECT id, name, email, role, status, created_at FROM users ORDER BY created_at DESC');
+  const users = await db.all('SELECT id, name, email, role, status, must_change_password, created_at FROM users ORDER BY created_at DESC');
   res.json(users);
 });
 
@@ -878,6 +886,24 @@ app.post('/api/users/login', async (req, res) => {
     return res.status(401).json({ error: 'Incorrect password. Please verify your credentials and try again.' });
   }
 
+  // Admin password stays universal and is never mandated to change
+  const isRoleAdmin = (user.role || '').toLowerCase() === 'admin';
+  const requireChange = isRoleAdmin ? false : (user.must_change_password === 1);
+
+  if (requireChange) {
+    return res.json({
+      success: true,
+      mustChangePassword: true,
+      message: 'Mandatory password change required before accessing the system.',
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role || 'User'
+      }
+    });
+  }
+
   let title = 'System User';
   if (user.role === 'Admin') title = 'Executive Administrator';
   else if (user.role === 'Operations') title = 'Operations Manager';
@@ -889,6 +915,57 @@ app.post('/api/users/login', async (req, res) => {
 
   return res.json({
     success: true,
+    mustChangePassword: false,
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role || 'Admin',
+      title: title
+    }
+  });
+});
+
+app.post('/api/users/change-password', async (req, res) => {
+  const { userId, email, newPassword, confirmPassword } = req.body;
+
+  if (!newPassword || newPassword.trim().length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+  }
+
+  if (confirmPassword && newPassword !== confirmPassword) {
+    return res.status(400).json({ error: 'Passwords do not match. Please verify.' });
+  }
+
+  let user = null;
+  if (userId) {
+    user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+  } else if (email) {
+    user = await db.get('SELECT * FROM users WHERE LOWER(email) = ?', [email.trim().toLowerCase()]);
+  }
+
+  if (!user) {
+    return res.status(404).json({ error: 'User account not found.' });
+  }
+
+  // Update password and clear must_change_password flag
+  await db.run(
+    'UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?',
+    [newPassword.trim(), user.id]
+  );
+
+  let title = 'System User';
+  if (user.role === 'Admin') title = 'Executive Administrator';
+  else if (user.role === 'Operations') title = 'Operations Manager';
+  else if (user.role === 'Site_Engineer') title = 'Site Engineer / Field Officer';
+  else if (user.role === 'Procurement_Finance') title = 'Procurement & Finance Manager';
+  else if (user.role === 'Procurement_Officer') title = 'Procurement Officer';
+  else if (user.role === 'Finance_Officer') title = 'Accountant / Finance Officer';
+  else title = `${user.role} Officer`;
+
+  return res.json({
+    success: true,
+    message: 'Password successfully updated. Welcome to Akpali ERP.',
     user: {
       id: user.id,
       name: user.name,
@@ -900,7 +977,7 @@ app.post('/api/users/login', async (req, res) => {
 });
 
 app.post('/api/users', async (req, res) => {
-  const { id, name, email, role, password } = req.body;
+  const { id, name, email, role, password, must_change_password } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: 'Email address is required' });
@@ -909,50 +986,71 @@ app.post('/api/users', async (req, res) => {
   const cleanEmail = email.trim().toLowerCase();
   const userPassword = (password && password.trim()) ? password.trim() : 'password123';
 
+  // Whenever a new user is created, mandate to change password for non-admin users, while admin password stays universal
+  const isRoleAdmin = (role || '').toLowerCase() === 'admin';
+  const requireChange = isRoleAdmin ? 0 : (must_change_password !== undefined ? (must_change_password ? 1 : 0) : 1);
+
   // Check if user email already exists in database
   const existingUser = await db.get('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
   if (existingUser) {
     await db.run(
-      'UPDATE users SET name = ?, role = ?, password = ? WHERE LOWER(email) = ?',
-      [name, role, userPassword, cleanEmail]
+      'UPDATE users SET name = ?, role = ?, password = ?, must_change_password = ? WHERE LOWER(email) = ?',
+      [name, role, userPassword, requireChange, cleanEmail]
     );
     
     const subject = 'Your Akpali User Account Has Been Updated';
-    const body = `Hello ${name},\n\nYour Akpali account role has been updated to: ${role}.\nPassword: ${userPassword}\nYou can log in immediately at the portal.\n\nBest,\nAkpali & Co.`;
-    await sendEmail(db, cleanEmail, subject, body);
+    const body = `Hello ${name},\n\nYour Akpali account role has been updated to: ${role}.\nTemporary Password: ${userPassword}\n${requireChange ? 'Note: You will be mandated to change your password on your next login.' : ''}\n\nBest,\nAkpali & Co.`;
+    sendEmail(db, cleanEmail, subject, body).catch(e => console.error('Email send note:', e.message));
 
     return res.json({ success: true, isUpdate: true, message: `Account '${cleanEmail}' updated to role '${role}'` });
   }
 
   const userId = id || `USR-${Date.now()}`;
   await db.run(
-    'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
-    [userId, name, cleanEmail, role, userPassword, 'Active']
+    'INSERT INTO users (id, name, email, role, password, status, must_change_password) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [userId, name, cleanEmail, role, userPassword, 'Active', requireChange]
   );
   
   // Trigger notification
   const subject = 'Welcome to Akpali Corporate ERP System!';
-  const body = `Hello ${name},\n\nYou have been invited to Akpali System as ${role}.\nYour login credentials:\nEmail: ${cleanEmail}\nPassword: ${userPassword}\n\nBest,\nAkpali & Co.`;
-  await sendEmail(db, cleanEmail, subject, body);
+  const body = `Hello ${name},\n\nYou have been invited to Akpali System as ${role}.\nYour login credentials:\nEmail: ${cleanEmail}\nTemporary Password: ${userPassword}\n${requireChange ? 'Please note: You will be mandated to change your password upon your first sign in.' : ''}\n\nBest,\nAkpali & Co.`;
+  sendEmail(db, cleanEmail, subject, body).catch(e => console.error('Email send note:', e.message));
   
   res.json({ success: true, message: 'User invited successfully' });
 });
 
 app.put('/api/users/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, email, role, password, status } = req.body;
+  const { name, email, role, password, status, must_change_password } = req.body;
   const cleanEmail = (email || '').trim().toLowerCase();
   
+  const isRoleAdmin = (role || '').toLowerCase() === 'admin';
+  const changeFlag = isRoleAdmin ? 0 : (must_change_password !== undefined ? (must_change_password ? 1 : 0) : null);
+
   if (password && password.trim()) {
-    await db.run(
-      'UPDATE users SET name = ?, email = ?, role = ?, password = ?, status = COALESCE(?, status) WHERE id = ?',
-      [name, cleanEmail, role, password.trim(), status, id]
-    );
+    if (changeFlag !== null) {
+      await db.run(
+        'UPDATE users SET name = ?, email = ?, role = ?, password = ?, status = COALESCE(?, status), must_change_password = ? WHERE id = ?',
+        [name, cleanEmail, role, password.trim(), status, changeFlag, id]
+      );
+    } else {
+      await db.run(
+        'UPDATE users SET name = ?, email = ?, role = ?, password = ?, status = COALESCE(?, status) WHERE id = ?',
+        [name, cleanEmail, role, password.trim(), status, id]
+      );
+    }
   } else {
-    await db.run(
-      'UPDATE users SET name = ?, email = ?, role = ?, status = COALESCE(?, status) WHERE id = ?',
-      [name, cleanEmail, role, status, id]
-    );
+    if (changeFlag !== null) {
+      await db.run(
+        'UPDATE users SET name = ?, email = ?, role = ?, status = COALESCE(?, status), must_change_password = ? WHERE id = ?',
+        [name, cleanEmail, role, status, changeFlag, id]
+      );
+    } else {
+      await db.run(
+        'UPDATE users SET name = ?, email = ?, role = ?, status = COALESCE(?, status) WHERE id = ?',
+        [name, cleanEmail, role, status, id]
+      );
+    }
   }
   res.json({ success: true, message: 'User updated successfully' });
 });
