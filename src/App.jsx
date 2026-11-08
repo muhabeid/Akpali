@@ -95,29 +95,8 @@ function Header({ onOpenMobileNav, onToggleSidebar, globalDrawer, setGlobalDrawe
           status: 'Flagged'
         }));
 
-      // Interactive Inbox Items (includes test items if DB pending count is 0)
-      const demoApprovals = (poApprovals.length === 0 && reqApprovals.length === 0 && auditApprovals.length === 0) ? [
-        {
-          id: 'PO-2026-088',
-          apiType: 'PO_DEMO',
-          type: 'PO Ceiling Authorization',
-          title: 'Supplier PO #PO-2026-088 (Bamburi Cement Ltd)',
-          detail: 'Total Order Value: KSh 450,000 • Exceeds standard buyer threshold',
-          date: 'Just now',
-          status: 'Pending'
-        },
-        {
-          id: 'SR-4092',
-          apiType: 'REQ_DEMO',
-          type: 'Stock Requisition Request',
-          title: 'Requisition #SR-4092 - PVC Pipes (2-inch)',
-          detail: 'Requested Quantity: 150 PCS • Project: Region 4 Water Infrastructure',
-          date: '10 mins ago',
-          status: 'Pending'
-        }
-      ] : [];
-
-      const allInboxItems = [...poApprovals, ...reqApprovals, ...auditApprovals, ...demoApprovals];
+      // Real Inbox Items from Database
+      const allInboxItems = [...poApprovals, ...reqApprovals, ...auditApprovals];
       setPendingApprovals(allInboxItems);
 
       // 2. Comprehensive System Notifications

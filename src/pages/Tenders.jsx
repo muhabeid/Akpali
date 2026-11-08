@@ -11,7 +11,6 @@ export default function Tenders({ setGlobalDrawer }) {
   const [expandedDeliverable, setExpandedDeliverable] = useState(null)
   const [tenders, setTenders] = useState([])
   const [loading, setLoading] = useState(true)
-  const [usingMockData, setUsingMockData] = useState(false)
   const [companyProfile, setCompanyProfile] = useState(null)
   const [editingTender, setEditingTender] = useState(null)
   const [editingQuote, setEditingQuote] = useState(null)
