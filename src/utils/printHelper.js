@@ -1,4 +1,4 @@
-export const printElement = async (selector = '.dossier-container', docType = 'GLOBAL') => {
+export const printElement = async (selector = '.dossier-container', docType = 'GLOBAL', customTitle = '') => {
   try {
     const [tplRes, coRes] = await Promise.all([
       fetch('http://localhost:5000/api/templates'),
@@ -111,7 +111,7 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
       <!DOCTYPE html>
       <html>
         <head>
-          <title>${isDossier ? 'Corporate Profile Dossier Print Preview' : 'Document Print Preview'}</title>
+          <title>${customTitle || (isDossier ? 'Corporate Profile Dossier Print Preview' : `${docType} Official Document`)}</title>
           ${styles}
           <style>
             body { 
@@ -187,7 +187,7 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
         <body>
           <div class="no-print-toolbar">
             <div style="font-weight: 700; font-size: 1.05rem; display: flex; align-items: center; gap: 0.5rem;">
-              📄 ${isDossier ? 'Corporate Profile Dossier Print Preview' : 'Document Print Preview'}
+              📄 ${customTitle || (isDossier ? 'Corporate Profile Dossier Print Preview' : `${docType} Official Document`)}
             </div>
             <div style="display: flex; gap: 1rem;">
               <button onclick="window.print()" style="background: #16a34a; color: #fff; border: none; padding: 0.5rem 1.25rem; font-weight: 700; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import ReactDOM from 'react-dom'
-import { X, Printer, Send, MessageCircle, Edit3 } from 'lucide-react'
+import { X, Printer, Send, MessageCircle, Edit3, Download } from 'lucide-react'
 import { printElement } from '../utils/printHelper'
 import SalesQuoteForm from './SalesQuoteForm'
 import { calculateDocumentVatSummary, VAT_RATES } from '../utils/vatHelper'
@@ -33,10 +33,6 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
   const activeDoc = currentDoc || doc;
 
   if (!isOpen || !activeDoc) return null;
-
-  const handlePrint = () => {
-    printElement('#document-preview-print-area', docType || 'Official_Document');
-  };
 
   // Match client directory record
   const targetClientName = activeDoc?.client_name || activeDoc?.client || '';
@@ -132,6 +128,123 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
   const currentDocTypeLabel = cleanDocTypeName(docType);
   const currentDocRefLabel = formatCleanDocRef(activeDoc.id || activeDoc.doc_ref, docType);
 
+  const handlePrint = () => {
+    const cleanRef = (currentDocRefLabel || 'Document').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const cleanType = (currentDocTypeLabel || 'Doc').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fullTitle = `AKPALI_${cleanType}_${cleanRef}`;
+    printElement('#document-preview-print-area', docType || 'Official_Document', fullTitle);
+  };
+
+  const handleDownload = () => {
+    const printArea = document.querySelector('#document-preview-print-area');
+    if (!printArea) {
+      alert('Document content could not be located for download.');
+      return;
+    }
+
+    const cleanRef = (currentDocRefLabel || 'Document').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const cleanType = (currentDocTypeLabel || 'Document').replace(/[^a-zA-Z0-9_-]/g, '_');
+    const fileName = `AKPALI_${cleanType}_${cleanRef}`;
+
+    // Collect all loaded CSS stylesheets and inline styles
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(style => style.outerHTML)
+      .join('\n');
+
+    const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${fileName}</title>
+  ${styles}
+  <style>
+    body {
+      background-color: #f1f5f9;
+      margin: 0;
+      padding: 2rem 1rem;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: #0f172a;
+    }
+    .offline-document-container {
+      background: #ffffff;
+      max-width: 860px;
+      width: 100%;
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      border: 1px solid #cbd5e1;
+      padding: 2.5rem;
+      box-sizing: border-box;
+    }
+    .offline-toolbar {
+      max-width: 860px;
+      width: 100%;
+      margin-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f172a;
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      color: #ffffff;
+      box-sizing: border-box;
+    }
+    .print-btn {
+      background: #38bdf8;
+      color: #0f172a;
+      border: none;
+      padding: 0.45rem 1.1rem;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    @media print {
+      body { background: white !important; padding: 0 !important; }
+      .offline-toolbar { display: none !important; }
+      .offline-document-container {
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+      @page {
+        size: A4 portrait;
+        margin: 12mm 15mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-toolbar">
+    <div style="font-weight: bold; font-size: 0.95rem;">
+      AKPALI OFFICIAL DOCUMENT &bull; ${currentDocRefLabel}
+    </div>
+    <button class="print-btn" onclick="window.print()">
+      🖨️ Print / Save as PDF
+    </button>
+  </div>
+  <div class="offline-document-container">
+    ${printArea.innerHTML}
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${fileName}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const modalContent = (
     <div style={{
       position: 'fixed',
@@ -182,7 +295,10 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
                 <Edit3 size={15} /> {isEditingQuote ? 'Hide Editor' : 'Edit Quote Items'}
               </button>
             )}
-            <button onClick={handlePrint} className="btn" style={{ background: '#38bdf8', color: '#0f172a', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+            <button onClick={handleDownload} className="btn" style={{ background: '#10b981', color: '#ffffff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: '6px', cursor: 'pointer' }} title="Download and save a copy locally to your computer">
+              <Download size={15} /> Download
+            </button>
+            <button onClick={handlePrint} className="btn" style={{ background: '#38bdf8', color: '#0f172a', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', border: 'none', borderRadius: '6px', cursor: 'pointer' }} title="Print document or Save as PDF">
               <Printer size={15} /> Print / PDF
             </button>
             <button onClick={() => alert(`Dispatching ${currentDocRefLabel} via Email...`)} className="btn" style={{ background: 'hsla(217, 91%, 60%, 0.2)', color: '#60a5fa', border: '1px solid #3b82f6', display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 0.85rem', fontSize: '0.85rem', borderRadius: '6px', cursor: 'pointer' }}>
