@@ -39,11 +39,19 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
   };
 
   // Match client directory record
-  const targetClientName = activeDoc.client_name || activeDoc.client || '';
+  const targetClientName = activeDoc?.client_name || activeDoc?.client || '';
   const matchedClient = clientsDirectory.find(c => 
-    (c.id && c.id === activeDoc.client_id) || 
+    (c.id && c.id === activeDoc?.client_id) || 
     (c.name && targetClientName && c.name.toLowerCase() === targetClientName.toLowerCase()) ||
     (targetClientName && c.name && (c.name.toLowerCase().includes(targetClientName.toLowerCase()) || targetClientName.toLowerCase().includes(c.name.toLowerCase())))
+  );
+
+  // Match supplier directory record
+  const targetSupplierName = activeDoc?.supplier_name || activeDoc?.supplier || '';
+  const matchedSupplier = suppliersDirectory.find(s => 
+    (s.id && (s.id === activeDoc?.supplier_id || s.id === activeDoc?.supplier)) || 
+    (s.name && targetSupplierName && s.name.toLowerCase() === targetSupplierName.toLowerCase()) ||
+    (targetSupplierName && s.name && (s.name.toLowerCase().includes(targetSupplierName.toLowerCase()) || targetSupplierName.toLowerCase().includes(s.name.toLowerCase())))
   );
 
   // Standardize & Shorten Document Type Title
@@ -251,17 +259,17 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
               {/* LEFT COLUMN: PARTY DETAILS (CLIENT OR SUPPLIER) */}
               <div>
                 <h5 style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', textTransform: 'uppercase', color: '#0284c7', letterSpacing: '0.05em', borderBottom: '1px solid #cbd5e1', paddingBottom: '0.25rem' }}>
-                  {activeDoc.supplier_name || activeDoc.supplier ? 'Supplier / Vendor Details' : 'Client / Recipient Details'}
+                  {activeDoc.supplier_name || activeDoc.supplier || currentDocTypeLabel === 'RFQ' || currentDocTypeLabel === 'PURCHASE ORDER' ? 'Supplier / Vendor Details' : 'Client / Recipient Details'}
                 </h5>
                 <strong style={{ fontSize: '0.95rem', color: '#0f172a', display: 'block', marginBottom: '0.35rem' }}>
-                  {matchedClient?.name || activeDoc.client_name || activeDoc.client || matchedSupplier?.name || activeDoc.supplier_name || activeDoc.supplier || 'Client Organization'}
+                  {matchedSupplier?.name || activeDoc.supplier_name || activeDoc.supplier || matchedClient?.name || activeDoc.client_name || activeDoc.client || (currentDocTypeLabel === 'RFQ' ? 'Prospective Bidding Supplier / Vendor' : 'Client Organization')}
                 </strong>
                 <div style={{ color: '#475569', lineHeight: '1.55', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                  <div>{matchedClient?.address || matchedSupplier?.address || activeDoc.client_address || activeDoc.supplier_address || 'Auto Bazaar, #001, Nairobi, Kenya'}</div>
-                  <div>{matchedClient?.phone || matchedSupplier?.phone || activeDoc.client_phone || activeDoc.supplier_phone || '+254 700 000 000'}</div>
+                  <div>{matchedSupplier?.address || activeDoc.supplier_address || matchedClient?.address || activeDoc.client_address || (currentDocTypeLabel === 'RFQ' ? 'Registered Commercial Vendor' : 'Auto Bazaar, #001, Nairobi, Kenya')}</div>
+                  <div>{matchedSupplier?.phone || activeDoc.supplier_phone || matchedClient?.phone || activeDoc.client_phone || '+254 700 000 000'}</div>
                   <div>
-                    {(matchedClient?.email || matchedSupplier?.email) ? <span>{matchedClient?.email || matchedSupplier?.email} </span> : ''}
-                    {(matchedClient?.tax_pin || matchedSupplier?.tax_pin || matchedSupplier?.kra_pin || activeDoc.client_pin || activeDoc.supplier_pin) ? <span>{(matchedClient?.email || matchedSupplier?.email) ? '&bull; ' : ''}PIN: {matchedClient?.tax_pin || matchedSupplier?.tax_pin || matchedSupplier?.kra_pin || activeDoc.client_pin || activeDoc.supplier_pin}</span> : ''}
+                    {(matchedSupplier?.email || matchedClient?.email) ? <span>{matchedSupplier?.email || matchedClient?.email} </span> : ''}
+                    {(matchedSupplier?.tax_pin || matchedSupplier?.kra_pin || activeDoc.supplier_pin || matchedClient?.tax_pin || activeDoc.client_pin) ? <span>{(matchedSupplier?.email || matchedClient?.email) ? '&bull; ' : ''}PIN: {matchedSupplier?.tax_pin || matchedSupplier?.kra_pin || activeDoc.supplier_pin || matchedClient?.tax_pin || activeDoc.client_pin}</span> : ''}
                   </div>
                 </div>
               </div>
