@@ -8,7 +8,9 @@ export const STANDARD_ROLES = {
     name: 'Executive Administrator',
     badge: '👑 Admin',
     color: '#0284c7',
-    description: 'Full executive access, high-value approvals, corporate hub administration, dossiers & user management.',
+    department: 'Executive Directorate',
+    reportsTo: 'Board of Directors',
+    description: 'Full executive oversight, high-value approvals, corporate hub administration, dossiers & user access management.',
     tasks: [
       'Full System Oversight & Executive Dashboards',
       'Corporate Hub Administration (Bank Accounts, Directors, Statutory Licenses)',
@@ -18,28 +20,77 @@ export const STANDARD_ROLES = {
   },
   OPERATIONS: {
     id: 'Operations',
-    name: 'Operations Manager (Tenders, Sales & Site Works)',
-    badge: '🏗️ Operations',
+    name: 'Operations Manager',
+    badge: '🏗️ Operations Manager',
     color: '#16a34a',
-    description: 'Manages bidding, client sales quotes, LPOs, site execution, QA/QC reports, and deliverable fulfillment.',
+    department: 'Operations & Bidding',
+    reportsTo: 'Executive Administrator (Admin)',
+    description: 'Leads bidding, tender submissions, client sales quotes, LPOs, project schedules, and supervises Site Engineers.',
     tasks: [
-      'Creating Tenders, Sales Quotations (SQ) & Client Delivery Notes',
+      'Creating Tenders, Sales Quotations (SQ) & Bidding Proposals',
       'Recording incoming Client Local Purchase Orders (LPO)',
-      'Uploading site deliverable evidence, photo proof & milestone fulfillment',
-      'Generating QA/QC Inspection Forms, Site Visit Reports, Daily Logs & Variation Orders'
+      'Supervising Site Engineers & Project Milestone Deliverables',
+      'Authorizing QA/QC Inspection Reports, Site Works & Handover Certificates'
+    ]
+  },
+  SITE_ENGINEER: {
+    id: 'Site_Engineer',
+    name: 'Site Engineer / Field Officer',
+    badge: '👷 Site Engineer',
+    color: '#059669',
+    department: 'Operations & Field Execution',
+    reportsTo: 'Operations Manager',
+    description: 'Executes field site deliverables, milestone tracking, uploads photo proof, QA/QC checklists, and work diaries.',
+    tasks: [
+      'Fulfill tender milestones & upload photo/document proof',
+      'Generate Site Visit Reports, Daily Work Logs & Weather Diaries',
+      'Execute QA/QC Quality Assurance Inspection Checklists',
+      'Submit Variation Orders (VO) & Request Handover Approvals'
     ]
   },
   PROCUREMENT_FINANCE: {
     id: 'Procurement_Finance',
     name: 'Procurement & Finance Manager',
-    badge: '💳 Procurement & Finance',
+    badge: '💳 Procurement & Finance Manager',
     color: '#d97706',
-    description: 'Handles supplier RFQs, POs, site GRNs, inventory stock, AI 3-Way Matching, invoices & treasury cashflow.',
+    department: 'Supply Chain & Treasury Oversight',
+    reportsTo: 'Executive Administrator (Admin)',
+    description: 'Oversees end-to-end supply chain, vendor RFQs, purchase orders, store inventory, accounting ledgers, and cashflow.',
     tasks: [
-      'Sourcing Supplier RFQs, raising Purchase Orders (PO) & Store Stock Requisitions',
-      'Logging Goods Received Notes (GRN) & verified site material receipts',
-      'Running AI 3-Way Match Verification (PO vs GRN vs Invoice)',
-      'Processing Supplier Invoices, Treasury Accounts & 30/60/90-Day Cashflow Analytics'
+      'Approve supplier RFQs, material orders (PO) & store requisitions',
+      'Oversee site delivery receipts (GRN) & inventory levels',
+      'Supervise AI 3-Way Match Verification (PO vs GRN vs Invoice)',
+      'Process supplier invoices, treasury accounts & 30/60/90-day cashflow analytics'
+    ]
+  },
+  PROCUREMENT_OFFICER: {
+    id: 'Procurement_Officer',
+    name: 'Procurement Officer',
+    badge: '📦 Procurement Officer',
+    color: '#ea580c',
+    department: 'Procurement & Supply Chain',
+    reportsTo: 'Procurement & Finance Manager',
+    description: 'Manages vendor relations, sourcing RFQs, issuing Purchase Orders, receiving site materials (GRN), and warehouse stock.',
+    tasks: [
+      'Issue Requests for Quotation (RFQ) to vendors & suppliers',
+      'Raise Purchase Orders (PO) for materials, equipment & subcontracts',
+      'Log Goods Received Notes (GRN) upon physical site delivery',
+      'Manage warehouse stock requisitions & live inventory levels'
+    ]
+  },
+  FINANCE_OFFICER: {
+    id: 'Finance_Officer',
+    name: 'Accountant / Finance Officer',
+    badge: '💰 Finance Officer',
+    color: '#ca8a04',
+    department: 'Finance & Treasury',
+    reportsTo: 'Procurement & Finance Manager',
+    description: 'Maintains financial ledgers, processes incoming supplier invoices, performs AI 3-Way matching, and monitors treasury accounts.',
+    tasks: [
+      'Run automated AI 3-Way Match Engine (PO vs GRN vs Invoice)',
+      'Record incoming Supplier Invoices & process disbursements',
+      'Monitor Bank, M-Pesa & Petty Cash Treasury Account balances',
+      'Generate cashflow reports, expense analytics & payment schedules'
     ]
   }
 }
@@ -75,6 +126,7 @@ export const RoleProvider = ({ children }) => {
       window.removeEventListener('storage', syncRoleFromSession)
     }
   }, [])
+
   const [allRoles, setAllRoles] = useState(() => {
     const saved = localStorage.getItem('akpali_custom_roles')
     if (saved) {
@@ -116,10 +168,19 @@ export const RoleProvider = ({ children }) => {
     const role = (currentRole || 'Admin').toLowerCase()
     if (role === 'admin') return true
     if (moduleName === 'dashboard') return true
-    if (moduleName === 'tenders' && role === 'operations') return true
-    if (moduleName === 'procurement' && role === 'procurement_finance') return true
-    if (moduleName === 'finances' && role === 'procurement_finance') return true
-    if (moduleName === 'corporate') return true
+
+    // Tenders & Projects: Operations Manager and Site Engineer
+    if (moduleName === 'tenders' && (role === 'operations' || role === 'site_engineer')) return true
+
+    // Procurement: Procurement & Finance Manager and Procurement Officer
+    if (moduleName === 'procurement' && (role === 'procurement_finance' || role === 'procurement_officer')) return true
+
+    // Corporate Bookkeeping: Procurement & Finance Manager and Finance Officer
+    if (moduleName === 'finances' && (role === 'procurement_finance' || role === 'finance_officer')) return true
+
+    // Corporate Governance Hub: EXCLUSIVELY accessible to Admin
+    if (moduleName === 'corporate' && role === 'admin') return true
+
     return false
   }
 

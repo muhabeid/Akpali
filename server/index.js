@@ -200,40 +200,70 @@ async function initializeDB() {
     console.log('✅ Added password column to users table.');
   } catch(e) {}
 
-  // Ensure default Admin user
+    // Ensure default Admin user
   const adminUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "admin@akpali.com"');
   if (!adminUser) {
     await db.run(
       'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
       ['USR-ADMIN', 'Eng. John Akpali', 'admin@akpali.com', 'Admin', 'password123', 'Active']
     );
-    console.log('✅ Default Admin account seeded (admin@akpali.com / password123)');
   } else {
     await db.run('UPDATE users SET password = COALESCE(password, "password123"), role = "Admin" WHERE id = ?', [adminUser.id]);
   }
 
-  // Ensure default Operations user
+  // Ensure Operations Manager user
   const opsUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "operations@akpali.com"');
   if (!opsUser) {
     await db.run(
       'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
       ['USR-OPS', 'David Mwangi', 'operations@akpali.com', 'Operations', 'password123', 'Active']
     );
-    console.log('✅ Default Operations account seeded (operations@akpali.com / password123)');
   } else {
-    await db.run('UPDATE users SET password = COALESCE(password, "password123") WHERE id = ?', [opsUser.id]);
+    await db.run('UPDATE users SET password = COALESCE(password, "password123"), role = "Operations" WHERE id = ?', [opsUser.id]);
   }
 
-  // Ensure default Procurement & Finance user
+  // Ensure Site Engineer user (Sub-role of Operations)
+  const siteUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "site@akpali.com"');
+  if (!siteUser) {
+    await db.run(
+      'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
+      ['USR-SITE', 'Eng. Brian Ochieng', 'site@akpali.com', 'Site_Engineer', 'password123', 'Active']
+    );
+  } else {
+    await db.run('UPDATE users SET password = COALESCE(password, "password123"), role = "Site_Engineer" WHERE id = ?', [siteUser.id]);
+  }
+
+  // Ensure Procurement & Finance Manager user
+  const pfUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "procurement.finance@akpali.com"');
+  if (!pfUser) {
+    await db.run(
+      'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
+      ['USR-PFM', 'Grace Wanjiku', 'procurement.finance@akpali.com', 'Procurement_Finance', 'password123', 'Active']
+    );
+  } else {
+    await db.run('UPDATE users SET password = COALESCE(password, "password123"), role = "Procurement_Finance" WHERE id = ?', [pfUser.id]);
+  }
+
+  // Ensure Procurement Officer user (Sub-role of Procurement & Finance)
+  const poUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "procurement@akpali.com"');
+  if (!poUser) {
+    await db.run(
+      'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
+      ['USR-PRO', 'Kevin Kipkorir', 'procurement@akpali.com', 'Procurement_Officer', 'password123', 'Active']
+    );
+  } else {
+    await db.run('UPDATE users SET password = COALESCE(password, "password123"), role = "Procurement_Officer" WHERE id = ?', [poUser.id]);
+  }
+
+  // Ensure Finance Officer user (Sub-role of Procurement & Finance)
   const finUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "finance@akpali.com"');
   if (!finUser) {
     await db.run(
       'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
-      ['USR-FIN', 'Sarah Kimani', 'finance@akpali.com', 'Procurement_Finance', 'password123', 'Active']
+      ['USR-FIN', 'Sarah Kimani', 'finance@akpali.com', 'Finance_Officer', 'password123', 'Active']
     );
-    console.log('✅ Default Procurement & Finance account seeded (finance@akpali.com / password123)');
   } else {
-    await db.run('UPDATE users SET password = COALESCE(password, "password123") WHERE id = ?', [finUser.id]);
+    await db.run('UPDATE users SET password = COALESCE(password, "password123"), role = "Finance_Officer" WHERE id = ?', [finUser.id]);
   }
 
 
@@ -329,7 +359,7 @@ app.put('/api/company', async (req, res) => {
   const {
     legal_name, trading_name, registration_num, registration_date, business_type,
     tax_pin, vat_num, email, phone, address, postal_address, website, logo_url,
-    seal_url, industry, nature_of_business, years_in_operation, vision, mission,
+    seal_url, signature_url, industry, nature_of_business, years_in_operation, vision, mission,
     core_values, introductory_letter, profile_doc_url, base_currency
   } = req.body;
 
@@ -337,7 +367,7 @@ app.put('/api/company', async (req, res) => {
     `UPDATE company_profile 
      SET legal_name = ?, trading_name = ?, registration_num = ?, registration_date = ?, business_type = ?,
          tax_pin = ?, vat_num = ?, email = ?, phone = ?, address = ?, postal_address = ?, website = ?,
-         logo_url = ?, seal_url = ?, industry = ?, nature_of_business = ?, years_in_operation = ?,
+         logo_url = ?, seal_url = ?, signature_url = ?, industry = ?, nature_of_business = ?, years_in_operation = ?,
          vision = ?, mission = ?, core_values = ?, introductory_letter = ?, profile_doc_url = ?, base_currency = ?, updated_at = CURRENT_TIMESTAMP
      WHERE id = 1`,
     [
@@ -850,8 +880,11 @@ app.post('/api/users/login', async (req, res) => {
 
   let title = 'System User';
   if (user.role === 'Admin') title = 'Executive Administrator';
-  else if (user.role === 'Operations') title = 'Operations Manager (Tenders & Site)';
+  else if (user.role === 'Operations') title = 'Operations Manager';
+  else if (user.role === 'Site_Engineer') title = 'Site Engineer / Field Officer';
   else if (user.role === 'Procurement_Finance') title = 'Procurement & Finance Manager';
+  else if (user.role === 'Procurement_Officer') title = 'Procurement Officer';
+  else if (user.role === 'Finance_Officer') title = 'Accountant / Finance Officer';
   else title = `${user.role} Officer`;
 
   return res.json({

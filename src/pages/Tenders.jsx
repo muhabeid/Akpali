@@ -192,6 +192,17 @@ export default function Tenders({ setGlobalDrawer }) {
               </div>
             )}
 
+            {selectedTender.document_url && (
+              <a 
+                href={selectedTender.document_url.startsWith('http') ? selectedTender.document_url : `http://localhost:5000${selectedTender.document_url}`} 
+                className="btn" 
+                style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} 
+                target="_blank" 
+                rel="noopener noreferrer"
+              >
+                📎 View Tender Doc
+              </a>
+            )}
             <a href={`http://localhost:5000/api/tenders/${selectedTender.id}/archive`} className="btn" style={{ background: 'hsla(var(--primary), 0.2)', color: 'hsl(var(--primary))', textDecoration: 'none' }} target="_blank" rel="noopener noreferrer">
               📦 Download Archive (.zip)
             </a>
@@ -311,6 +322,18 @@ export default function Tenders({ setGlobalDrawer }) {
                       <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
                         <div style={{ color: 'hsl(var(--success))', fontWeight: 'bold', marginBottom: '0.3rem' }}>{formatAmount(lpo.total_value)}</div>
                         <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {lpo.document_url && (
+                            <a 
+                              href={lpo.document_url.startsWith('http') ? lpo.document_url : `http://localhost:5000${lpo.document_url}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="btn" 
+                              style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: '#dcfce7', color: '#16a34a', border: '1px solid #86efac', textDecoration: 'none' }} 
+                              title="View Attached Client LPO Scan"
+                            >
+                              📎
+                            </a>
+                          )}
                           <button 
                             className="btn" 
                             onClick={() => setPreviewModalDoc({ isOpen: true, doc: lpo, type: 'CLIENT LOCAL PURCHASE ORDER' })} 

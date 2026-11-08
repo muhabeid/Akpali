@@ -101,9 +101,18 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
           value={formData.role} 
           onChange={e => setFormData({...formData, role: e.target.value})}
         >
-          <option value="Admin">👑 Administrator (Full Executive Access)</option>
-          <option value="Operations">🏗️ Operations Manager (Tenders, Sales & Site Works)</option>
-          <option value="Procurement_Finance">💳 Procurement & Finance Manager (Supply Chain & Audit)</option>
+          <optgroup label="👑 Executive Directorate">
+            <option value="Admin">Executive Administrator (Full System & Governance Access)</option>
+          </optgroup>
+          <optgroup label="🏗️ Operations & Field Execution">
+            <option value="Operations">Operations Manager (Bidding, Tenders & Projects - Reports to MD)</option>
+            <option value="Site_Engineer">Site Engineer / Field Officer (Site Deliverables & QA/QC - Reports to Operations Manager)</option>
+          </optgroup>
+          <optgroup label="💳 Procurement & Supply Chain / Treasury">
+            <option value="Procurement_Finance">Procurement & Finance Manager (Supply Chain & Treasury - Reports to MD)</option>
+            <option value="Procurement_Officer">Procurement Officer (Vendor RFQs, POs, Stores - Reports to Procurement & Finance Manager)</option>
+            <option value="Finance_Officer">Accountant / Finance Officer (Invoices, Ledgers & Cashflow - Reports to Procurement & Finance Manager)</option>
+          </optgroup>
         </select>
       </div>
 

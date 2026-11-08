@@ -14,6 +14,7 @@ export default function NewTenderForm({ onSuccess }) {
 
   const [clientsList, setClientsList] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [tenderFile, setTenderFile] = useState(null)
 
   useEffect(() => {
     // Fetch Next Linear Tender ID
@@ -37,11 +38,28 @@ export default function NewTenderForm({ onSuccess }) {
     e.preventDefault();
     setIsSubmitting(true);
 
-    try {
+        try {
+      let docUrl = null;
+      if (tenderFile) {
+        const fileData = new FormData();
+        fileData.append('file', tenderFile);
+        const upRes = await fetch('http://localhost:5000/api/upload', {
+          method: 'POST',
+          body: fileData
+        });
+        if (upRes.ok) {
+          const upJson = await upRes.json();
+          docUrl = upJson.fileUrl;
+        }
+      }
+
       const res = await fetch('http://localhost:5000/api/tenders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({
+          ...formData,
+          document_url: docUrl
+        })
       });
 
       if (res.ok) {

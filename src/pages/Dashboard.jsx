@@ -22,7 +22,7 @@ export default function Dashboard({ setGlobalDrawer }) {
   const [lpos, setLpos] = useState([])
 
   // Role Specific Tasks Map
-  const roleTasksMap = {
+    const roleTasksMap = {
     Admin: [
       'Approve high-value Tenders, Sales Quotes & Purchase Orders',
       'Manage Bank Accounts, Directors & Company Legal Profile',
@@ -30,16 +30,34 @@ export default function Dashboard({ setGlobalDrawer }) {
       'System Settings, User Management & Executive Audit'
     ],
     Operations: [
-      'Create and submit Tenders & Sales Quotations (SQ)',
-      'Record incoming Client Local Purchase Orders (LPO)',
-      'Fulfill site deliverables, milestone tracking & upload evidence',
-      'Generate QA/QC inspection forms, site visit logs & variation orders'
+      'Creating Tenders, Sales Quotations (SQ) & Bidding Proposals',
+      'Recording incoming Client Local Purchase Orders (LPO)',
+      'Supervising Site Engineers & Project Milestone Deliverables',
+      'Authorizing QA/QC Inspection Reports, Site Works & Handover Certificates'
+    ],
+    Site_Engineer: [
+      'Fulfill tender milestones & upload photo/document proof',
+      'Generate Site Visit Reports, Daily Work Logs & Weather Diaries',
+      'Execute QA/QC Quality Assurance Inspection Checklists',
+      'Submit Variation Orders (VO) & Request Handover Approvals'
     ],
     Procurement_Finance: [
-      'Issue Requests for Quotation (RFQ) to vendors & raise Purchase Orders (PO)',
+      'Approve supplier RFQs, material orders (PO) & store requisitions',
+      'Oversee site delivery receipts (GRN) & inventory levels',
+      'Supervise AI 3-Way Match Verification (PO vs GRN vs Invoice)',
+      'Process supplier invoices, treasury accounts & 30/60/90-day cashflow analytics'
+    ],
+    Procurement_Officer: [
+      'Issue Requests for Quotation (RFQ) to vendors & suppliers',
+      'Raise Purchase Orders (PO) for materials, equipment & subcontracts',
       'Log Goods Received Notes (GRN) upon physical site delivery',
+      'Manage warehouse stock requisitions & live inventory levels'
+    ],
+    Finance_Officer: [
       'Run automated AI 3-Way Match Engine (PO vs GRN vs Invoice)',
-      'Process supplier invoice payments & track treasury bank cashflow'
+      'Record incoming Supplier Invoices & process disbursements',
+      'Monitor Bank, M-Pesa & Petty Cash Treasury Account balances',
+      'Generate cashflow reports, expense analytics & payment schedules'
     ]
   }
 

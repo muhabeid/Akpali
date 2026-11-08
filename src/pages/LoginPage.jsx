@@ -207,27 +207,48 @@ export default function LoginPage({ onLoginSuccess, companyProfile: initialProfi
           <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <KeyRound size={14} color="#38bdf8" /> 1-Click Role Switch & Test Credentials:
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.45rem' }}>
             <button 
               type="button" 
               onClick={() => handleQuickFill('admin@akpali.com', 'password123')}
-              style={{ padding: '0.5rem 0.35rem', background: email === 'admin@akpali.com' ? 'rgba(2, 132, 199, 0.25)' : '#1e293b', border: email === 'admin@akpali.com' ? '1px solid #0284c7' : '1px solid #334155', borderRadius: '6px', color: '#38bdf8', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
+              style={{ padding: '0.45rem 0.25rem', background: email === 'admin@akpali.com' ? 'rgba(2, 132, 199, 0.25)' : '#1e293b', border: email === 'admin@akpali.com' ? '1px solid #0284c7' : '1px solid #334155', borderRadius: '6px', color: '#38bdf8', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
             >
               👑 Admin
             </button>
             <button 
               type="button" 
               onClick={() => handleQuickFill('operations@akpali.com', 'password123')}
-              style={{ padding: '0.5rem 0.35rem', background: email === 'operations@akpali.com' ? 'rgba(22, 163, 74, 0.25)' : '#1e293b', border: email === 'operations@akpali.com' ? '1px solid #16a34a' : '1px solid #334155', borderRadius: '6px', color: '#4ade80', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
+              style={{ padding: '0.45rem 0.25rem', background: email === 'operations@akpali.com' ? 'rgba(22, 163, 74, 0.25)' : '#1e293b', border: email === 'operations@akpali.com' ? '1px solid #16a34a' : '1px solid #334155', borderRadius: '6px', color: '#4ade80', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
             >
-              🏗️ Operations
+              🏗️ Ops Mgr
+            </button>
+            <button 
+              type="button" 
+              onClick={() => handleQuickFill('site@akpali.com', 'password123')}
+              style={{ padding: '0.45rem 0.25rem', background: email === 'site@akpali.com' ? 'rgba(5, 150, 105, 0.25)' : '#1e293b', border: email === 'site@akpali.com' ? '1px solid #059669' : '1px solid #334155', borderRadius: '6px', color: '#34d399', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
+            >
+              👷 Site Eng.
+            </button>
+            <button 
+              type="button" 
+              onClick={() => handleQuickFill('procurement.finance@akpali.com', 'password123')}
+              style={{ padding: '0.45rem 0.25rem', background: email === 'procurement.finance@akpali.com' ? 'rgba(217, 119, 6, 0.25)' : '#1e293b', border: email === 'procurement.finance@akpali.com' ? '1px solid #d97706' : '1px solid #334155', borderRadius: '6px', color: '#fbbf24', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
+            >
+              💳 Proc & Fin
+            </button>
+            <button 
+              type="button" 
+              onClick={() => handleQuickFill('procurement@akpali.com', 'password123')}
+              style={{ padding: '0.45rem 0.25rem', background: email === 'procurement@akpali.com' ? 'rgba(234, 88, 12, 0.25)' : '#1e293b', border: email === 'procurement@akpali.com' ? '1px solid #ea580c' : '1px solid #334155', borderRadius: '6px', color: '#fb923c', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
+            >
+              📦 Proc Officer
             </button>
             <button 
               type="button" 
               onClick={() => handleQuickFill('finance@akpali.com', 'password123')}
-              style={{ padding: '0.5rem 0.35rem', background: email === 'finance@akpali.com' ? 'rgba(217, 119, 6, 0.25)' : '#1e293b', border: email === 'finance@akpali.com' ? '1px solid #d97706' : '1px solid #334155', borderRadius: '6px', color: '#fbbf24', fontSize: '0.75rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
+              style={{ padding: '0.45rem 0.25rem', background: email === 'finance@akpali.com' ? 'rgba(202, 138, 4, 0.25)' : '#1e293b', border: email === 'finance@akpali.com' ? '1px solid #ca8a04' : '1px solid #334155', borderRadius: '6px', color: '#facc15', fontSize: '0.72rem', fontWeight: '700', cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s' }}
             >
-              💳 Finance
+              💰 Finance Officer
             </button>
           </div>
           <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '0.5rem', textAlign: 'center' }}>

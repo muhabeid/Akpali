@@ -899,9 +899,16 @@ function Sidebar({ isOpen, isCollapsed, onClose, onNavigate, userSession }) {
             </div>
           )}
 
-          <Link to="/corporate" onClick={onNavigate} className={`nav-item ${activePath === '/corporate' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/corporate' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/corporate' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/corporate' ? 'bold' : 'normal', textDecoration: 'none' }}>
-            <Building2 size={18} /> Corporate Governance Hub
-          </Link>
+          {canAccessModule('corporate') ? (
+            <Link to="/corporate" onClick={onNavigate} className={`nav-item ${activePath === '/corporate' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/corporate' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/corporate' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/corporate' ? 'bold' : 'normal', textDecoration: 'none' }}>
+              <Building2 size={18} /> Corporate Governance Hub
+            </Link>
+          ) : (
+            <div title="Restricted to Executive Administrator" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: '#64748b', opacity: 0.55, cursor: 'not-allowed', fontSize: '0.875rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Building2 size={18} /> Governance Hub</span>
+              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: '#334155', color: '#94a3b8' }}>🔒 Admin Only</span>
+            </div>
+          )}
         </nav>
 
         {/* LOGGED IN USER ROLE BADGE AT BOTTOM */}
@@ -962,7 +969,7 @@ function MainAppLayout({ userSession, onLogout }) {
                 canAccessModule('tenders') ? (
                   <Tenders setGlobalDrawer={setGlobalDrawer} />
                 ) : (
-                  <AccessRestricted moduleName="Tenders & Projects" requiredRole="Operations Manager or Administrator" />
+                  <AccessRestricted moduleName="Tenders & Projects" requiredRole="Operations Manager, Site Engineer or Administrator" />
                 )
               } 
             />
@@ -972,7 +979,7 @@ function MainAppLayout({ userSession, onLogout }) {
                 canAccessModule('procurement') ? (
                   <Procurement setGlobalDrawer={setGlobalDrawer} />
                 ) : (
-                  <AccessRestricted moduleName="Procurement & Supply Chain" requiredRole="Procurement & Finance Manager or Administrator" />
+                  <AccessRestricted moduleName="Procurement & Supply Chain" requiredRole="Procurement & Finance Manager, Procurement Officer or Administrator" />
                 )
               } 
             />
@@ -986,7 +993,16 @@ function MainAppLayout({ userSession, onLogout }) {
                 )
               } 
             />
-            <Route path="/corporate" element={<CorporateHub setGlobalDrawer={setGlobalDrawer} />} />
+            <Route 
+              path="/corporate" 
+              element={
+                canAccessModule('corporate') ? (
+                  <CorporateHub setGlobalDrawer={setGlobalDrawer} />
+                ) : (
+                  <AccessRestricted moduleName="Corporate Governance Hub" requiredRole="Executive Administrator (Admin)" />
+                )
+              } 
+            />
           </Routes>
         </main>
       </div>

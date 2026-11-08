@@ -70,21 +70,35 @@ export default function InviteUserForm({ onSuccess }) {
       </div>
 
       <div className="form-group" style={{ marginBottom: 0 }}>
-        <label style={{ fontWeight: '700' }}>Assign System Role *</label>
+        <label style={{ fontWeight: '700' }}>Assign System Role & Reporting Line *</label>
         <select className="form-control" style={{ fontWeight: '600' }} required value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})}>
-          <option value="Admin">👑 Administrator (Full Executive Access)</option>
-          <option value="Operations">🏗️ Operations Manager (Tenders, Sales & Site Works)</option>
-          <option value="Procurement_Finance">💳 Procurement & Finance Manager (Supply Chain & Audit)</option>
+          <optgroup label="👑 Executive Directorate">
+            <option value="Admin">Executive Administrator (Full System & Governance Access)</option>
+          </optgroup>
+          <optgroup label="🏗️ Operations & Field Execution">
+            <option value="Operations">Operations Manager (Bidding, Tenders & Projects - Reports to MD)</option>
+            <option value="Site_Engineer">Site Engineer / Field Officer (Site Deliverables & QA/QC - Reports to Operations Manager)</option>
+          </optgroup>
+          <optgroup label="💳 Procurement & Supply Chain / Treasury">
+            <option value="Procurement_Finance">Procurement & Finance Manager (Supply Chain & Treasury - Reports to MD)</option>
+            <option value="Procurement_Officer">Procurement Officer (Vendor RFQs, POs, Stores - Reports to Procurement & Finance Manager)</option>
+            <option value="Finance_Officer">Accountant / Finance Officer (Invoices, Ledgers & Cashflow - Reports to Procurement & Finance Manager)</option>
+          </optgroup>
         </select>
       </div>
 
       {/* DYNAMIC ROLE TASKS & CAPABILITIES TOGGLE PANEL */}
       <div style={{ background: 'hsla(var(--primary), 0.04)', borderLeft: `4px solid ${selectedRoleDetails.color}`, border: '1px solid #cbd5e1', padding: '1rem', borderRadius: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyBetween: 'space-between', marginBottom: '0.5rem' }}>
-          <strong style={{ fontSize: '0.85rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-            <ShieldCheck size={16} color={selectedRoleDetails.color} />
-            Authorized Tasks & Capabilities for {selectedRoleDetails.name}:
-          </strong>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.2rem' }}>
+              <ShieldCheck size={16} color={selectedRoleDetails.color} />
+              <strong style={{ fontSize: '0.85rem', color: '#0f172a' }}>{selectedRoleDetails.name}</strong>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              <strong>Department:</strong> {selectedRoleDetails.department} &bull; <strong>Reports To:</strong> <span style={{ color: selectedRoleDetails.color, fontWeight: '700' }}>{selectedRoleDetails.reportsTo}</span>
+            </div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem' }}>

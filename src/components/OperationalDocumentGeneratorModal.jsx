@@ -21,6 +21,8 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
   const [sealUrl, setSealUrl] = useState('/stamp.png')
   const [stampSize, setStampSize] = useState('90px') // Options: '50px', '70px', '90px', '120px', '150px'
   const [isUploadingSeal, setIsUploadingSeal] = useState(false)
+  const [signatureUrl, setSignatureUrl] = useState(null)
+  const [isUploadingSignature, setIsUploadingSignature] = useState(false)
 
   const [companyProfile, setCompanyProfile] = useState(null)
   const [opdId, setOpdId] = useState('OPD/2026/08/001')
@@ -33,6 +35,7 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
           setCompanyProfile(data)
           if (data.logo_url) setLogoUrl(data.logo_url)
           if (data.seal_url) setSealUrl(data.seal_url)
+          if (data.signature_url) setSignatureUrl(data.signature_url)
         }
       })
       .catch(err => console.error('Error fetching company profile:', err))
@@ -86,6 +89,29 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
       alert('Failed to upload stamp image')
     } finally {
       setIsUploadingSeal(false)
+    }
+  }
+
+  const handleSignatureFileUpload = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    const formData = new FormData()
+    formData.append('file', file)
+    setIsUploadingSignature(true)
+    try {
+      const res = await fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      const data = await res.json()
+      if (data.fileUrl) {
+        setSignatureUrl(data.fileUrl)
+      }
+    } catch (err) {
+      console.error('Signature upload error:', err)
+      alert('Failed to upload signature image')
+    } finally {
+      setIsUploadingSignature(false)
     }
   }
 
@@ -322,6 +348,35 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                 <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>
                   {isUploadingSeal ? 'Uploading...' : '📁 Upload'}
                   <input type="file" accept="image/*" onChange={handleSealFileUpload} style={{ display: 'none' }} />
+                </label>
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontSize: '0.8rem', margin: 0, fontWeight: '600' }}>Authorized Digital Signature</label>
+                {signatureUrl && (
+                  <button 
+                    type="button" 
+                    onClick={() => setSignatureUrl(null)} 
+                    style={{ fontSize: '0.7rem', color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', fontWeight: '600' }}
+                  >
+                    ✕ Remove
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  placeholder="Digital signature image URL or upload" 
+                  style={{ fontSize: '0.78rem' }}
+                  value={signatureUrl || ''} 
+                  onChange={e => setSignatureUrl(e.target.value)} 
+                />
+                <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.75rem', padding: '0.4rem 0.6rem', whiteSpace: 'nowrap' }}>
+                  {isUploadingSignature ? 'Uploading...' : '📁 Upload'}
+                  <input type="file" accept="image/*" onChange={handleSignatureFileUpload} style={{ display: 'none' }} />
                 </label>
               </div>
             </div>
@@ -899,13 +954,25 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                     <div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.2rem' }}>SEALED with the Common Seal of:</div>
                       <strong style={{ fontSize: '0.85rem' }}>{companyProfile?.legal_name || 'AKPALI COMPANY LIMITED'}</strong>
-                      <div style={{ marginTop: '1.5rem', borderBottom: '1px solid #cbd5e1', width: '80%' }}></div>
+                      {signatureUrl ? (
+                        <div style={{ height: '50px', display: 'flex', alignItems: 'flex-end', marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+                          <img 
+                            src={signatureUrl.startsWith('http') ? signatureUrl : `http://localhost:5000${signatureUrl}`} 
+                            alt="Director Signature" 
+                            style={{ maxHeight: '48px', maxWidth: '160px', objectFit: 'contain' }} 
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ marginTop: '1.75rem' }}></div>
+                      )}
+                      <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%' }}></div>
                       <div style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}><strong>Director:</strong> {personInCharge}</div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Date: {docDate}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ minHeight: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {sealUrl && <img src={sealUrl} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
+                        {sealUrl && <img src={sealUrl.startsWith('http') ? sealUrl : `http://localhost:5000${sealUrl}`} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
                       </div>
                       <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%', margin: '0 auto' }}></div>
                       <div style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}><strong>Company Secretary / Co-Director</strong></div>
@@ -966,14 +1033,26 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', borderTop: '2px solid #0f172a', paddingTop: '1rem' }}>
                     <div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Authorized Declarant Signature:</div>
-                      <div style={{ borderBottom: '1px solid #cbd5e1', height: '40px', width: '80%' }}></div>
+                      {signatureUrl ? (
+                        <div style={{ height: '48px', display: 'flex', alignItems: 'flex-end', marginBottom: '0.25rem' }}>
+                          <img 
+                            src={signatureUrl.startsWith('http') ? signatureUrl : `http://localhost:5000${signatureUrl}`} 
+                            alt="Declarant Signature" 
+                            style={{ maxHeight: '45px', maxWidth: '160px', objectFit: 'contain' }} 
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ height: '35px' }}></div>
+                      )}
+                      <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%' }}></div>
                       <div style={{ fontWeight: '700', fontSize: '0.85rem', marginTop: '0.35rem' }}>{declarantName}</div>
                       <div style={{ fontSize: '0.78rem', color: '#475569' }}>{declarantRole}</div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Date: {docDate}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ minHeight: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {sealUrl && <img src={sealUrl} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
+                        {sealUrl && <img src={sealUrl.startsWith('http') ? sealUrl : `http://localhost:5000${sealUrl}`} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
                       </div>
                       <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%', margin: '0 auto' }}></div>
                       <div style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}><strong>Official Corporate Seal & Stamp</strong></div>
@@ -1035,14 +1114,26 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', borderTop: '2px solid #0f172a', paddingTop: '1rem' }}>
                     <div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Operations & Supply Chain Director:</div>
-                      <div style={{ borderBottom: '1px solid #cbd5e1', height: '40px', width: '80%' }}></div>
+                      {signatureUrl ? (
+                        <div style={{ height: '48px', display: 'flex', alignItems: 'flex-end', marginBottom: '0.25rem' }}>
+                          <img 
+                            src={signatureUrl.startsWith('http') ? signatureUrl : `http://localhost:5000${signatureUrl}`} 
+                            alt="Director Signature" 
+                            style={{ maxHeight: '45px', maxWidth: '160px', objectFit: 'contain' }} 
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ height: '35px' }}></div>
+                      )}
+                      <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%' }}></div>
                       <div style={{ fontWeight: '700', fontSize: '0.85rem', marginTop: '0.35rem' }}>{personInCharge}</div>
                       <div style={{ fontSize: '0.78rem', color: '#475569' }}>Head of Logistics & Supply Chain Operations</div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Date: {docDate}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ minHeight: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {sealUrl && <img src={sealUrl} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
+                        {sealUrl && <img src={sealUrl.startsWith('http') ? sealUrl : `http://localhost:5000${sealUrl}`} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
                       </div>
                       <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%', margin: '0 auto' }}></div>
                       <div style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}><strong>Official Corporate Seal & Stamp</strong></div>
@@ -1102,14 +1193,26 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', borderTop: '2px solid #0f172a', paddingTop: '1rem' }}>
                     <div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Finance Director / Financial Controller:</div>
-                      <div style={{ borderBottom: '1px solid #cbd5e1', height: '40px', width: '80%' }}></div>
+                      {signatureUrl ? (
+                        <div style={{ height: '48px', display: 'flex', alignItems: 'flex-end', marginBottom: '0.25rem' }}>
+                          <img 
+                            src={signatureUrl.startsWith('http') ? signatureUrl : `http://localhost:5000${signatureUrl}`} 
+                            alt="Finance Signature" 
+                            style={{ maxHeight: '45px', maxWidth: '160px', objectFit: 'contain' }} 
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ height: '35px' }}></div>
+                      )}
+                      <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%' }}></div>
                       <div style={{ fontWeight: '700', fontSize: '0.85rem', marginTop: '0.35rem' }}>CPA David Mwangi</div>
                       <div style={{ fontSize: '0.78rem', color: '#475569' }}>Chief Financial Officer & Head of Treasury</div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Date: {docDate}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ minHeight: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {sealUrl && <img src={sealUrl} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
+                        {sealUrl && <img src={sealUrl.startsWith('http') ? sealUrl : `http://localhost:5000${sealUrl}`} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
                       </div>
                       <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%', margin: '0 auto' }}></div>
                       <div style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}><strong>Authorized Corporate Stamp & Signature</strong></div>
@@ -1154,14 +1257,26 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', borderTop: '2px solid #0f172a', paddingTop: '1rem' }}>
                     <div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Quality Assurance & Testing Lead:</div>
-                      <div style={{ borderBottom: '1px solid #cbd5e1', height: '40px', width: '80%' }}></div>
+                      {signatureUrl ? (
+                        <div style={{ height: '48px', display: 'flex', alignItems: 'flex-end', marginBottom: '0.25rem' }}>
+                          <img 
+                            src={signatureUrl.startsWith('http') ? signatureUrl : `http://localhost:5000${signatureUrl}`} 
+                            alt="QA Signature" 
+                            style={{ maxHeight: '45px', maxWidth: '160px', objectFit: 'contain' }} 
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </div>
+                      ) : (
+                        <div style={{ height: '35px' }}></div>
+                      )}
+                      <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%' }}></div>
                       <div style={{ fontWeight: '700', fontSize: '0.85rem', marginTop: '0.35rem' }}>{qualityAssuranceLead}</div>
                       <div style={{ fontSize: '0.78rem', color: '#475569' }}>QA/QC Technical Directorate</div>
                       <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Date: {docDate}</div>
                     </div>
                     <div style={{ textAlign: 'center' }}>
                       <div style={{ minHeight: '65px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {sealUrl && <img src={sealUrl} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
+                        {sealUrl && <img src={sealUrl.startsWith('http') ? sealUrl : `http://localhost:5000${sealUrl}`} alt="Stamp" style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.9 }} onError={e => e.target.style.display = 'none'} />}
                       </div>
                       <div style={{ borderBottom: '1px solid #cbd5e1', width: '80%', margin: '0 auto' }}></div>
                       <div style={{ fontSize: '0.78rem', marginTop: '0.25rem' }}><strong>Authorized Corporate Seal & Signature</strong></div>
@@ -1198,6 +1313,16 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                   <div style={{ marginTop: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid #cbd5e1', paddingTop: '1.25rem' }}>
                     <div>
                       <div style={{ fontWeight: '600', marginBottom: '0.2rem' }}>{closingSignoff}</div>
+                      {signatureUrl && (
+                        <div style={{ height: '48px', display: 'flex', alignItems: 'flex-end', margin: '0.25rem 0' }}>
+                          <img 
+                            src={signatureUrl.startsWith('http') ? signatureUrl : `http://localhost:5000${signatureUrl}`} 
+                            alt="Authorized Signature" 
+                            style={{ maxHeight: '45px', maxWidth: '160px', objectFit: 'contain' }} 
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        </div>
+                      )}
                       <div style={{ fontWeight: '700', color: '#0f172a', whiteSpace: 'pre-wrap' }}>{signatoryTitle}</div>
                       <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.2rem' }}>{companyProfile?.legal_name || 'AKPALI COMPANY LIMITED'}</div>
                     </div>
@@ -1420,12 +1545,20 @@ export default function OperationalDocumentGeneratorModal({ onClose, documentTem
                     <div>{personInCharge}</div>
                   </div>
                   <div style={{ textAlign: 'center', width: '220px' }}>
-                    <div style={{ borderBottom: '1px solid #0f172a', marginBottom: '0.3rem', minHeight: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ borderBottom: '1px solid #0f172a', marginBottom: '0.3rem', minHeight: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      {signatureUrl && (
+                        <img 
+                          src={signatureUrl.startsWith('http') ? signatureUrl : `http://localhost:5000${signatureUrl}`} 
+                          alt="Signature" 
+                          style={{ maxHeight: '42px', maxWidth: '140px', objectFit: 'contain', marginBottom: '4px' }} 
+                          onError={(e) => e.target.style.display = 'none'} 
+                        />
+                      )}
                       {sealUrl && (
                         <img 
-                          src={sealUrl} 
+                          src={sealUrl.startsWith('http') ? sealUrl : `http://localhost:5000${sealUrl}`} 
                           alt="Stamp / Seal" 
-                          style={{ height: stampSize || '90px', objectFit: 'contain', opacity: 0.88 }} 
+                          style={{ height: stampSize || '85px', objectFit: 'contain', opacity: 0.88 }} 
                           onError={(e) => e.target.style.display = 'none'} 
                         />
                       )}

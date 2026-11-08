@@ -569,14 +569,31 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
             {/* AUTHORIZATION STAMP & SIGNATURE AREA */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px dashed #cbd5e1' }}>
               <div>
-                <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '1.5rem' }}>Issued By / Authorized Officer:</div>
+                <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.35rem' }}>Issued By / Authorized Officer:</div>
+                {companyProfile?.signature_url ? (
+                  <div style={{ height: '55px', display: 'flex', alignItems: 'flex-end', marginBottom: '0.25rem' }}>
+                    <img 
+                      src={companyProfile.signature_url.startsWith('http') ? companyProfile.signature_url : `http://localhost:5000${companyProfile.signature_url}`} 
+                      alt="Authorized Signature" 
+                      style={{ maxHeight: '52px', maxWidth: '170px', objectFit: 'contain' }} 
+                      onError={(e) => { e.target.style.display = 'none'; }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ height: '45px' }}></div>
+                )}
                 <div style={{ borderBottom: '1px solid #94a3b8', width: '180px', marginBottom: '0.25rem' }}></div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#334155' }}>Head of Procurement / Contracts</div>
+                <div style={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#334155' }}>Managing Director / Authorized Signatory</div>
               </div>
               <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                 <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.5rem' }}>Official Corporate Stamp / Seal:</div>
                 {companyProfile?.seal_url ? (
-                  <img src={companyProfile.seal_url} alt="Official Seal" style={{ height: '85px', objectFit: 'contain' }} />
+                  <img 
+                    src={companyProfile.seal_url.startsWith('http') ? companyProfile.seal_url : `http://localhost:5000${companyProfile.seal_url}`} 
+                    alt="Official Seal" 
+                    style={{ height: '85px', objectFit: 'contain' }} 
+                    onError={(e) => { e.target.src = '/stamp.png'; }}
+                  />
                 ) : (
                   <div style={{ border: '2px dashed #cbd5e1', padding: '0.75rem 1.25rem', borderRadius: '50%', color: '#94a3b8', fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: 'bold' }}>
                     AKPALI CO. LTD<br />SEAL HERE

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { Building2, Shield, Settings, Users, Landmark, FileText, Briefcase, Download, Upload, GitMerge, HardDrive, Database, Scale, PlusCircle, Printer, Eye, Award, CheckSquare, UserCheck, Scroll, Compass, FileCheck, Mail, ShieldCheck, CheckCircle2, Trash2, Edit3 } from 'lucide-react'
+import { Building2, PenTool, Shield, Settings, Users, Landmark, FileText, Briefcase, Download, Upload, GitMerge, HardDrive, Database, Scale, PlusCircle, Printer, Eye, Award, CheckSquare, UserCheck, Scroll, Compass, FileCheck, Mail, ShieldCheck, CheckCircle2, Trash2, Edit3 } from 'lucide-react'
 import CompanyProfileDossier from '../components/CompanyProfileDossier'
 import DirectorForm from '../components/DirectorForm'
 import TenderRegistrationForm from '../components/TenderRegistrationForm'
 import CompanyPolicyForm from '../components/CompanyPolicyForm'
 import CompanyExperienceForm from '../components/CompanyExperienceForm'
 import OperationalDocumentGeneratorModal from '../components/OperationalDocumentGeneratorModal'
+import DigitalSignatureModal from '../components/DigitalSignatureModal'
 import CreateRoleModal from '../components/CreateRoleModal'
 import EditUserModal from '../components/EditUserModal'
 import BankAccountForm from '../components/BankAccountForm'
@@ -31,11 +32,12 @@ export default function CorporateHub({ setGlobalDrawer }) {
   const [movementInitialAccount, setMovementInitialAccount] = useState('')
   const [selectedExpDocs, setSelectedExpDocs] = useState(null)
   const [editingDirector, setEditingDirector] = useState(null)
+  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false)
 
   const [companyData, setCompanyData] = useState({
     legal_name: '', trading_name: '', registration_num: '', registration_date: '',
     business_type: 'Private Limited Company', tax_pin: '', vat_num: '', email: '',
-    phone: '', address: '', postal_address: '', website: '', logo_url: '', seal_url: '',
+    phone: '', address: '', postal_address: '', website: '', logo_url: '', seal_url: '', signature_url: '',
     industry: '', nature_of_business: '', years_in_operation: 1, vision: '',
     mission: '', core_values: '', profile_doc_url: '', base_currency: 'USD'
   })
@@ -169,6 +171,30 @@ export default function CorporateHub({ setGlobalDrawer }) {
     window.addEventListener('refreshCorporateHub', handleRefresh)
     return () => window.removeEventListener('refreshCorporateHub', handleRefresh)
   }, [])
+
+  
+  const handleDirectFileUpload = async (e, field) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('http://localhost:5000/api/upload', {
+        method: 'POST',
+        body: formData
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setCompanyData(prev => ({ ...prev, [field]: data.fileUrl }))
+        alert(`✅ ${field.replace('_url', '').replace('_', ' ').toUpperCase()} uploaded successfully! Click "Save Corporate Profile" to persist.`)
+      } else {
+        alert('Upload failed. Please ensure the backend server is running.')
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Error uploading file')
+    }
+  }
 
   const handleSaveProfile = async (e) => {
     e.preventDefault()
@@ -390,14 +416,72 @@ export default function CorporateHub({ setGlobalDrawer }) {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Company Logo URL</label>
-                      <input type="text" className="form-control" value={companyData.logo_url} onChange={e => setCompanyData({...companyData, logo_url: e.target.value})} placeholder="https://..." />
+                  {/* OFFICIAL BRANDING, RUBBER STAMP & DIGITAL SIGNATURE SUITE */}
+                  <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1.25rem', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
+                    <h5 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '0.95rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <ShieldCheck size={18} color="#0284c7" /> Official Corporate Branding, Stamp & Digital Signature Suite
+                    </h5>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem' }}>
+                      
+                      {/* 1. COMPANY LOGO */}
+                      <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <label style={{ fontWeight: '700', fontSize: '0.825rem', color: '#1e293b' }}>1. Official Company Logo</label>
+                        <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '6px', border: '1px dashed #cbd5e1', overflow: 'hidden' }}>
+                          {companyData.logo_url ? (
+                            <img src={companyData.logo_url.startsWith('http') ? companyData.logo_url : `http://localhost:5000${companyData.logo_url}`} alt="Logo" style={{ maxHeight: '60px', maxWidth: '90%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No Logo Uploaded</span>
+                          )}
+                        </div>
+                        <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.78rem', padding: '0.4rem 0.6rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+                          <Upload size={14} /> Upload Logo File
+                          <input type="file" accept="image/*" onChange={(e) => handleDirectFileUpload(e, 'logo_url')} style={{ display: 'none' }} />
+                        </label>
+                        <input type="text" className="form-control" style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem' }} value={companyData.logo_url || ''} onChange={e => setCompanyData({...companyData, logo_url: e.target.value})} placeholder="Or paste image URL" />
+                      </div>
+
+                      {/* 2. OFFICIAL RUBBER STAMP / SEAL */}
+                      <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <label style={{ fontWeight: '700', fontSize: '0.825rem', color: '#1e293b' }}>2. Official Rubber Stamp / Seal</label>
+                        <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '6px', border: '1px dashed #cbd5e1', overflow: 'hidden' }}>
+                          {companyData.seal_url ? (
+                            <img src={companyData.seal_url.startsWith('http') ? companyData.seal_url : `http://localhost:5000${companyData.seal_url}`} alt="Seal" style={{ maxHeight: '65px', maxWidth: '90%', objectFit: 'contain' }} onError={(e) => e.target.src = '/stamp.png'} />
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No Stamp Uploaded</span>
+                          )}
+                        </div>
+                        <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.78rem', padding: '0.4rem 0.6rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+                          <Upload size={14} /> Upload Official Stamp
+                          <input type="file" accept="image/*" onChange={(e) => handleDirectFileUpload(e, 'seal_url')} style={{ display: 'none' }} />
+                        </label>
+                        <input type="text" className="form-control" style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem' }} value={companyData.seal_url || ''} onChange={e => setCompanyData({...companyData, seal_url: e.target.value})} placeholder="Or paste image URL" />
+                      </div>
+
+                      {/* 3. AUTHORIZED DIRECTOR SIGNATURE */}
+                      <div style={{ background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <label style={{ fontWeight: '700', fontSize: '0.825rem', color: '#1e293b' }}>3. Director's Digital Signature</label>
+                        <div style={{ height: '70px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f1f5f9', borderRadius: '6px', border: '1px dashed #cbd5e1', overflow: 'hidden' }}>
+                          {companyData.signature_url ? (
+                            <img src={companyData.signature_url.startsWith('http') ? companyData.signature_url : `http://localhost:5000${companyData.signature_url}`} alt="Signature" style={{ maxHeight: '55px', maxWidth: '90%', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+                          ) : (
+                            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No Signature Saved</span>
+                          )}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+                          <label className="btn btn-primary" style={{ cursor: 'pointer', fontSize: '0.72rem', padding: '0.35rem 0.4rem', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}>
+                            <Upload size={13} /> Upload File
+                            <input type="file" accept="image/*" onChange={(e) => handleDirectFileUpload(e, 'signature_url')} style={{ display: 'none' }} />
+                          </label>
+                          <button type="button" className="btn" onClick={() => setIsSignatureModalOpen(true)} style={{ fontSize: '0.72rem', padding: '0.35rem 0.4rem', background: '#0f172a', color: '#38bdf8', border: '1px solid #334155', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', fontWeight: '700' }}>
+                            <PenTool size={13} /> Draw Sign
+                          </button>
+                        </div>
+                        <input type="text" className="form-control" style={{ fontSize: '0.75rem', padding: '0.35rem 0.5rem' }} value={companyData.signature_url || ''} onChange={e => setCompanyData({...companyData, signature_url: e.target.value})} placeholder="Or paste signature URL" />
+                      </div>
+
                     </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label>Company Seal / Stamp Image URL</label>
-                      <input type="text" className="form-control" value={companyData.seal_url} onChange={e => setCompanyData({...companyData, seal_url: e.target.value})} placeholder="https://..." />
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.75rem' }}>
+                      💡 <strong>Automatic Document Signing:</strong> Once uploaded or drawn, your official signature and company seal automatically sign all generated Sales Quotations, Purchase Orders, Delivery Notes, and Operational Documents across the system.
                     </div>
                   </div>
 
@@ -1583,6 +1667,15 @@ Managing Director / Authorized Corporate Signatory`
         )}
 
       </div>
+      {/* DIGITAL SIGNATURE CANVAS MODAL */}
+      <DigitalSignatureModal 
+        isOpen={isSignatureModalOpen} 
+        onClose={() => setIsSignatureModalOpen(false)} 
+        onSave={(sigUrl) => {
+          setCompanyData(prev => ({ ...prev, signature_url: sigUrl }))
+          alert('✅ Digital signature adopted! Click "Save Corporate Profile" to persist to company records.')
+        }}
+      />
     </div>
   )
 }

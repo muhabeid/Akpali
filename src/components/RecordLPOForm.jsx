@@ -5,6 +5,7 @@ export default function RecordLPOForm() {
   const [tenders, setTenders] = useState([])
   const [items, setItems] = useState([{ id: 1, desc: '', qty: 0, unit: 'PCS', price: 0 }])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [lpoFile, setLpoFile] = useState(null)
 
   const [formData, setFormData] = useState({
     id: 'Loading LPO ID...',
@@ -54,13 +55,28 @@ export default function RecordLPOForm() {
     e.preventDefault();
     setIsSubmitting(true);
 
-    try {
+        try {
+      let docUrl = null;
+      if (lpoFile) {
+        const fileData = new FormData();
+        fileData.append('file', lpoFile);
+        const upRes = await fetch('http://localhost:5000/api/upload', {
+          method: 'POST',
+          body: fileData
+        });
+        if (upRes.ok) {
+          const upJson = await upRes.json();
+          docUrl = upJson.fileUrl;
+        }
+      }
+
       const res = await fetch('http://localhost:5000/api/lpos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           total_value: totalValue,
+          document_url: docUrl,
           items: JSON.stringify(items)
         })
       });
@@ -84,6 +100,16 @@ export default function RecordLPOForm() {
       <div className="form-group">
         <label>LPO Number (Linear Generator)</label>
         <input type="text" className="form-control" value={formData.id} disabled style={{ fontWeight: 'bold', color: '#38bdf8' }} />
+      </div>
+            <div className="form-group">
+        <label style={{ fontWeight: '700' }}>Attach Scanned Client LPO Document (PDF/JPG/PNG)</label>
+        <input 
+          type="file" 
+          className="form-control" 
+          accept=".pdf,.jpg,.jpeg,.png,.webp" 
+          onChange={e => setLpoFile(e.target.files[0])} 
+        />
+        {lpoFile && <span style={{ fontSize: '0.75rem', color: '#16a34a', display: 'block', marginTop: '0.25rem' }}>📎 Selected: {lpoFile.name}</span>}
       </div>
       <div className="form-group">
         <label>Link to Tender</label>
