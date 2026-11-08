@@ -341,6 +341,26 @@ app.post('/api/directors', upload.fields([{ name: 'cv', maxCount: 1 }, { name: '
   res.json({ success: true });
 });
 
+app.put('/api/directors/:id', upload.fields([{ name: 'cv', maxCount: 1 }, { name: 'photo', maxCount: 1 }]), async (req, res) => {
+  const id = req.params.id;
+  const { name, position, id_passport, kra_pin, contact_info, appointment_date, shareholding_pct } = req.body;
+  let cv_url = req.body.cv_url || null;
+  let photo_url = req.body.photo_url || null;
+
+  if (req.files && req.files['cv']) {
+    cv_url = `/uploads/${req.files['cv'][0].filename}`;
+  }
+  if (req.files && req.files['photo']) {
+    photo_url = `/uploads/${req.files['photo'][0].filename}`;
+  }
+
+  await db.run(
+    `UPDATE directors SET name = ?, position = ?, id_passport = ?, kra_pin = ?, contact_info = ?, appointment_date = ?, shareholding_pct = ?, cv_url = COALESCE(?, cv_url), photo_url = COALESCE(?, photo_url) WHERE id = ?`,
+    [name, position, id_passport, kra_pin, contact_info, appointment_date, shareholding_pct || 0, cv_url, photo_url, id]
+  );
+  res.json({ success: true });
+});
+
 app.delete('/api/directors/:id', async (req, res) => {
   await db.run('DELETE FROM directors WHERE id = ?', [req.params.id]);
   res.json({ success: true });

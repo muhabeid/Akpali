@@ -27,6 +27,7 @@ export default function CorporateHub({ setGlobalDrawer }) {
   const [showMoneyMovementModal, setShowMoneyMovementModal] = useState(false)
   const [movementInitialAccount, setMovementInitialAccount] = useState('')
   const [selectedExpDocs, setSelectedExpDocs] = useState(null)
+  const [editingDirector, setEditingDirector] = useState(null)
 
   const [companyData, setCompanyData] = useState({
     legal_name: '', trading_name: '', registration_num: '', registration_date: '',
@@ -204,7 +205,7 @@ export default function CorporateHub({ setGlobalDrawer }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))' }} onClick={() => setShowDocGenModal(true)}>
+            <button className="btn btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => setShowDocGenModal(true)}>
               <FileText size={18} /> + Generate Operational Document
             </button>
             <button className="btn btn-primary" onClick={() => setActiveTab('dossier')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -426,8 +427,8 @@ export default function CorporateHub({ setGlobalDrawer }) {
                     </div>
                     <button 
                       type="button" 
-                      className="btn" 
-                      style={{ fontSize: '0.8rem', padding: '0.3rem 0.65rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))' }}
+                      className="btn btn-primary" 
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', padding: '0.45rem 0.9rem' }}
                       onClick={() => {
                         setCompanyData({
                           ...companyData,
@@ -476,7 +477,7 @@ Managing Director / Authorized Corporate Signatory`
                       <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Directors & Key Shareholders Structure</h4>
                       <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Record legal directors, identity credentials, shareholding %, and CV attachments.</div>
                     </div>
-                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setActiveModal('director')}>+ Add Director / Shareholder</button>
+                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => { setEditingDirector(null); setActiveModal('director'); }}>+ Add Director / Shareholder</button>
                   </div>
 
                   <div style={{ border: '1px solid hsla(var(--primary), 0.18)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -502,12 +503,30 @@ Managing Director / Authorized Corporate Signatory`
                             <td style={{ padding: '0.75rem 0.85rem', color: '#cbd5e1' }}>{dir.kra_pin || 'N/A'}</td>
                             <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#38bdf8' }}>{dir.shareholding_pct || 0}%</td>
                             <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
-                              <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
-                                if(window.confirm(`Delete director ${dir.name}?`)) {
-                                  await fetch(`http://localhost:5000/api/directors/${dir.id}`, { method: 'DELETE' })
-                                  fetchData()
-                                }
-                              }}>Delete</button>
+                              <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                <button 
+                                  className="btn" 
+                                  style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }} 
+                                  onClick={() => {
+                                    setEditingDirector(dir)
+                                    setActiveModal('director')
+                                  }}
+                                >
+                                  <Edit3 size={13} /> Edit
+                                </button>
+                                <button 
+                                  className="btn" 
+                                  style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fca5a5' }} 
+                                  onClick={async () => {
+                                    if(window.confirm(`Delete director ${dir.name}?`)) {
+                                      await fetch(`http://localhost:5000/api/directors/${dir.id}`, { method: 'DELETE' })
+                                      fetchData()
+                                    }
+                                  }}
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -729,15 +748,24 @@ Managing Director / Authorized Corporate Signatory`
             <div className="card" style={{ width: '100%', maxWidth: '650px', maxHeight: '90vh', overflow: 'auto', padding: '1.5rem', background: '#fff', borderRadius: '12px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'hsl(var(--primary))' }}>
-                  {activeModal === 'director' && 'Add Director / Shareholder Credentials'}
+                  {activeModal === 'director' && (editingDirector ? `Edit Director: ${editingDirector.name}` : 'Add Director / Shareholder Credentials')}
                   {activeModal === 'registration' && 'Add Tender Registration Certificate'}
                   {activeModal === 'policy' && 'Add Corporate Policy Statement'}
                   {activeModal === 'experience' && 'Add Past Project Experience'}
                 </h3>
-                <button className="btn" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setActiveModal(null)}>✕</button>
+                <button className="btn" style={{ padding: '0.2rem 0.5rem' }} onClick={() => { setActiveModal(null); setEditingDirector(null); }}>✕</button>
               </div>
 
-              {activeModal === 'director' && <DirectorForm onSuccess={() => { setActiveModal(null); fetchData(); }} />}
+              {activeModal === 'director' && (
+                <DirectorForm 
+                  director={editingDirector} 
+                  onSuccess={() => { 
+                    setActiveModal(null); 
+                    setEditingDirector(null); 
+                    fetchData(); 
+                  }} 
+                />
+              )}
               {activeModal === 'registration' && <TenderRegistrationForm onSuccess={() => { setActiveModal(null); fetchData(); }} />}
               {activeModal === 'policy' && <CompanyPolicyForm onSuccess={() => { setActiveModal(null); fetchData(); }} />}
               {activeModal === 'experience' && <CompanyExperienceForm onSuccess={() => { setActiveModal(null); fetchData(); }} />}

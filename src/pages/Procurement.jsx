@@ -270,7 +270,7 @@ export default function Procurement({ setGlobalDrawer }) {
                 <h3 style={{ margin: 0 }}>Requests for Quotation (RFQs)</h3>
                 <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginTop: '0.25rem' }}>Active sourcing requests sent to suppliers.</p>
               </div>
-              <button className="btn" onClick={() => setRFQDrawerOpen(true)} style={{ background: 'hsla(var(--primary), 0.2)', color: 'hsl(var(--primary))' }}>+ Generate RFQ from LPO</button>
+              <button className="btn btn-primary" onClick={() => setRFQDrawerOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>+ Generate RFQ from LPO</button>
             </div>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -390,7 +390,7 @@ export default function Procurement({ setGlobalDrawer }) {
                 <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginTop: '0.25rem' }}>Track all material orders raised to suppliers.</p>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <button className="btn" onClick={() => setGRNDrawerOpen(true)} style={{ background: 'hsla(var(--success), 0.2)', color: 'hsl(var(--success))' }}>+ Record GRN (Delivery)</button>
+                <button className="btn btn-primary" onClick={() => setGRNDrawerOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>+ Record GRN (Delivery)</button>
                 <button className="btn btn-primary" onClick={() => setGlobalDrawer('new_po')}>+ Raise PO</button>
               </div>
             </div>
