@@ -194,6 +194,49 @@ async function initializeDB() {
   `);
   console.log('✅ Company profile & logo/stamp defaults ensured.');
 
+  // Users table password and default accounts migration
+  try {
+    await db.exec('ALTER TABLE users ADD COLUMN password TEXT DEFAULT "password123";');
+    console.log('✅ Added password column to users table.');
+  } catch(e) {}
+
+  // Ensure default Admin user
+  const adminUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "admin@akpali.com"');
+  if (!adminUser) {
+    await db.run(
+      'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
+      ['USR-ADMIN', 'Eng. John Akpali', 'admin@akpali.com', 'Admin', 'password123', 'Active']
+    );
+    console.log('✅ Default Admin account seeded (admin@akpali.com / password123)');
+  } else {
+    await db.run('UPDATE users SET password = COALESCE(password, "password123"), role = "Admin" WHERE id = ?', [adminUser.id]);
+  }
+
+  // Ensure default Operations user
+  const opsUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "operations@akpali.com"');
+  if (!opsUser) {
+    await db.run(
+      'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
+      ['USR-OPS', 'David Mwangi', 'operations@akpali.com', 'Operations', 'password123', 'Active']
+    );
+    console.log('✅ Default Operations account seeded (operations@akpali.com / password123)');
+  } else {
+    await db.run('UPDATE users SET password = COALESCE(password, "password123") WHERE id = ?', [opsUser.id]);
+  }
+
+  // Ensure default Procurement & Finance user
+  const finUser = await db.get('SELECT * FROM users WHERE LOWER(email) = "finance@akpali.com"');
+  if (!finUser) {
+    await db.run(
+      'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
+      ['USR-FIN', 'Sarah Kimani', 'finance@akpali.com', 'Procurement_Finance', 'password123', 'Active']
+    );
+    console.log('✅ Default Procurement & Finance account seeded (finance@akpali.com / password123)');
+  } else {
+    await db.run('UPDATE users SET password = COALESCE(password, "password123") WHERE id = ?', [finUser.id]);
+  }
+
+
   await db.exec(`
     INSERT OR IGNORE INTO system_settings (id, smtp_host, smtp_port, smtp_user, smtp_pass, wa_token, wa_phone_id)
     VALUES (1, '', '', '', '', '', '')
@@ -775,93 +818,109 @@ app.get('/api/export/:table', async (req, res) => {
 
 // Users
 app.get('/api/users', async (req, res) => {
-  const users = await db.all('SELECT * FROM users ORDER BY created_at DESC');
+  const users = await db.all('SELECT id, name, email, role, status, created_at FROM users ORDER BY created_at DESC');
   res.json(users);
 });
 
 app.post('/api/users/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email) {
-    return res.status(400).json({ error: 'Email address is required' });
+    return res.status(400).json({ error: 'Email address is required.' });
   }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPassword = (password || '').trim();
 
   // Search user by email
-  const user = await db.get('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email.trim()]);
+  const user = await db.get('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
   
-  if (user) {
-    return res.json({
-      success: true,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role || 'Admin',
-        title: user.role === 'Admin' ? 'Executive Administrator' : `${user.role} Manager`
-      }
-    });
+  if (!user) {
+    return res.status(401).json({ error: 'No user account found with that email address. Please verify your email or contact your administrator.' });
   }
 
-  // Default fallback for initial system admin
-  if (email.toLowerCase().includes('admin') || email.toLowerCase() === 'admin@akpali.com' || email.toLowerCase() === 'admin@tenderpro.com') {
-    return res.json({
-      success: true,
-      user: {
-        id: 'USR-ADMIN',
-        name: 'Eng. John Akpali',
-        email: email,
-        role: 'Admin',
-        title: 'Managing Director & CEO'
-      }
-    });
+  if (user.status && user.status.toLowerCase() === 'inactive') {
+    return res.status(403).json({ error: 'This user account has been deactivated. Please contact your system administrator.' });
   }
 
-  // Dynamic user session creation for newly invited team members
-  const formattedName = email.split('@')[0].split('.').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ');
-  res.json({
+  // Check password (default password123 if null)
+  const expectedPassword = user.password || 'password123';
+  if (cleanPassword !== expectedPassword) {
+    return res.status(401).json({ error: 'Incorrect password. Please verify your credentials and try again.' });
+  }
+
+  let title = 'System User';
+  if (user.role === 'Admin') title = 'Executive Administrator';
+  else if (user.role === 'Operations') title = 'Operations Manager (Tenders & Site)';
+  else if (user.role === 'Procurement_Finance') title = 'Procurement & Finance Manager';
+  else title = `${user.role} Officer`;
+
+  return res.json({
     success: true,
     user: {
-      id: `USR-${Date.now()}`,
-      name: formattedName || 'System User',
-      email: email,
-      role: 'Operations',
-      title: 'Operations Manager'
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role || 'Admin',
+      title: title
     }
   });
 });
 
 app.post('/api/users', async (req, res) => {
-  const { id, name, email, role } = req.body;
+  const { id, name, email, role, password } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: 'Email address is required' });
   }
 
+  const cleanEmail = email.trim().toLowerCase();
+  const userPassword = (password && password.trim()) ? password.trim() : 'password123';
+
   // Check if user email already exists in database
-  const existingUser = await db.get('SELECT * FROM users WHERE LOWER(email) = LOWER(?)', [email.trim()]);
+  const existingUser = await db.get('SELECT * FROM users WHERE LOWER(email) = ?', [cleanEmail]);
   if (existingUser) {
-    await db.run('UPDATE users SET name = ?, role = ? WHERE LOWER(email) = LOWER(?)', [name, role, email.trim()]);
+    await db.run(
+      'UPDATE users SET name = ?, role = ?, password = ? WHERE LOWER(email) = ?',
+      [name, role, userPassword, cleanEmail]
+    );
     
     const subject = 'Your Akpali User Account Has Been Updated';
-    const body = `Hello ${name},\n\nYour Akpali account role has been updated to: ${role}.\nYou can log in immediately at the portal.\n\nBest,\nAkpali & Co.`;
-    await sendEmail(db, email, subject, body);
+    const body = `Hello ${name},\n\nYour Akpali account role has been updated to: ${role}.\nPassword: ${userPassword}\nYou can log in immediately at the portal.\n\nBest,\nAkpali & Co.`;
+    await sendEmail(db, cleanEmail, subject, body);
 
-    return res.json({ success: true, isUpdate: true, message: `Account '${email}' updated to role '${role}'` });
+    return res.json({ success: true, isUpdate: true, message: `Account '${cleanEmail}' updated to role '${role}'` });
   }
 
-  await db.run('INSERT INTO users (id, name, email, role) VALUES (?, ?, ?, ?)', [id, name, email, role]);
+  const userId = id || `USR-${Date.now()}`;
+  await db.run(
+    'INSERT INTO users (id, name, email, role, password, status) VALUES (?, ?, ?, ?, ?, ?)',
+    [userId, name, cleanEmail, role, userPassword, 'Active']
+  );
   
   // Trigger notification
   const subject = 'Welcome to Akpali Corporate ERP System!';
-  const body = `Hello ${name},\n\nYou have been invited to Akpali System as a ${role}.\nPlease check with your administrator for your temporary password.\n\nBest,\nAkpali & Co.`;
-  await sendEmail(db, email, subject, body);
+  const body = `Hello ${name},\n\nYou have been invited to Akpali System as ${role}.\nYour login credentials:\nEmail: ${cleanEmail}\nPassword: ${userPassword}\n\nBest,\nAkpali & Co.`;
+  await sendEmail(db, cleanEmail, subject, body);
   
-  res.json({ success: true });
+  res.json({ success: true, message: 'User invited successfully' });
 });
 
 app.put('/api/users/:id', async (req, res) => {
   const { id } = req.params;
-  const { name, email, role } = req.body;
-  await db.run('UPDATE users SET name = ?, email = ?, role = ? WHERE id = ?', [name, email, role, id]);
+  const { name, email, role, password, status } = req.body;
+  const cleanEmail = (email || '').trim().toLowerCase();
+  
+  if (password && password.trim()) {
+    await db.run(
+      'UPDATE users SET name = ?, email = ?, role = ?, password = ?, status = COALESCE(?, status) WHERE id = ?',
+      [name, cleanEmail, role, password.trim(), status, id]
+    );
+  } else {
+    await db.run(
+      'UPDATE users SET name = ?, email = ?, role = ?, status = COALESCE(?, status) WHERE id = ?',
+      [name, cleanEmail, role, status, id]
+    );
+  }
   res.json({ success: true, message: 'User updated successfully' });
 });
 

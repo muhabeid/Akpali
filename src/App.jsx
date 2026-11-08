@@ -6,6 +6,7 @@ import Tenders from './pages/Tenders'
 import Procurement from './pages/Procurement'
 import Finances from './pages/Finances'
 import CorporateHub from './pages/CorporateHub'
+import LoginPage from './pages/LoginPage'
 import Drawer from './components/Drawer'
 import EditProfileForm from './components/EditProfileForm'
 import InviteUserForm from './components/InviteUserForm'
@@ -807,9 +808,33 @@ function SystemSOPModal({ isOpen, onClose }) {
   )
 }
 
-function Sidebar({ isOpen, isCollapsed, onClose, onNavigate }) {
+function AccessRestricted({ moduleName, requiredRole }) {
+  const navigate = useNavigate()
+  return (
+    <div className="card" style={{ padding: '3.5rem 2rem', textAlign: 'center', maxWidth: '600px', margin: '3rem auto' }}>
+      <div style={{ display: 'inline-flex', padding: '1.2rem', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', marginBottom: '1.25rem' }}>
+        <ShieldAlert size={44} />
+      </div>
+      <h2 style={{ fontSize: '1.6rem', fontWeight: '800', marginBottom: '0.5rem', color: '#fff' }}>Access Restricted</h2>
+      <p style={{ color: '#94a3b8', fontSize: '0.925rem', lineHeight: '1.6', marginBottom: '1.75rem' }}>
+        Your active role does not have authorization to access the <strong>{moduleName}</strong> module.
+        <br />
+        This section is reserved for <strong>{requiredRole}</strong>.
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem' }}>
+        <button className="btn btn-primary" onClick={() => navigate('/')}>
+          Return to Dashboard
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function Sidebar({ isOpen, isCollapsed, onClose, onNavigate, userSession }) {
   const location = useLocation()
   const activePath = location.pathname
+  const { canAccessModule, getRoleDetails } = useRole()
+  const activeRole = getRoleDetails()
 
   return (
     <>
@@ -817,7 +842,7 @@ function Sidebar({ isOpen, isCollapsed, onClose, onNavigate }) {
         className={`sidebar-overlay ${isOpen ? 'open' : ''}`} 
         onClick={onClose} 
       />
-      <aside className={`sidebar ${isOpen ? 'mobile-open' : ''} ${isCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${isOpen ? 'mobile-open' : ''} ${isCollapsed ? 'collapsed' : ''}`} style={{ display: 'flex', flexDirection: 'column' }}>
         <div className="brand" style={{ padding: '0 0 1rem 0', borderBottom: '1px solid hsl(var(--border))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
           <div>
             <h2 style={{ margin: 0, color: '#4A8BCE', fontSize: '1.4rem', fontWeight: '900', letterSpacing: '0.5px' }}>
@@ -836,41 +861,69 @@ function Sidebar({ isOpen, isCollapsed, onClose, onNavigate }) {
           </button>
         </div>
 
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+        <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1 }}>
           <Link to="/" onClick={onNavigate} className={`nav-item ${activePath === '/' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/' ? 'bold' : 'normal', textDecoration: 'none' }}>
             <LayoutDashboard size={18} /> Dashboard
           </Link>
-          <Link to="/tenders" onClick={onNavigate} className={`nav-item ${activePath === '/tenders' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/tenders' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/tenders' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/tenders' ? 'bold' : 'normal', textDecoration: 'none' }}>
-            <FileText size={18} /> Tenders & Projects
-          </Link>
-          <Link to="/procurement" onClick={onNavigate} className={`nav-item ${activePath === '/procurement' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/procurement' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/procurement' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/procurement' ? 'bold' : 'normal', textDecoration: 'none' }}>
-            <ShoppingCart size={18} /> Procurement
-          </Link>
-          <Link to="/finances" onClick={onNavigate} className={`nav-item ${activePath === '/finances' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/finances' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/finances' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/finances' ? 'bold' : 'normal', textDecoration: 'none' }}>
-            <Landmark size={18} /> Corporate Bookkeeping
-          </Link>
+
+          {canAccessModule('tenders') ? (
+            <Link to="/tenders" onClick={onNavigate} className={`nav-item ${activePath === '/tenders' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/tenders' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/tenders' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/tenders' ? 'bold' : 'normal', textDecoration: 'none' }}>
+              <FileText size={18} /> Tenders & Projects
+            </Link>
+          ) : (
+            <div title="Restricted to Operations & Administrator" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: '#64748b', opacity: 0.55, cursor: 'not-allowed', fontSize: '0.875rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><FileText size={18} /> Tenders & Projects</span>
+              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: '#334155', color: '#94a3b8' }}>🔒 Locked</span>
+            </div>
+          )}
+
+          {canAccessModule('procurement') ? (
+            <Link to="/procurement" onClick={onNavigate} className={`nav-item ${activePath === '/procurement' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/procurement' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/procurement' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/procurement' ? 'bold' : 'normal', textDecoration: 'none' }}>
+              <ShoppingCart size={18} /> Procurement
+            </Link>
+          ) : (
+            <div title="Restricted to Procurement & Finance & Administrator" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: '#64748b', opacity: 0.55, cursor: 'not-allowed', fontSize: '0.875rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><ShoppingCart size={18} /> Procurement</span>
+              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: '#334155', color: '#94a3b8' }}>🔒 Locked</span>
+            </div>
+          )}
+
+          {canAccessModule('finances') ? (
+            <Link to="/finances" onClick={onNavigate} className={`nav-item ${activePath === '/finances' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/finances' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/finances' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/finances' ? 'bold' : 'normal', textDecoration: 'none' }}>
+              <Landmark size={18} /> Corporate Bookkeeping
+            </Link>
+          ) : (
+            <div title="Restricted to Procurement & Finance & Administrator" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: '#64748b', opacity: 0.55, cursor: 'not-allowed', fontSize: '0.875rem' }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}><Landmark size={18} /> Bookkeeping</span>
+              <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: '#334155', color: '#94a3b8' }}>🔒 Locked</span>
+            </div>
+          )}
+
           <Link to="/corporate" onClick={onNavigate} className={`nav-item ${activePath === '/corporate' ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.65rem 0.85rem', borderRadius: '6px', color: activePath === '/corporate' ? '#fff' : 'hsl(var(--text-secondary))', background: activePath === '/corporate' ? '#4A8BCE' : 'transparent', fontWeight: activePath === '/corporate' ? 'bold' : 'normal', textDecoration: 'none' }}>
             <Building2 size={18} /> Corporate Governance Hub
           </Link>
         </nav>
+
+        {/* LOGGED IN USER ROLE BADGE AT BOTTOM */}
+        <div style={{ marginTop: 'auto', padding: '0.85rem', background: 'rgba(255,255,255,0.04)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ fontSize: '0.68rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.04em' }}>Active Session</div>
+          <div style={{ fontWeight: '700', fontSize: '0.85rem', color: activeRole.color, display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
+            {activeRole.badge || activeRole.name}
+          </div>
+          <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '0.15rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {userSession?.name || 'Authorized User'}
+          </div>
+        </div>
       </aside>
     </>
   )
 }
 
-function App() {
+function MainAppLayout({ userSession, onLogout }) {
   const [globalDrawer, setGlobalDrawer] = useState(null)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
-  const [userSession, setUserSession] = useState(() => {
-    const saved = localStorage.getItem('akpali_user_session')
-    return saved ? JSON.parse(saved) : { name: 'Eng. John Akpali', title: 'Executive Administrator' }
-  })
-
-  const handleLogout = () => {
-    localStorage.removeItem('akpali_user_session')
-    window.location.reload()
-  }
+  const { canAccessModule } = useRole()
 
   const handleToggleNav = () => {
     if (window.innerWidth <= 992) {
@@ -881,38 +934,64 @@ function App() {
   }
 
   return (
-    <CurrencyProvider>
-      <RoleProvider>
-        <div className="app-container" style={{ display: 'flex', minHeight: '100vh' }}>
-          <Sidebar 
-            isOpen={isMobileNavOpen} 
-            isCollapsed={isSidebarCollapsed}
-            onClose={() => setIsMobileNavOpen(false)} 
-            onNavigate={() => setIsMobileNavOpen(false)} 
-          />
-          
-          <div className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <Header 
-              onOpenMobileNav={() => setIsMobileNavOpen(true)} 
-              onToggleSidebar={handleToggleNav}
-              globalDrawer={globalDrawer} 
-              setGlobalDrawer={setGlobalDrawer} 
-              userSession={userSession}
-              onLogout={handleLogout}
+    <div className="app-container" style={{ display: 'flex', minHeight: '100vh' }}>
+      <Sidebar 
+        isOpen={isMobileNavOpen} 
+        isCollapsed={isSidebarCollapsed}
+        onClose={() => setIsMobileNavOpen(false)} 
+        onNavigate={() => setIsMobileNavOpen(false)} 
+        userSession={userSession}
+      />
+      
+      <div className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        <Header 
+          onOpenMobileNav={() => setIsMobileNavOpen(true)} 
+          onToggleSidebar={handleToggleNav}
+          globalDrawer={globalDrawer} 
+          setGlobalDrawer={setGlobalDrawer} 
+          userSession={userSession}
+          onLogout={onLogout}
+        />
+
+        <main style={{ flex: 1, padding: '1.5rem' }}>
+          <Routes>
+            <Route path="/" element={<Dashboard setGlobalDrawer={setGlobalDrawer} />} />
+            <Route 
+              path="/tenders" 
+              element={
+                canAccessModule('tenders') ? (
+                  <Tenders setGlobalDrawer={setGlobalDrawer} />
+                ) : (
+                  <AccessRestricted moduleName="Tenders & Projects" requiredRole="Operations Manager or Administrator" />
+                )
+              } 
             />
+            <Route 
+              path="/procurement" 
+              element={
+                canAccessModule('procurement') ? (
+                  <Procurement setGlobalDrawer={setGlobalDrawer} />
+                ) : (
+                  <AccessRestricted moduleName="Procurement & Supply Chain" requiredRole="Procurement & Finance Manager or Administrator" />
+                )
+              } 
+            />
+            <Route 
+              path="/finances" 
+              element={
+                canAccessModule('finances') ? (
+                  <Finances setGlobalDrawer={setGlobalDrawer} />
+                ) : (
+                  <AccessRestricted moduleName="Corporate Bookkeeping & Treasury" requiredRole="Procurement & Finance Manager or Administrator" />
+                )
+              } 
+            />
+            <Route path="/corporate" element={<CorporateHub setGlobalDrawer={setGlobalDrawer} />} />
+          </Routes>
+        </main>
+      </div>
 
-            <main style={{ flex: 1, padding: '1.5rem' }}>
-              <Routes>
-                <Route path="/" element={<Dashboard setGlobalDrawer={setGlobalDrawer} />} />
-                <Route path="/tenders" element={<Tenders setGlobalDrawer={setGlobalDrawer} />} />
-                <Route path="/procurement" element={<Procurement setGlobalDrawer={setGlobalDrawer} />} />
-                <Route path="/finances" element={<Finances setGlobalDrawer={setGlobalDrawer} />} />
-                <Route path="/corporate" element={<CorporateHub setGlobalDrawer={setGlobalDrawer} />} />
-              </Routes>
-            </main>
-          </div>
-
-          {/* DRAWERS FOR GLOBAL FORMS */}
+      {/* DRAWERS FOR GLOBAL FORMS */}
           <CorporateDossierModal isOpen={globalDrawer === 'dossier'} onClose={() => setGlobalDrawer(null)} />
           <SystemSOPModal isOpen={globalDrawer === 'help'} onClose={() => setGlobalDrawer(null)} />
 
@@ -964,7 +1043,34 @@ function App() {
             <OperationalDocumentGeneratorModal onClose={() => setGlobalDrawer(null)} />
           )}
 
-        </div>
+    </div>
+  )
+}
+
+function App() {
+  const [userSession, setUserSession] = useState(() => {
+    try {
+      const saved = localStorage.getItem('akpali_user_session')
+      return saved ? JSON.parse(saved) : null
+    } catch (e) {
+      return null
+    }
+  })
+
+  const handleLogout = () => {
+    localStorage.removeItem('akpali_user_session')
+    setUserSession(null)
+    window.dispatchEvent(new Event('userSessionUpdated'))
+  }
+
+  return (
+    <CurrencyProvider>
+      <RoleProvider>
+        {!userSession ? (
+          <LoginPage onLoginSuccess={(session) => setUserSession(session)} />
+        ) : (
+          <MainAppLayout userSession={userSession} onLogout={handleLogout} />
+        )}
       </RoleProvider>
     </CurrencyProvider>
   )

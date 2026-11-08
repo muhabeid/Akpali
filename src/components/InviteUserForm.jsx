@@ -7,7 +7,8 @@ export default function InviteUserForm({ onSuccess }) {
     id: `USR-${Math.floor(Math.random() * 10000)}`,
     name: '',
     email: '',
-    role: 'Operations'
+    role: 'Operations',
+    password: 'password123'
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -50,6 +51,22 @@ export default function InviteUserForm({ onSuccess }) {
       <div className="form-group" style={{ marginBottom: 0 }}>
         <label style={{ fontWeight: '700' }}>Email Address *</label>
         <input type="email" className="form-control" required placeholder="jane.doe@akpali.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
+      </div>
+
+      
+      <div className="form-group" style={{ marginBottom: 0 }}>
+        <label style={{ fontWeight: '700' }}>Initial Account Password *</label>
+        <input 
+          type="text" 
+          className="form-control" 
+          required 
+          placeholder="password123" 
+          value={formData.password} 
+          onChange={e => setFormData({...formData, password: e.target.value})} 
+        />
+        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '0.2rem' }}>
+          Default: password123. The invited user will use this password to sign in to the portal.
+        </span>
       </div>
 
       <div className="form-group" style={{ marginBottom: 0 }}>

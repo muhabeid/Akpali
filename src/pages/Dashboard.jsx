@@ -29,29 +29,17 @@ export default function Dashboard({ setGlobalDrawer }) {
       'Export Pre-Qualification Corporate Dossiers',
       'System Settings, User Management & Executive Audit'
     ],
-    Tenders_Manager: [
-      'Create and submit Tenders & Sales Quotes (SQ)',
+    Operations: [
+      'Create and submit Tenders & Sales Quotations (SQ)',
       'Record incoming Client Local Purchase Orders (LPO)',
-      'Track deliverable milestones & issue Client Invoices',
-      'Manage client portfolio & project win rates'
+      'Fulfill site deliverables, milestone tracking & upload evidence',
+      'Generate QA/QC inspection forms, site visit logs & variation orders'
     ],
-    Procurement_Officer: [
-      'Issue Requests for Quotation (RFQ) to vendors',
-      'Raise Purchase Orders (PO) for materials & subcontracts',
-      'Log Goods Received Notes (GRN) upon site delivery',
-      'Manage stock requisitions & warehouse store levels'
-    ],
-    Site_Engineer: [
-      'Fulfill deliverables & upload photo/document proof',
-      'Generate Site Visit Reports, Daily Work Logs & Weather Diaries',
-      'Execute QA/QC Quality Assurance Inspection Checklists',
-      'Submit Variation Orders (VO) & Issue Handover Certificates'
-    ],
-    Accountant: [
-      'Run AI 3-Way Match Engine (PO vs GRN vs Invoice)',
-      'Record incoming Supplier Invoices & process disbursements',
-      'Monitor Bank & M-Pesa Treasury Account balances',
-      'Analyze 30/60/90-Day Predictive Cashflow Forecasting'
+    Procurement_Finance: [
+      'Issue Requests for Quotation (RFQ) to vendors & raise Purchase Orders (PO)',
+      'Log Goods Received Notes (GRN) upon physical site delivery',
+      'Run automated AI 3-Way Match Engine (PO vs GRN vs Invoice)',
+      'Process supplier invoice payments & track treasury bank cashflow'
     ]
   }
 

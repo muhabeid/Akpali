@@ -47,7 +47,34 @@ export const STANDARD_ROLES = {
 export const ROLES = STANDARD_ROLES
 
 export const RoleProvider = ({ children }) => {
-  const [currentRole, setCurrentRole] = useState('Admin')
+  const [currentRole, setCurrentRole] = useState(() => {
+    try {
+      const saved = localStorage.getItem('akpali_user_session')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.role) return parsed.role
+      }
+    } catch (e) {}
+    return 'Admin'
+  })
+
+  useEffect(() => {
+    const syncRoleFromSession = () => {
+      try {
+        const saved = localStorage.getItem('akpali_user_session')
+        if (saved) {
+          const parsed = JSON.parse(saved)
+          if (parsed.role) setCurrentRole(parsed.role)
+        }
+      } catch (e) {}
+    }
+    window.addEventListener('userSessionUpdated', syncRoleFromSession)
+    window.addEventListener('storage', syncRoleFromSession)
+    return () => {
+      window.removeEventListener('userSessionUpdated', syncRoleFromSession)
+      window.removeEventListener('storage', syncRoleFromSession)
+    }
+  }, [])
   const [allRoles, setAllRoles] = useState(() => {
     const saved = localStorage.getItem('akpali_custom_roles')
     if (saved) {
@@ -86,12 +113,14 @@ export const RoleProvider = ({ children }) => {
   }
 
   const canAccessModule = (moduleName) => {
-    if (currentRole === 'Admin') return true
-    if (moduleName === 'tenders' && (currentRole === 'Operations')) return true
-    if (moduleName === 'procurement' && (currentRole === 'Procurement_Finance')) return true
-    if (moduleName === 'finances' && (currentRole === 'Procurement_Finance')) return true
-    if (moduleName === 'corporate' && (currentRole === 'Operations' || currentRole === 'Procurement_Finance')) return true
-    return true // Default open for custom roles
+    const role = (currentRole || 'Admin').toLowerCase()
+    if (role === 'admin') return true
+    if (moduleName === 'dashboard') return true
+    if (moduleName === 'tenders' && role === 'operations') return true
+    if (moduleName === 'procurement' && role === 'procurement_finance') return true
+    if (moduleName === 'finances' && role === 'procurement_finance') return true
+    if (moduleName === 'corporate') return true
+    return false
   }
 
   return (

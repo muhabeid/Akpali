@@ -16,6 +16,9 @@ import { useRole } from '../context/RoleContext'
 import { useCurrency } from '../context/CurrencyContext'
 
 export default function CorporateHub({ setGlobalDrawer }) {
+  const { currentRole } = useRole()
+  const isAdmin = (currentRole || 'Admin').toLowerCase() === 'admin'
+  const isFinance = (currentRole || '').toLowerCase() === 'procurement_finance'
   const { ROLES } = useRole()
   const { formatAmount } = useCurrency()
   const [activeTab, setActiveTab] = useState('profile')
@@ -218,7 +221,7 @@ export default function CorporateHub({ setGlobalDrawer }) {
         </div>
 
         {/* Module Nav Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.75rem', marginTop: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${isAdmin ? 6 : (isFinance ? 5 : 4)}, 1fr)`, gap: '0.75rem', marginTop: '1rem' }}>
           <button 
             className="btn" 
             onClick={() => setActiveTab('profile')} 
@@ -237,14 +240,16 @@ export default function CorporateHub({ setGlobalDrawer }) {
             <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Statutory Vault</span>
           </button>
 
-          <button 
-            className="btn" 
-            onClick={() => setActiveTab('banks')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'banks' ? 'hsla(var(--success), 0.15)' : 'hsla(var(--success), 0.05)', color: 'hsl(var(--success))', border: activeTab === 'banks' ? '2px solid hsl(var(--success))' : '1px solid hsla(var(--success), 0.2)', borderRadius: 'var(--radius-md)' }}
-          >
-            <Landmark size={20} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Bank Accounts</span>
-          </button>
+          {(isAdmin || isFinance) && (
+            <button 
+              className="btn" 
+              onClick={() => setActiveTab('banks')} 
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'banks' ? 'hsla(var(--success), 0.15)' : 'hsla(var(--success), 0.05)', color: 'hsl(var(--success))', border: activeTab === 'banks' ? '2px solid hsl(var(--success))' : '1px solid hsla(var(--success), 0.2)', borderRadius: 'var(--radius-md)' }}
+            >
+              <Landmark size={20} />
+              <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Bank Accounts</span>
+            </button>
+          )}
 
           <button 
             className="btn" 
@@ -264,14 +269,16 @@ export default function CorporateHub({ setGlobalDrawer }) {
             <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>Corporate Dossier</span>
           </button>
 
-          <button 
-            className="btn" 
-            onClick={() => setActiveTab('settings')} 
-            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'settings' ? 'hsla(var(--secondary), 0.15)' : 'hsla(var(--secondary), 0.05)', color: '#475569', border: activeTab === 'settings' ? '2px solid #475569' : '1px solid #cbd5e1', borderRadius: 'var(--radius-md)' }}
-          >
-            <Settings size={20} />
-            <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>System Settings</span>
-          </button>
+          {isAdmin && (
+            <button 
+              className="btn" 
+              onClick={() => setActiveTab('settings')} 
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0.85rem 0.25rem', gap: '0.4rem', background: activeTab === 'settings' ? 'hsla(var(--secondary), 0.15)' : 'hsla(var(--secondary), 0.05)', color: '#475569', border: activeTab === 'settings' ? '2px solid #475569' : '1px solid #cbd5e1', borderRadius: 'var(--radius-md)' }}
+            >
+              <Settings size={20} />
+              <span style={{ fontWeight: '600', fontSize: '0.75rem' }}>System Settings</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -806,7 +813,14 @@ Managing Director / Authorized Corporate Signatory`
           </div>
         )}
 
-        {!loading && activeTab === 'banks' && (
+        {!loading && activeTab === 'banks' && !isAdmin && !isFinance && (
+          <div className="card" style={{ padding: '2.5rem', textAlign: 'center' }}>
+            <h4 style={{ color: '#ef4444' }}>Access Restricted</h4>
+            <p style={{ color: '#94a3b8' }}>Corporate bank accounts and treasury configurations are restricted to Executive Administrator and Finance personnel.</p>
+          </div>
+        )}
+
+        {!loading && activeTab === 'banks' && (isAdmin || isFinance) && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
@@ -1033,7 +1047,14 @@ Managing Director / Authorized Corporate Signatory`
         )}
 
         {/* SYSTEM SETTINGS TAB */}
-        {!loading && activeTab === 'settings' && (
+        {!loading && activeTab === 'settings' && !isAdmin && (
+          <div className="card" style={{ padding: '2.5rem', textAlign: 'center' }}>
+            <h4 style={{ color: '#ef4444' }}>Access Restricted</h4>
+            <p style={{ color: '#94a3b8' }}>System settings and user administration require Executive Administrator privileges.</p>
+          </div>
+        )}
+
+        {!loading && activeTab === 'settings' && isAdmin && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
             {/* CREATE CUSTOM ROLE DRAWER */}

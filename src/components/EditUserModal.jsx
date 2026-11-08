@@ -7,7 +7,8 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
     id: user?.id || '',
     name: user?.name || '',
     email: user?.email || '',
-    role: user?.role || 'Operations'
+    role: user?.role || 'Operations',
+    password: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -74,6 +75,21 @@ export default function EditUserModal({ user, onClose, onSuccess }) {
           value={formData.email} 
           onChange={e => setFormData({...formData, email: e.target.value})} 
         />
+      </div>
+
+      
+      <div className="form-group" style={{ marginBottom: 0 }}>
+        <label style={{ fontWeight: '700' }}>Update Account Password (Optional)</label>
+        <input 
+          type="password" 
+          className="form-control" 
+          placeholder="Leave blank to keep existing password" 
+          value={formData.password} 
+          onChange={e => setFormData({...formData, password: e.target.value})} 
+        />
+        <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginTop: '0.2rem' }}>
+          Leave blank if you do not want to change the user's password.
+        </span>
       </div>
 
       <div className="form-group" style={{ marginBottom: 0 }}>
