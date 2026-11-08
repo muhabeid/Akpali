@@ -872,13 +872,31 @@ app.get('/api/accounts', async (req, res) => {
   res.json(accounts);
 });
 app.post('/api/accounts', async (req, res) => {
-  const { id, name, type, current_balance } = req.body;
+  const { id, name, type, current_balance, branch, account_name, account_number, swift_code, currency, bank_contact } = req.body;
   
   const existing = await db.get('SELECT id FROM accounts WHERE id = ?', [id]);
   if (existing) {
-    await db.run('UPDATE accounts SET name = ?, type = ?, current_balance = ? WHERE id = ?', [name, type, current_balance, id]);
+    await db.run(
+      `UPDATE accounts SET 
+        name = ?, 
+        type = ?, 
+        current_balance = ?,
+        branch = ?,
+        account_name = ?,
+        account_number = ?,
+        swift_code = ?,
+        currency = ?,
+        bank_contact = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?`, 
+      [name, type, current_balance || 0, branch || null, account_name || null, account_number || null, swift_code || null, currency || 'KES', bank_contact || null, id]
+    );
   } else {
-    await db.run('INSERT INTO accounts (id, name, type, current_balance) VALUES (?, ?, ?, ?)', [id, name, type, current_balance]);
+    await db.run(
+      `INSERT INTO accounts (id, name, type, current_balance, branch, account_name, account_number, swift_code, currency, bank_contact) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+      [id, name, type, current_balance || 0, branch || null, account_name || null, account_number || null, swift_code || null, currency || 'KES', bank_contact || null]
+    );
   }
   res.json({ success: true });
 });

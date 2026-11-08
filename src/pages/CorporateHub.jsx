@@ -284,13 +284,14 @@ export default function CorporateHub({ setGlobalDrawer }) {
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>Manage organizational details, directors, regulatory certificates, policies, and past projects.</div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.35rem', background: 'hsla(var(--primary), 0.06)', padding: '0.25rem', borderRadius: '8px', border: '1px solid hsla(var(--primary), 0.12)' }}>
+              <div style={{ display: 'flex', gap: '0.35rem', background: 'hsla(var(--primary), 0.06)', padding: '0.25rem', borderRadius: '8px', border: '1px solid hsla(var(--primary), 0.12)', flexWrap: 'wrap' }}>
                 <button type="button" className={`btn ${profileSubTab === 'info' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'info' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'info' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'info' ? '700' : '600' }} onClick={() => setProfileSubTab('info')}>Company Info</button>
                 <button type="button" className={`btn ${profileSubTab === 'letter' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'letter' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'letter' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'letter' ? '700' : '600' }} onClick={() => setProfileSubTab('letter')}>Intro Letter</button>
                 <button type="button" className={`btn ${profileSubTab === 'directors' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'directors' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'directors' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'directors' ? '700' : '600' }} onClick={() => setProfileSubTab('directors')}>Directors ({directors.length})</button>
                 <button type="button" className={`btn ${profileSubTab === 'registrations' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'registrations' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'registrations' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'registrations' ? '700' : '600' }} onClick={() => setProfileSubTab('registrations')}>Tender Regs ({tenderRegistrations.length})</button>
                 <button type="button" className={`btn ${profileSubTab === 'policies' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'policies' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'policies' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'policies' ? '700' : '600' }} onClick={() => setProfileSubTab('policies')}>Policies ({policies.length})</button>
                 <button type="button" className={`btn ${profileSubTab === 'experience' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'experience' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'experience' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'experience' ? '700' : '600' }} onClick={() => setProfileSubTab('experience')}>Experience ({experience.length})</button>
+                <button type="button" className="btn" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: 'hsla(var(--success), 0.12)', color: 'hsl(var(--success))', fontWeight: '700' }} onClick={() => setActiveTab('banks')}>🏦 Bank Accounts ({accounts.length})</button>
               </div>
             </div>
               
@@ -563,29 +564,45 @@ Managing Director / Authorized Corporate Signatory`
               {/* SUB-TAB 4: COMPANY POLICIES */}
               {profileSubTab === 'policies' && (
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                     <div>
                       <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Company Policies & Compliance Governance</h4>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Store signed corporate policies for tender compliance and bid management.</div>
+                      <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', marginTop: '0.2rem' }}>Store signed corporate policies for tender compliance and bid management.</div>
                     </div>
-                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setActiveModal('policy')}>+ Add Corporate Policy</button>
+                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem' }} onClick={() => setActiveModal('policy')}>+ Add Corporate Policy</button>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.75rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
                     {policies.length === 0 ? (
-                      <div style={{ padding: '1.5rem', textAlign: 'center', background: '#f8fafc', border: '1px solid hsla(var(--primary), 0.18)', borderRadius: '8px', color: '#94a3b8' }}>No policies added yet. Click "+ Add Corporate Policy".</div>
+                      <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>
+                        No policies added yet. Click "+ Add Corporate Policy" to record your first corporate policy.
+                      </div>
                     ) : policies.map(pol => (
-                      <div key={pol.id} style={{ border: '1px solid hsla(var(--primary), 0.18)', padding: '1rem', borderRadius: '8px', background: 'hsla(var(--primary), 0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                        <div>
-                          <h5 style={{ margin: '0 0 0.4rem 0', color: '#38bdf8', fontSize: '0.95rem' }}>{pol.title}</h5>
-                          <p style={{ margin: 0, fontSize: '0.85rem', color: '#f8fafc', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{pol.content_text}</p>
+                      <div key={pol.id} className="card" style={{ padding: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.25rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <h5 style={{ margin: '0 0 0.5rem 0', color: 'hsl(var(--text-primary))', fontSize: '1rem', fontWeight: '600' }}>{pol.title}</h5>
+                          <p style={{ margin: 0, fontSize: '0.875rem', color: 'hsl(var(--text-secondary))', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{pol.content_text}</p>
+                          {pol.document_url && (
+                            <div style={{ marginTop: '0.65rem' }}>
+                              <a href={pol.document_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8rem', color: 'hsl(var(--primary))', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                                📎 View Attached Policy Document
+                              </a>
+                            </div>
+                          )}
                         </div>
-                        <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
-                          if(window.confirm(`Delete policy ${pol.title}?`)) {
-                            await fetch(`http://localhost:5000/api/policies/${pol.id}`, { method: 'DELETE' })
-                            fetchData()
-                          }
-                        }}>Delete</button>
+                        <button 
+                          className="btn" 
+                          style={{ padding: '0.3rem 0.65rem', fontSize: '0.78rem', background: 'hsla(var(--danger), 0.15)', color: 'hsl(var(--danger))', border: '1px solid hsla(var(--danger), 0.3)' }} 
+                          onClick={async () => {
+                            if(window.confirm(`Delete policy ${pol.title}?`)) {
+                              await fetch(`http://localhost:5000/api/policies/${pol.id}`, { method: 'DELETE' })
+                              fetchData()
+                            }
+                          }}
+                          title="Delete Policy"
+                        >
+                          🗑️ Delete
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -699,30 +716,63 @@ Managing Director / Authorized Corporate Signatory`
 
         {!loading && activeTab === 'banks' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0 }}>Official Corporate Bank & Treasury Accounts</h3>
-              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: '#4A8BCE', border: 'none', fontWeight: 'bold' }} onClick={() => setEditingAccount({ isNew: true, id: `ACC-${Math.floor(Math.random() * 10000)}`, name: '', type: 'Bank', current_balance: 0 })}>+ Add Account</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Official Corporate Bank & Treasury Accounts</h3>
+                <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', marginTop: '0.2rem' }}>Manage settlement bank accounts, branch details, account numbers, and SWIFT codes for tender dossiers.</div>
+              </div>
+              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: '#4A8BCE', border: 'none', fontWeight: 'bold' }} onClick={() => setEditingAccount({ isNew: true, id: `ACC-${Math.floor(Math.random() * 10000)}`, name: '', type: 'Bank', account_number: '', branch: '', account_name: '', swift_code: '', currency: 'KES', current_balance: 0 })}>+ Add Account</button>
+            </div>
+
+            <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', background: 'hsla(var(--primary), 0.06)', border: '1px solid hsla(var(--primary), 0.2)', borderRadius: '8px', fontSize: '0.825rem', color: 'hsl(var(--text-secondary))' }}>
+              💡 <strong>Tender & Dossier Integration:</strong> These official bank account details (Bank Name, Account Number, Branch, SWIFT Code) automatically feed into your <strong>Company Profile Dossier</strong>, Quotations, and Bidding packages. Click <strong>✏️ Edit</strong> on any account to update the account number and branch.
             </div>
             
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{ background: 'hsla(var(--border), 0.3)', textAlign: 'left' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>Account ID</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Account Name</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>Account Type</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Bank / Institution</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Account Number</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Branch</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>SWIFT / BIC</th>
+                  <th style={{ padding: '0.75rem 1rem' }}>Type / Currency</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Current Balance</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center', width: '150px' }}>Actions</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center', width: '130px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {accounts.length === 0 ? (
-                  <tr><td colSpan="5" style={{ padding: '1.5rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No bank accounts registered yet. Click "+ Add Account" to create one.</td></tr>
+                  <tr><td colSpan="7" style={{ padding: '1.5rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No bank accounts registered yet. Click "+ Add Account" to create one.</td></tr>
                 ) : accounts.map(acc => (
                   <tr key={acc.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '700', color: '#4A8BCE' }}>{acc.id}</td>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '600' }}>{acc.name}</td>
-                    <td style={{ padding: '0.75rem 1rem' }}><span className="badge badge-info">{acc.type}</span></td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 'bold' }}>{formatAmount(acc.current_balance || 0)}</td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <div style={{ fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{acc.name}</div>
+                      {acc.account_name && (
+                        <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.15rem' }}>
+                          Holder: {acc.account_name}
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', fontFamily: 'monospace', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
+                      {acc.account_number || <span style={{ color: 'hsl(var(--text-secondary))', fontWeight: 'normal', fontFamily: 'inherit' }}>Not set ({acc.id})</span>}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>
+                      {acc.branch || '—'}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))', fontFamily: acc.swift_code ? 'monospace' : 'inherit' }}>
+                      {acc.swift_code || '—'}
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem' }}>
+                      <span className={`badge ${acc.type === 'Bank' ? 'badge-info' : acc.type === 'Mobile Money' ? 'badge-success' : 'badge-warning'}`}>
+                        {acc.type}
+                      </span>
+                      <span style={{ marginLeft: '0.35rem', fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', fontWeight: '600' }}>
+                        {acc.currency || 'KES'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', fontWeight: 'bold' }}>
+                      {formatAmount(acc.current_balance || 0)}
+                    </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                         <button 
@@ -730,6 +780,7 @@ Managing Director / Authorized Corporate Signatory`
                           className="btn" 
                           style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', background: '#0284c7', color: '#fff' }}
                           onClick={() => setEditingAccount(acc)}
+                          title="Edit Bank Account, Number, Branch & Currency"
                         >
                           ✏️ Edit
                         </button>
@@ -748,8 +799,9 @@ Managing Director / Authorized Corporate Signatory`
                               } catch(err) { alert('Failed to delete bank account'); }
                             }
                           }}
+                          title="Remove Bank Account"
                         >
-                          🗑️ Remove
+                          🗑️
                         </button>
                       </div>
                     </td>
@@ -1216,9 +1268,11 @@ Managing Director / Authorized Corporate Signatory`
 
         {editingAccount && (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-            <div className="card" style={{ width: '450px', background: 'var(--bg-card)', border: '2px solid #4A8BCE', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+            <div className="card" style={{ width: '600px', maxWidth: '95vw', maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg-card)', border: '2px solid #4A8BCE', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-                <h3 style={{ margin: 0, color: '#4A8BCE' }}>✏️ Edit Bank Account & Type</h3>
+                <h3 style={{ margin: 0, color: '#4A8BCE', fontSize: '1.1rem' }}>
+                  {editingAccount.isNew ? '🏦 Add Corporate Bank Account' : `✏️ Edit ${editingAccount.name || 'Bank Account'}`}
+                </h3>
                 <button type="button" className="btn" style={{ background: 'transparent', fontSize: '1rem', cursor: 'pointer' }} onClick={() => setEditingAccount(null)}>✕</button>
               </div>
               <BankAccountForm 

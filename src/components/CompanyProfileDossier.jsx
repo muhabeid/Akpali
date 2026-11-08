@@ -151,12 +151,16 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
           {profile.vat_num && <div style={{ fontSize: '0.8rem', color: '#64748b' }}>VAT #: {profile.vat_num}</div>}
           <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>Business Type: {profile.business_type || 'Limited Liability Company'}</div>
           
-          {showBankAccounts && accounts.length > 0 && (
-            <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px dashed hsla(var(--primary), 0.25)', fontSize: '0.73rem', color: '#334155', textAlign: 'right' }}>
-              <div><strong>Primary Banker:</strong> {accounts[0].name} ({accounts[0].branch || 'Main'})</div>
-              <div><strong>Swift:</strong> {accounts[0].swift_code || 'N/A'} | <strong>Acc #:</strong> {accounts[0].account_number || accounts[0].id}</div>
-            </div>
-          )}
+          {showBankAccounts && accounts.length > 0 && (() => {
+            const primaryBank = accounts.find(a => a.type === 'Bank') || accounts[0];
+            return (
+              <div style={{ marginTop: '0.5rem', paddingTop: '0.4rem', borderTop: '1px dashed hsla(var(--primary), 0.25)', fontSize: '0.73rem', color: '#334155', textAlign: 'right' }}>
+                <div><strong>Primary Banker:</strong> {primaryBank.name} {primaryBank.branch ? `(${primaryBank.branch} Branch)` : ''}</div>
+                <div><strong>Acc #:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{primaryBank.account_number || primaryBank.id}</span> {primaryBank.swift_code ? `| Swift: ${primaryBank.swift_code}` : ''}</div>
+                {primaryBank.account_name && <div><strong>Acc Name:</strong> {primaryBank.account_name}</div>}
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -494,6 +498,49 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
       )}
 
 
+
+      {/* SECTION: BANKING & SETTLEMENT DETAILS */}
+      {showBankAccounts && accounts.length > 0 && (
+        <section style={{ marginBottom: '2rem', position: 'relative', zIndex: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #e2e8f0', paddingBottom: '0.4rem', marginBottom: '0.75rem' }}>
+            <Landmark color="hsl(var(--primary))" size={20} />
+            <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a', fontWeight: '700' }}>
+              {secIndex++}. Official Corporate Banking & Tender Settlement Accounts
+            </h3>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', textAlign: 'left' }}>
+            <thead>
+              <tr style={{ background: '#f8fafc', borderBottom: '2px solid #cbd5e1' }}>
+                <th style={{ padding: '0.5rem 0.75rem', fontWeight: '600' }}>Bank / Institution</th>
+                <th style={{ padding: '0.5rem 0.75rem', fontWeight: '600' }}>Account Number</th>
+                <th style={{ padding: '0.5rem 0.75rem', fontWeight: '600' }}>Branch</th>
+                <th style={{ padding: '0.5rem 0.75rem', fontWeight: '600' }}>Account Holder Title</th>
+                <th style={{ padding: '0.5rem 0.75rem', fontWeight: '600' }}>SWIFT / BIC</th>
+                <th style={{ padding: '0.5rem 0.75rem', fontWeight: '600', textAlign: 'center' }}>Currency / Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.map((acc, aIdx) => (
+                <tr key={acc.id || aIdx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '0.5rem 0.75rem', fontWeight: '700', color: '#1e293b' }}>{acc.name}</td>
+                  <td style={{ padding: '0.5rem 0.75rem', fontFamily: 'monospace', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
+                    {acc.account_number || acc.id}
+                  </td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: '#475569' }}>{acc.branch || 'Main Branch'}</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: '#475569' }}>{acc.account_name || profile.legal_name || 'N/A'}</td>
+                  <td style={{ padding: '0.5rem 0.75rem', color: '#64748b' }}>{acc.swift_code || 'N/A'}</td>
+                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                    <span style={{ fontSize: '0.7rem', padding: '0.15rem 0.45rem', borderRadius: '4px', background: acc.type === 'Bank' ? '#e0f2fe' : '#dcfce7', color: acc.type === 'Bank' ? '#0369a1' : '#15803d', fontWeight: '600' }}>
+                      {acc.currency || 'KES'} ({acc.type})
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {/* SECTION: LEGAL CONTRACTS & MSAS */}
       {showLegalContracts && contracts.length > 0 && (
