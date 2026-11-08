@@ -3,6 +3,9 @@ import Drawer from '../components/Drawer'
 import RecordSupplierInvoiceForm from '../components/RecordSupplierInvoiceForm'
 import BookkeepingHub from '../components/BookkeepingHub'
 import MoneyMovementModal from '../components/MoneyMovementModal'
+import RetentionLedgerTab from '../components/RetentionLedgerTab'
+import PredictiveCashflowTab from '../components/PredictiveCashflowTab'
+import ClientStatementOfAccountModal from '../components/ClientStatementOfAccountModal'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { useCurrency } from '../context/CurrencyContext'
 
@@ -22,6 +25,8 @@ export default function Finances({ setGlobalDrawer }) {
   const [paymentAccount, setPaymentAccount] = useState('')
   const [paymentRef, setPaymentRef] = useState('')
   const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
+  const [soaModal, setSoaModal] = useState({ isOpen: false, clientId: null, clientName: '' })
+  const [clientsList, setClientsList] = useState([])
 
   const reloadData = () => {
     fetch('http://localhost:5000/api/treasury')
@@ -53,6 +58,7 @@ export default function Finances({ setGlobalDrawer }) {
       .then(data => setCashflow(data))
       .catch(err => console.error(err))
 
+    fetch('http://localhost:5000/api/clients').then(r => r.json()).then(d => setClientsList(Array.isArray(d) ? d : [])).catch(() => {});
     fetch('http://localhost:5000/api/finances/cashflow-forecast')
       .then(res => res.json())
       .then(data => setForecastEngine(data))
@@ -116,50 +122,37 @@ export default function Finances({ setGlobalDrawer }) {
         <RecordSupplierInvoiceForm />
       </Drawer>
 
-      {/* TOP MODULE SWITCHER TABS (NO HORIZONTAL SLIDER) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem', borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
-        <button
-          onClick={() => setActiveFinanceTab('bookkeeping')}
-          style={{
-            padding: '0.75rem 1rem',
-            background: activeFinanceTab === 'bookkeeping' ? 'hsla(var(--primary), 0.15)' : 'hsla(var(--border), 0.15)',
-            border: 'none',
-            borderBottom: activeFinanceTab === 'bookkeeping' ? '3px solid hsl(var(--primary))' : 'none',
-            color: activeFinanceTab === 'bookkeeping' ? 'hsl(var(--primary))' : 'hsl(var(--text-secondary))',
-            fontWeight: activeFinanceTab === 'bookkeeping' ? '800' : '600',
-            fontSize: '0.9rem',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            textAlign: 'center'
-          }}
-        >
-          📖 Corporate Bookkeeping & General Ledger
-        </button>
-        <button
-          onClick={() => setActiveFinanceTab('treasury')}
-          style={{
-            padding: '0.75rem 1rem',
-            background: activeFinanceTab === 'treasury' ? 'hsla(var(--primary), 0.15)' : 'hsla(var(--border), 0.15)',
-            border: 'none',
-            borderBottom: activeFinanceTab === 'treasury' ? '3px solid hsl(var(--primary))' : 'none',
-            color: activeFinanceTab === 'treasury' ? 'hsl(var(--primary))' : 'hsl(var(--text-secondary))',
-            fontWeight: activeFinanceTab === 'treasury' ? '800' : '600',
-            fontSize: '0.9rem',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            textAlign: 'center'
-          }}
-        >
-          🏦 Treasury, Cash Flow & 3-Way Audit
-        </button>
+      {/* TOP MODULE SWITCHER TABS */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem', borderBottom: '2px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
+        {[
+          { id: 'bookkeeping', label: '📖 Corporate Bookkeeping & Ledger' },
+          { id: 'treasury', label: '🏦 Treasury & Cash Book' },
+          { id: 'retention', label: '🛡️ Retention & DLP Ledger' },
+          { id: 'forecast', label: '🔮 30-60-90 Day Cash Forecaster' },
+          { id: 'soa', label: '🧾 Client Statements & Aging' }
+        ].map(t => {
+          const isActive = activeFinanceTab === t.id;
+          return (
+            <button
+              key={t.id}
+              onClick={() => setActiveFinanceTab(t.id)}
+              style={{
+                padding: '0.75rem 0.8rem',
+                background: isActive ? 'hsla(var(--primary), 0.15)' : 'hsla(var(--border), 0.15)',
+                border: 'none',
+                borderBottom: isActive ? '3px solid hsl(var(--primary))' : 'none',
+                color: isActive ? 'hsl(var(--primary))' : 'hsl(var(--text-secondary))',
+                fontWeight: isActive ? '800' : '600',
+                fontSize: '0.85rem',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                textAlign: 'center'
+              }}
+            >
+              {t.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* MAIN TAB CONTENT */}
@@ -454,6 +447,13 @@ export default function Finances({ setGlobalDrawer }) {
           onSuccess={() => reloadData()}
         />
       )}
-    </div>
+    
+      <ClientStatementOfAccountModal
+        isOpen={soaModal.isOpen}
+        onClose={() => setSoaModal({ isOpen: false, clientId: null, clientName: '' })}
+        clientId={soaModal.clientId}
+        clientName={soaModal.clientName}
+      />
+</div>
   )
 }

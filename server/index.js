@@ -11,6 +11,7 @@ const archiver = require('archiver');
 require('dotenv').config();
 const { sendEmail } = require('./utils/emailHelper');
 const { sendWhatsApp } = require('./utils/whatsappHelper');
+const { registerEnterpriseRoutes } = require('./enterprise_routes');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -337,6 +338,33 @@ async function initializeDB() {
     ('QUALITY_CONFORMANCE', 'CONFIRMATION OF QUALITY & SPECIFICATIONS CONFORMANCE', 'Technical Specifications & Quality Assurance Warranty', '1. All goods conform strictly to client technical schedules and KEBS/ISO standards.\\n2. Goods are 100% brand new, genuine, and free of defects.\\n3. Defective items replaced within 24 to 48 hours at supplier sole expense.');
   `);
   console.log('✅ Document templates ensured.');
+
+  // Enterprise audit_logs columns migration
+  const auditCols = ['user_name TEXT', 'previous_state TEXT', 'new_state TEXT', 'ip_address TEXT'];
+  for (const colDef of auditCols) {
+    try { await db.exec(`ALTER TABLE audit_logs ADD COLUMN ${colDef};`); } catch(e) {}
+  }
+
+  // Ensure default approval workflows exist
+  try {
+    const wfCount = await db.get('SELECT COUNT(*) as count FROM approval_workflows');
+    if (wfCount.count === 0) {
+      await db.exec(`
+        INSERT INTO approval_workflows (id, module_name, maker_role, checker_role, threshold_amount) VALUES
+        ('WF-PO-OFFICER', 'Procurement PO - Standard Ceiling', 'Procurement_Officer', 'Procurement_Finance', 100000.00),
+        ('WF-PO-MANAGER', 'Procurement PO - High Value Ceiling', 'Procurement_Finance', 'Admin', 500000.00),
+        ('WF-FIN-OFFICER', 'Treasury Disbursement - Standard Ceiling', 'Finance_Officer', 'Procurement_Finance', 50000.00),
+        ('WF-FIN-MANAGER', 'Treasury Disbursement - High Value Ceiling', 'Procurement_Finance', 'Admin', 300000.00);
+      `);
+      console.log('✅ Default Maker-Checker Approval Limits seeded.');
+    }
+  } catch(e) {}
+
+  // Ensure server/backups directory exists
+  const backupsDir = path.join(__dirname, 'backups');
+  if (!fs.existsSync(backupsDir)) {
+    fs.mkdirSync(backupsDir, { recursive: true });
+  }
 
 }
 
@@ -1692,7 +1720,14 @@ app.post('/api/pos', async (req, res) => {
   
   // tender_id can be 'COMPANY_EXPENSE' or empty string from frontend, handle it
   const finalTenderId = (tender_id && tender_id !== 'COMPANY_EXPENSE') ? tender_id : null;
-  const finalStatus = status || 'Pending Delivery';
+  const userRole = req.headers['x-user-role'] || req.body.user_role || 'Admin';
+  const numVal = Number(total_value) || 0;
+  let finalStatus = status || 'Pending Delivery';
+  if (userRole === 'Procurement_Officer' && numVal > 100000) {
+    finalStatus = 'Awaiting Approval';
+  } else if (userRole === 'Procurement_Finance' && numVal > 500000) {
+    finalStatus = 'Awaiting Approval';
+  }
 
   await db.run(
     `INSERT INTO purchase_orders (id, tender_id, supplier_name, type, expected_date, total_value, items, status)
@@ -3066,6 +3101,8 @@ app.get('/api/bookkeeping/aging', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+registerEnterpriseRoutes(app, () => db);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

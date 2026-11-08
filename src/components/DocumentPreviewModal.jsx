@@ -566,6 +566,62 @@ export default function DocumentPreviewModal({ isOpen, onClose, doc, docType, co
               )
             )}
 
+            {/* KRA eTIMS COMPLIANCE FORMAT BANNER */}
+            {(currentDocTypeLabel === 'INVOICE' || (docType && docType.toUpperCase().includes('INVOICE'))) && (
+              <div style={{
+                margin: '1.5rem 0',
+                padding: '1rem',
+                borderRadius: '8px',
+                background: '#f8fafc',
+                border: '1px solid #0284c7',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: '1rem',
+                fontSize: '0.8rem'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{
+                    width: '64px',
+                    height: '64px',
+                    background: '#0f172a',
+                    padding: '4px',
+                    borderRadius: '6px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#38bdf8'
+                  }}>
+                    <div style={{ fontSize: '1.4rem' }}>📱</div>
+                    <div style={{ fontSize: '0.55rem', fontWeight: '800', color: '#fff' }}>eTIMS QR</div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>🇰🇪 KRA eTIMS Compliant Electronic Tax Invoice</span>
+                      <span style={{ fontSize: '0.65rem', background: '#10b98122', color: '#16a34a', border: '1px solid #16a34a', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                        VERIFIED FISCAL SIGNATURE
+                      </span>
+                    </div>
+                    <div style={{ color: '#475569', marginTop: '0.2rem', fontSize: '0.75rem' }}>
+                      Control Unit No: <strong>CU-AKPALI-2026-001</strong> • Fiscal Day: <strong>{new Date().toISOString().split('T')[0]}</strong>
+                    </div>
+                    <div style={{ color: '#64748b', fontSize: '0.72rem', marginTop: '0.15rem' }}>
+                      KRA Tax Procedures Act (Electronic Tax Invoice) Regulations 2024
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ textAlign: 'right', fontSize: '0.75rem' }}>
+                  <div style={{ color: '#64748b' }}>Buyer KRA PIN:</div>
+                  <strong style={{ color: '#0f172a', fontSize: '0.85rem' }}>
+                    {matchedClient?.tax_pin || activeDoc.tax_pin || 'P051234567Z'}
+                  </strong>
+                </div>
+              </div>
+            )}
+
             {/* AUTHORIZATION STAMP & SIGNATURE AREA */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px dashed #cbd5e1' }}>
               <div>

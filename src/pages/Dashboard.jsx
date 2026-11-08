@@ -20,6 +20,7 @@ export default function Dashboard({ setGlobalDrawer }) {
   const [openDrawer, setOpenDrawer] = useState(null)
   const [tenders, setTenders] = useState([])
   const [lpos, setLpos] = useState([])
+  const [cashflowForecast, setCashflowForecast] = useState(null)
 
   // Role Specific Tasks Map
     const roleTasksMap = {
@@ -73,6 +74,11 @@ export default function Dashboard({ setGlobalDrawer }) {
       .then(res => res.json())
       .then(data => setLpos(data))
       .catch(err => console.error("Could not fetch LPOs:", err))
+
+    fetch('http://localhost:5000/api/finances/predictive-cashflow')
+      .then(res => res.json())
+      .then(data => setCashflowForecast(data))
+      .catch(err => console.error("Could not fetch cashflow:", err))
   }, [])
 
   return (
@@ -169,6 +175,71 @@ export default function Dashboard({ setGlobalDrawer }) {
           </button>
         </div>
       </div>
+
+      {/* 30-60-90 DAY PREDICTIVE CASH FLOW INDICATOR */}
+      {cashflowForecast && (
+        <div className="card" style={{ padding: '1.25rem 1.5rem', background: 'var(--bg-card)', border: '1px solid hsla(var(--primary), 0.2)', borderRadius: 'var(--radius-md)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.3rem' }}>🔮</span>
+              <div>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 'bold', color: 'hsl(var(--primary))' }}>
+                  30–60–90 Day Predictive Cash Flow Outlook
+                </h4>
+                <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))' }}>
+                  Simulated liquidity runway based on contract billing milestones vs. supplier maturities and fixed overheads.
+                </div>
+              </div>
+            </div>
+
+            <span style={{
+              fontSize: '0.75rem',
+              fontWeight: '700',
+              padding: '0.25rem 0.75rem',
+              borderRadius: '20px',
+              background: cashflowForecast.risk_status === 'HEALTHY' ? '#10b98122' : cashflowForecast.risk_status === 'CAUTION' ? '#f59e0b22' : '#ef444422',
+              color: cashflowForecast.risk_status === 'HEALTHY' ? '#34d399' : cashflowForecast.risk_status === 'CAUTION' ? '#fbbf24' : '#f87171',
+              border: `1px solid ${cashflowForecast.risk_status === 'HEALTHY' ? '#10b98144' : cashflowForecast.risk_status === 'CAUTION' ? '#f59e0b44' : '#ef444444'}`
+            }}>
+              {cashflowForecast.risk_status === 'HEALTHY' ? '● Healthy Runway' : cashflowForecast.risk_status === 'CAUTION' ? '▲ Caution Advised' : '▼ Deficit Risk'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+            <div style={{ padding: '0.75rem 1rem', background: 'hsla(var(--primary), 0.05)', borderRadius: '8px', border: '1px solid hsla(var(--primary), 0.15)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Current Treasury Cash</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'hsl(var(--primary))', marginTop: '0.2rem' }}>
+                {formatAmount(cashflowForecast.current_liquid_cash || 0)}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: '#10b981', marginTop: '0.15rem' }}>Active Bank & M-Pesa Balances</div>
+            </div>
+
+            <div style={{ padding: '0.75rem 1rem', background: 'hsla(var(--border), 0.2)', borderRadius: '8px', border: '1px solid hsla(var(--border), 0.4)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>+30 Days Projected</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: (cashflowForecast.milestones?.days_30?.projected_balance ?? 0) >= 0 ? '#38bdf8' : '#f87171', marginTop: '0.2rem' }}>
+                {formatAmount(cashflowForecast.milestones?.days_30?.projected_balance || 0)}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', marginTop: '0.15rem' }}>Next Month Forecast</div>
+            </div>
+
+            <div style={{ padding: '0.75rem 1rem', background: 'hsla(var(--border), 0.2)', borderRadius: '8px', border: '1px solid hsla(var(--border), 0.4)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>+60 Days Projected</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: (cashflowForecast.milestones?.days_60?.projected_balance ?? 0) >= 0 ? '#38bdf8' : '#f87171', marginTop: '0.2rem' }}>
+                {formatAmount(cashflowForecast.milestones?.days_60?.projected_balance || 0)}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', marginTop: '0.15rem' }}>Mid-Term Horizon</div>
+            </div>
+
+            <div style={{ padding: '0.75rem 1rem', background: 'hsla(var(--border), 0.2)', borderRadius: '8px', border: '1px solid hsla(var(--border), 0.4)' }}>
+              <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>+90 Days Projected</div>
+              <div style={{ fontSize: '1.15rem', fontWeight: 'bold', color: (cashflowForecast.milestones?.days_90?.projected_balance ?? 0) >= 0 ? '#38bdf8' : '#f87171', marginTop: '0.2rem' }}>
+                {formatAmount(cashflowForecast.milestones?.days_90?.projected_balance || 0)}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))', marginTop: '0.15rem' }}>Quarter-End Position</div>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '1.5rem', borderBottom: '1px solid hsl(var(--border))' }}>

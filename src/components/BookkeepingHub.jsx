@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useCurrency } from '../context/CurrencyContext'
+import BankReconciliationTab from './BankReconciliationTab'
 import { BookOpen, FileSpreadsheet, Scale, Receipt, Clock, Plus, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react'
 
 export default function BookkeepingHub() {
@@ -259,6 +260,7 @@ export default function BookkeepingHub() {
           { id: 'journals', label: '📑 General Ledger', icon: BookOpen },
           { id: 'vat', label: '⚖️ KRA 16% VAT Ledger', icon: Scale },
           { id: 'aging', label: '⏳ AR & AP Debt Aging', icon: Clock },
+          { id: 'reconciliation', label: '💳 Bank & M-Pesa Reconciliation', icon: RefreshCw },
           { id: 'coa', label: '🏦 Chart of Accounts', icon: Receipt }
         ].map(tab => {
           const Icon = tab.icon
@@ -1086,6 +1088,9 @@ export default function BookkeepingHub() {
           </table>
         </div>
       )}
+
+      {/* TAB: BANK & M-PESA RECONCILIATION */}
+      {activeTab === 'reconciliation' && <BankReconciliationTab />}
 
     </div>
   )

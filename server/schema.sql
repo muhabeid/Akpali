@@ -470,3 +470,89 @@ CREATE TABLE IF NOT EXISTS vat_ledger (
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+
+
+-- =========================================================
+-- ENTERPRISE MODULES TABLES
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS supplier_quotations (
+    id TEXT PRIMARY KEY,
+    rfq_id TEXT NOT NULL REFERENCES rfqs(id) ON DELETE CASCADE,
+    tender_id TEXT REFERENCES tenders(id) ON DELETE CASCADE,
+    supplier_id TEXT REFERENCES suppliers(id),
+    supplier_name TEXT NOT NULL,
+    items_json TEXT NOT NULL,
+    total_amount REAL DEFAULT 0.00,
+    delivery_lead_time_days INTEGER DEFAULT 7,
+    warranty_terms TEXT DEFAULT '12 Months Standard',
+    payment_credit_terms TEXT DEFAULT '30 Days Net',
+    compliance_status TEXT DEFAULT 'Compliant',
+    compliance_notes TEXT,
+    is_awarded INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS retention_records (
+    id TEXT PRIMARY KEY,
+    tender_id TEXT NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+    client_name TEXT NOT NULL,
+    contract_reference TEXT,
+    contract_value REAL DEFAULT 0.00,
+    retention_rate_pct REAL DEFAULT 10.00,
+    retained_amount REAL DEFAULT 0.00,
+    dlp_tenor_months INTEGER DEFAULT 6,
+    handover_date TEXT,
+    release_due_date TEXT,
+    status TEXT DEFAULT 'Retained' CHECK(status IN ('Retained', 'Claimed', 'Released')),
+    claim_invoice_id TEXT,
+    notes TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tender_consortiums (
+    id TEXT PRIMARY KEY,
+    tender_id TEXT NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+    partner_name TEXT NOT NULL,
+    partner_type TEXT DEFAULT 'Technical Partner',
+    kra_pin TEXT,
+    registration_num TEXT,
+    contact_person TEXT,
+    email TEXT,
+    phone TEXT,
+    equity_share_pct REAL DEFAULT 0.00,
+    scope_allocated TEXT,
+    lead_partner_name TEXT DEFAULT 'Akpali & Co.',
+    agreement_status TEXT DEFAULT 'Drafted',
+    agreement_date TEXT,
+    agreement_doc_url TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS bank_reconciliations (
+    id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL REFERENCES accounts(id),
+    account_name TEXT,
+    statement_period TEXT,
+    statement_filename TEXT,
+    opening_balance REAL DEFAULT 0.00,
+    closing_balance REAL DEFAULT 0.00,
+    reconciled_items_json TEXT,
+    unmatched_items_json TEXT,
+    status TEXT DEFAULT 'Reconciled',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS system_backups (
+    id TEXT PRIMARY KEY,
+    filename TEXT NOT NULL,
+    filepath TEXT NOT NULL,
+    size_bytes INTEGER DEFAULT 0,
+    backup_type TEXT DEFAULT 'Manual',
+    records_count INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'Completed',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);

@@ -12,6 +12,9 @@ import EditUserModal from '../components/EditUserModal'
 import BankAccountForm from '../components/BankAccountForm'
 import MoneyMovementModal from '../components/MoneyMovementModal'
 import Drawer from '../components/Drawer'
+import ImmutableAuditTrailSection from '../components/ImmutableAuditTrailSection'
+import MakerCheckerMatrixSection from '../components/MakerCheckerMatrixSection'
+import SystemBackupsSection from '../components/SystemBackupsSection'
 import { printElement } from '../utils/printHelper'
 import { useRole } from '../context/RoleContext'
 import { useCurrency } from '../context/CurrencyContext'
@@ -1441,49 +1444,14 @@ Managing Director / Authorized Corporate Signatory`
               </form>
             </div>
 
-            {/* 3. SYSTEM AUDIT TRAIL & GOVERNANCE LOGS */}
-            <div style={{ background: 'hsla(var(--primary), 0.04)', border: '1px solid hsla(var(--primary), 0.18)', padding: '1.5rem', borderRadius: 'var(--radius-md)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsla(var(--primary), 0.15)', paddingBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Shield color="hsl(var(--primary))" size={20} />
-                  <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>System Audit Trail & Governance Logs</h4>
-                </div>
-                <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.6rem', borderRadius: '10px', background: '#38bdf822', color: '#38bdf8', fontWeight: '700' }}>
-                  {auditLogs.length} Audit Records
-                </span>
-              </div>
+            {/* 3. AUTOMATED MULTI-LEVEL APPROVAL LIMITS (MAKER-CHECKER MATRIX) */}
+            <MakerCheckerMatrixSection />
 
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                  <thead>
-                    <tr style={{ background: '#0f172a', textAlign: 'left', borderBottom: '2px solid #334155', color: '#94a3b8' }}>
-                      <th style={{ padding: '0.6rem' }}>Timestamp</th>
-                      <th style={{ padding: '0.6rem' }}>Role</th>
-                      <th style={{ padding: '0.6rem' }}>Action</th>
-                      <th style={{ padding: '0.6rem' }}>Entity Type</th>
-                      <th style={{ padding: '0.6rem' }}>Event Details</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {auditLogs.length === 0 ? (
-                      <tr>
-                        <td colSpan="5" style={{ padding: '1rem', textAlign: 'center', color: '#94a3b8' }}>No audit records logged yet.</td>
-                      </tr>
-                    ) : (
-                      auditLogs.map((log) => (
-                        <tr key={log.id} style={{ borderBottom: '1px solid #1e293b' }}>
-                          <td style={{ padding: '0.6rem', color: '#94a3b8' }}>{new Date(log.created_at).toLocaleString()}</td>
-                          <td style={{ padding: '0.6rem', fontWeight: '700', color: '#38bdf8' }}>{log.user_role}</td>
-                          <td style={{ padding: '0.6rem', fontWeight: '600', color: '#fff' }}>{log.action}</td>
-                          <td style={{ padding: '0.6rem', color: '#4ade80' }}>{log.entity_type || '—'}</td>
-                          <td style={{ padding: '0.6rem', color: '#cbd5e1' }}>{log.details || '—'}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            {/* 4. IMMUTABLE SYSTEM AUDIT TRAIL & GOVERNANCE LOGS */}
+            <ImmutableAuditTrailSection />
+
+            {/* 5. AUTOMATED NIGHTLY CLOUD BACKUP & SNAPSHOT MANAGER */}
+            <SystemBackupsSection />
 
           </div>
         )}

@@ -4,6 +4,10 @@ import { useCurrency } from '../context/CurrencyContext'
 import DocumentPreviewModal from '../components/DocumentPreviewModal'
 import Drawer from '../components/Drawer'
 import SalesQuoteForm from '../components/SalesQuoteForm'
+import TenderProfitabilityThermometer from '../components/TenderProfitabilityThermometer'
+import TenderCompliancePreflightModal from '../components/TenderCompliancePreflightModal'
+import TenderConsortiumModal from '../components/TenderConsortiumModal'
+import TenderSubmissionBinderModal from '../components/TenderSubmissionBinderModal'
 
 export default function Tenders({ setGlobalDrawer }) {
   const { formatAmount } = useCurrency()
@@ -15,6 +19,9 @@ export default function Tenders({ setGlobalDrawer }) {
   const [editingTender, setEditingTender] = useState(null)
   const [editingQuote, setEditingQuote] = useState(null)
   const [previewModalDoc, setPreviewModalDoc] = useState({ isOpen: false, doc: null, type: '' })
+  const [binderModal, setBinderModal] = useState({ isOpen: false, tenderId: null })
+  const [preflightModal, setPreflightModal] = useState({ isOpen: false, tenderId: null, tenderName: '' })
+  const [consortiumModal, setConsortiumModal] = useState({ isOpen: false, tenderId: null, tenderName: '' })
 
   const handleDeleteTender = async (t) => {
     if (window.confirm(`Are you sure you want to delete Tender '${t.name}' (${t.id})?\nThis will permanently remove associated LPOs and RFQs.`)) {
@@ -202,12 +209,36 @@ export default function Tenders({ setGlobalDrawer }) {
                 📎 View Tender Doc
               </a>
             )}
+            <button
+              onClick={() => setBinderModal({ isOpen: true, tenderId: selectedTender.id })}
+              className="btn btn-primary"
+              style={{ background: '#059669', borderColor: '#047857', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              📑 1-Click Bid Binder
+            </button>
+            <button
+              onClick={() => setPreflightModal({ isOpen: true, tenderId: selectedTender.id, tenderName: selectedTender.name })}
+              className="btn"
+              style={{ background: '#d97706', color: '#fff', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              🛡️ Pre-Flight Audit
+            </button>
+            <button
+              onClick={() => setConsortiumModal({ isOpen: true, tenderId: selectedTender.id, tenderName: selectedTender.name })}
+              className="btn"
+              style={{ background: '#4f46e5', color: '#fff', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+            >
+              🤝 Consortium & JV
+            </button>
             <a href={`http://localhost:5000/api/tenders/${selectedTender.id}/archive`} className="btn" style={{ background: 'hsla(var(--primary), 0.2)', color: 'hsl(var(--primary))', textDecoration: 'none' }} target="_blank" rel="noopener noreferrer">
               📦 Download Archive (.zip)
             </a>
           </div>
         </div>
 
+
+        {/* LIVE TENDER PROFITABILITY & BUDGET VS ACTUAL THERMOMETER */}
+        <TenderProfitabilityThermometer tenderId={selectedTender.id} />
 
         <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
           <div className="card stat-card">
@@ -554,6 +585,8 @@ export default function Tenders({ setGlobalDrawer }) {
                 <td style={{ padding: '1rem' }}>
                   <div style={{ display: 'flex', gap: '0.35rem' }}>
                     <button className="btn" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', background: 'hsla(var(--primary), 0.1)', color: 'hsl(var(--primary))', fontWeight: 'bold' }} onClick={() => setSelectedTender(t)}>View 360</button>
+                    <button className="btn" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', background: '#059669', color: '#fff', fontWeight: 'bold' }} onClick={(e) => { e.stopPropagation(); setBinderModal({ isOpen: true, tenderId: t.id }); }} title="Compile Tender Submission Binder">📑 Binder</button>
+                    <button className="btn" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', background: '#d97706', color: '#fff', fontWeight: 'bold' }} onClick={(e) => { e.stopPropagation(); setPreflightModal({ isOpen: true, tenderId: t.id, tenderName: t.name }); }} title="Pre-Flight Bid Compliance Audit">🛡️ Pre-Flight</button>
                     <button className="btn" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', background: '#0284c7', color: '#fff', fontWeight: 'bold' }} onClick={() => setEditingTender(t)}>✏️ Edit</button>
                     <button className="btn" style={{ padding: '0.35rem 0.65rem', fontSize: '0.78rem', background: '#f43f5e', color: '#fff', fontWeight: 'bold' }} onClick={() => handleDeleteTender(t)}>🗑️ Remove</button>
                   </div>
@@ -622,6 +655,25 @@ export default function Tenders({ setGlobalDrawer }) {
       </Drawer>
 
       {/* DOCUMENT PREVIEW MODAL */}
+      <TenderSubmissionBinderModal
+        isOpen={binderModal.isOpen}
+        onClose={() => setBinderModal({ isOpen: false, tenderId: null })}
+        tenderId={binderModal.tenderId}
+      />
+
+      <TenderCompliancePreflightModal
+        isOpen={preflightModal.isOpen}
+        onClose={() => setPreflightModal({ isOpen: false, tenderId: null, tenderName: '' })}
+        tenderId={preflightModal.tenderId}
+        tenderName={preflightModal.tenderName}
+      />
+
+      <TenderConsortiumModal
+        isOpen={consortiumModal.isOpen}
+        onClose={() => setConsortiumModal({ isOpen: false, tenderId: null, tenderName: '' })}
+        tenderId={consortiumModal.tenderId}
+        tenderName={consortiumModal.tenderName}
+      />
       <DocumentPreviewModal 
         isOpen={previewModalDoc.isOpen} 
         onClose={() => setPreviewModalDoc({ isOpen: false, doc: null, type: '' })} 

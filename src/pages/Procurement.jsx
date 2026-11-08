@@ -4,6 +4,7 @@ import Drawer from '../components/Drawer'
 import RecordGRNForm from '../components/RecordGRNForm'
 import GenerateRFQForm from '../components/GenerateRFQForm'
 import DocumentPreviewModal from '../components/DocumentPreviewModal'
+import QuotationEvaluationMatrixModal from '../components/QuotationEvaluationMatrixModal'
 import { useRole } from '../context/RoleContext'
 import { useCurrency } from '../context/CurrencyContext'
 
@@ -22,6 +23,7 @@ export default function Procurement({ setGlobalDrawer }) {
   const [isGRNDrawerOpen, setGRNDrawerOpen] = useState(false)
   const [isRFQDrawerOpen, setRFQDrawerOpen] = useState(false)
   const [previewModalDoc, setPreviewModalDoc] = useState({ isOpen: false, doc: null, type: '' })
+  const [matrixModal, setMatrixModal] = useState({ isOpen: false, rfq: null })
   const [companyProfile, setCompanyProfile] = useState(null)
 
   useEffect(() => {
@@ -311,7 +313,15 @@ export default function Procurement({ setGlobalDrawer }) {
                       >
                         👁️
                       </button>
-                      {rfq.status === 'Open' && (
+                      <button 
+                        className="btn" 
+                        onClick={() => setMatrixModal({ isOpen: true, rfq })} 
+                        style={{ padding: '0.25rem 0.65rem', fontSize: '0.75rem', background: '#0284c7', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 'bold' }}
+                        title="Evaluate Vendor Quotes & Award"
+                      >
+                        📊 Evaluation Matrix
+                      </button>
+                      {false && (
                         <button 
                           className="btn" 
                           onClick={() => setGlobalDrawer('new_po')} 
@@ -403,6 +413,8 @@ export default function Procurement({ setGlobalDrawer }) {
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
               />
+
+      
               <select className="form-control" style={{ flex: '0 1 180px', minWidth: '150px' }} value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
                 <option value="All">All Statuses</option>
                 <option value="Pending Delivery">Pending Delivery</option>
@@ -640,6 +652,20 @@ export default function Procurement({ setGlobalDrawer }) {
         doc={previewModalDoc.doc} 
         docType={previewModalDoc.type} 
         companyProfile={companyProfile} 
+      />
+
+      <QuotationEvaluationMatrixModal
+        isOpen={matrixModal.isOpen}
+        onClose={() => setMatrixModal({ isOpen: false, rfq: null })}
+        rfq={matrixModal.rfq}
+        onAwardSuccess={() => {
+          fetch('http://localhost:5000/api/rfqs')
+            .then(res => res.json())
+            .then(data => setRfqs(Array.isArray(data) ? data : []));
+          fetch('http://localhost:5000/api/pos')
+            .then(res => res.json())
+            .then(data => setPos(Array.isArray(data) ? data : []));
+        }}
       />
 
     </div>
