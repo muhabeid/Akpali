@@ -122,7 +122,26 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
               font-family: Inter, system-ui, sans-serif;
             }
             :root {
-              --primary: ${primaryColor};
+              --primary: 215 25% 27%;
+              --primary-color: ${primaryColor};
+            }
+            .dossier-header-badge {
+              background-color: #0f172a !important;
+              background: #0f172a !important;
+              color: #ffffff !important;
+              border: 2px solid #0f172a !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .dossier-header-badge h2 {
+              color: #ffffff !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            .dossier-header-badge div {
+              color: #e2e8f0 !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
             }
             .no-print-toolbar {
               position: sticky;
@@ -152,6 +171,24 @@ export const printElement = async (selector = '.dossier-container', docType = 'G
             }
             @media print {
               * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .dossier-header-badge {
+                background-color: #0f172a !important;
+                background: #0f172a !important;
+                color: #ffffff !important;
+                border: 2px solid #0f172a !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .dossier-header-badge h2 {
+                color: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .dossier-header-badge div {
+                color: #e2e8f0 !important;
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
               }

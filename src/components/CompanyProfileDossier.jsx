@@ -165,11 +165,27 @@ export default function CompanyProfileDossier({ dossierData, options = {}, onPre
       </div>
 
       {/* DOCUMENT TITLE BADGE */}
-      <div style={{ background: 'hsl(var(--primary))', color: '#fff', padding: '0.85rem 1.5rem', borderRadius: 'var(--radius-md)', textAlign: 'center', marginBottom: '1.5rem', boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)', position: 'relative', zIndex: 2 }}>
-        <h2 style={{ margin: 0, fontSize: '1.25rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: '700' }}>
+      <div 
+        className="dossier-header-badge"
+        style={{ 
+          backgroundColor: '#0f172a', 
+          color: '#ffffff', 
+          padding: '1rem 1.5rem', 
+          borderRadius: '8px', 
+          textAlign: 'center', 
+          marginBottom: '1.5rem', 
+          boxShadow: '0 4px 12px rgba(15, 23, 42, 0.15)', 
+          position: 'relative', 
+          zIndex: 2,
+          border: '2px solid #0f172a',
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact'
+        }}
+      >
+        <h2 style={{ margin: 0, fontSize: '1.25rem', letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: '800', color: '#ffffff' }}>
           Official Corporate Profile & Tender Qualification Dossier
         </h2>
-        <div style={{ fontSize: '0.8rem', opacity: 0.9, marginTop: '0.2rem' }}>
+        <div style={{ fontSize: '0.825rem', color: '#cbd5e1', marginTop: '0.25rem', fontWeight: '500' }}>
           Comprehensive Organizational Identity, Directors, Statutory Licenses, Registrations & Track Record
         </div>
       </div>
