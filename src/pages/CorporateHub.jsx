@@ -9,6 +9,7 @@ import OperationalDocumentGeneratorModal from '../components/OperationalDocument
 import CreateRoleModal from '../components/CreateRoleModal'
 import EditUserModal from '../components/EditUserModal'
 import BankAccountForm from '../components/BankAccountForm'
+import MoneyMovementModal from '../components/MoneyMovementModal'
 import Drawer from '../components/Drawer'
 import { printElement } from '../utils/printHelper'
 import { useRole } from '../context/RoleContext'
@@ -23,6 +24,8 @@ export default function CorporateHub({ setGlobalDrawer }) {
   const [isCreateRoleOpen, setIsCreateRoleOpen] = useState(false)
   const [editingUser, setEditingUser] = useState(null)
   const [editingAccount, setEditingAccount] = useState(null)
+  const [showMoneyMovementModal, setShowMoneyMovementModal] = useState(false)
+  const [movementInitialAccount, setMovementInitialAccount] = useState('')
 
   const [companyData, setCompanyData] = useState({
     legal_name: '', trading_name: '', registration_num: '', registration_date: '',
@@ -291,7 +294,6 @@ export default function CorporateHub({ setGlobalDrawer }) {
                 <button type="button" className={`btn ${profileSubTab === 'registrations' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'registrations' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'registrations' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'registrations' ? '700' : '600' }} onClick={() => setProfileSubTab('registrations')}>Tender Regs ({tenderRegistrations.length})</button>
                 <button type="button" className={`btn ${profileSubTab === 'policies' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'policies' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'policies' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'policies' ? '700' : '600' }} onClick={() => setProfileSubTab('policies')}>Policies ({policies.length})</button>
                 <button type="button" className={`btn ${profileSubTab === 'experience' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'experience' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'experience' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'experience' ? '700' : '600' }} onClick={() => setProfileSubTab('experience')}>Experience ({experience.length})</button>
-                <button type="button" className="btn" style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: 'hsla(var(--success), 0.12)', color: 'hsl(var(--success))', fontWeight: '700' }} onClick={() => setActiveTab('banks')}>🏦 Bank Accounts ({accounts.length})</button>
               </div>
             </div>
               
@@ -716,12 +718,27 @@ Managing Director / Authorized Corporate Signatory`
 
         {!loading && activeTab === 'banks' && (
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
                 <h3 style={{ margin: 0 }}>Official Corporate Bank & Treasury Accounts</h3>
                 <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', marginTop: '0.2rem' }}>Manage settlement bank accounts, branch details, account numbers, and SWIFT codes for tender dossiers.</div>
               </div>
-              <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.875rem', background: '#4A8BCE', border: 'none', fontWeight: 'bold' }} onClick={() => setEditingAccount({ isNew: true, id: `ACC-${Math.floor(Math.random() * 10000)}`, name: '', type: 'Bank', account_number: '', branch: '', account_name: '', swift_code: '', currency: 'KES', current_balance: 0 })}>+ Add Account</button>
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <button 
+                  className="btn" 
+                  style={{ padding: '0.45rem 0.9rem', fontSize: '0.875rem', background: '#16a34a', color: '#fff', border: 'none', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', borderRadius: '6px' }} 
+                  onClick={() => { setMovementInitialAccount(''); setShowMoneyMovementModal(true); }}
+                >
+                  ↕️ Money Movement / Transfer
+                </button>
+                <button 
+                  className="btn btn-primary" 
+                  style={{ padding: '0.45rem 0.9rem', fontSize: '0.875rem', background: '#4A8BCE', border: 'none', fontWeight: 'bold', cursor: 'pointer', borderRadius: '6px' }} 
+                  onClick={() => setEditingAccount({ isNew: true, id: `ACC-${Math.floor(Math.random() * 10000)}`, name: '', type: 'Bank', account_number: '', branch: '', account_name: '', swift_code: '', currency: 'KES', current_balance: 0 })}
+                >
+                  + Add Account
+                </button>
+              </div>
             </div>
 
             <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', background: 'hsla(var(--primary), 0.06)', border: '1px solid hsla(var(--primary), 0.2)', borderRadius: '8px', fontSize: '0.825rem', color: 'hsl(var(--text-secondary))' }}>
@@ -737,7 +754,7 @@ Managing Director / Authorized Corporate Signatory`
                   <th style={{ padding: '0.75rem 1rem' }}>SWIFT / BIC</th>
                   <th style={{ padding: '0.75rem 1rem' }}>Type / Currency</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Current Balance</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center', width: '130px' }}>Actions</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center', width: '175px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -774,11 +791,23 @@ Managing Director / Authorized Corporate Signatory`
                       {formatAmount(acc.current_balance || 0)}
                     </td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
                         <button 
                           type="button" 
                           className="btn" 
-                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', background: '#0284c7', color: '#fff' }}
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.725rem', background: '#16a34a', color: '#fff', fontWeight: '600' }}
+                          onClick={() => {
+                            setMovementInitialAccount(acc.id);
+                            setShowMoneyMovementModal(true);
+                          }}
+                          title="Record Inward/Outward or Transfer for this account"
+                        >
+                          ↕️ Move
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn" 
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.725rem', background: '#0284c7', color: '#fff' }}
                           onClick={() => setEditingAccount(acc)}
                           title="Edit Bank Account, Number, Branch & Currency"
                         >
@@ -1289,6 +1318,16 @@ Managing Director / Authorized Corporate Signatory`
               />
             </div>
           </div>
+        )}
+
+        {showMoneyMovementModal && (
+          <MoneyMovementModal
+            isOpen={showMoneyMovementModal}
+            onClose={() => setShowMoneyMovementModal(false)}
+            initialAccountId={movementInitialAccount}
+            accounts={accounts}
+            onSuccess={() => fetchData()}
+          />
         )}
 
       </div>

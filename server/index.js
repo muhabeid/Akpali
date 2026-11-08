@@ -1718,8 +1718,17 @@ app.post('/api/transactions', validate(TransactionSchema), async (req, res) => {
     const entry_date = new Date().toISOString().split('T')[0];
     const journal_id = 'JRN-' + Math.floor(100000 + Math.random() * 900000);
     
-    // Map account_id (e.g. ACC-1010, ACC-1020, ACC-1030)
-    const targetBankAcc = account_id || '1010';
+    // Map account_id (e.g. ACC-BANK, ACC-MPESA, ACC-CASH, ACC-6310) to Chart of Accounts code (1010, 1020, 1030)
+    let targetCOACode = '1010';
+    const accRow = await db.get('SELECT * FROM accounts WHERE id = ?', [account_id]);
+    if (accRow) {
+      if (accRow.type === 'Mobile Money') targetCOACode = '1020';
+      else if (accRow.type === 'Cash') targetCOACode = '1030';
+      else targetCOACode = '1010';
+    } else if (['1010', '1020', '1030'].includes(account_id)) {
+      targetCOACode = account_id;
+    }
+
     const isIncome = (type === 'Income');
 
     await db.run(
@@ -1732,13 +1741,13 @@ app.post('/api/transactions', validate(TransactionSchema), async (req, res) => {
       // Income: Debit Bank/Mobile Cash (1010/1020/1030), Credit Revenue (4000)
       await db.run(
         `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, ?, 0, ?)`,
-        [journal_id, targetBankAcc, amount, purpose]
+        [journal_id, targetCOACode, amount, purpose]
       );
       await db.run(
         `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, '4000', 0, ?, ?)`,
         [journal_id, amount, purpose]
       );
-      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = ?`, [amount, targetBankAcc]);
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = ?`, [amount, targetCOACode]);
       await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = '4000'`, [amount]);
     } else {
       // Expense: Debit Expense (5000), Credit Bank/Mobile Cash (1010/1020/1030)
@@ -1748,10 +1757,10 @@ app.post('/api/transactions', validate(TransactionSchema), async (req, res) => {
       );
       await db.run(
         `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, 0, ?, ?)`,
-        [journal_id, targetBankAcc, amount, purpose]
+        [journal_id, targetCOACode, amount, purpose]
       );
       await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = '5000'`, [amount]);
-      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance - ? WHERE account_code = ?`, [amount, targetBankAcc]);
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance - ? WHERE account_code = ?`, [amount, targetCOACode]);
     }
   } catch (jErr) {
     console.error('Error auto-syncing journal entry from transaction:', jErr.message);
@@ -1759,6 +1768,319 @@ app.post('/api/transactions', validate(TransactionSchema), async (req, res) => {
 
   const newTx = await db.get('SELECT * FROM transactions WHERE id = ?', [id]);
   res.status(201).json(newTx);
+});
+
+// POST /api/accounts/money-movement (Direct Inward/Outward Money Movement on Bank, M-Pesa or Petty Cash)
+app.post('/api/accounts/money-movement', async (req, res) => {
+  const { account_id, type, amount, purpose, reference, tender_id } = req.body;
+  const numAmount = parseFloat(amount);
+  if (!numAmount || numAmount <= 0) {
+    return res.status(400).json({ error: 'Amount must be greater than zero.' });
+  }
+  if (!account_id) {
+    return res.status(400).json({ error: 'Account is required.' });
+  }
+  if (!['Income', 'Expense'].includes(type)) {
+    return res.status(400).json({ error: 'Type must be Income or Expense.' });
+  }
+
+  const acc = await db.get('SELECT * FROM accounts WHERE id = ?', [account_id]);
+  if (!acc) return res.status(404).json({ error: 'Account not found.' });
+
+  const txId = `TRX-${type === 'Income' ? 'IN' : 'OUT'}-${Date.now().toString().slice(-6)}`;
+  const finalRef = reference || `MOV-${Date.now().toString().slice(-4)}`;
+  const finalPurpose = purpose || (type === 'Income' ? 'Direct Fund Receipt / Inward Movement' : 'Direct Cash / Account Disbursement');
+
+  // Trigger after_transaction_insert will automatically adjust accounts.current_balance
+  await db.run(
+    `INSERT INTO transactions (id, account_id, tender_id, type, amount, purpose, reference)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [txId, acc.id, tender_id || null, type, numAmount, finalPurpose, finalRef]
+  );
+
+  // Sync double-entry General Ledger
+  try {
+    const journalId = `JRN-MOV-${Date.now().toString().slice(-6)}`;
+    const entryDate = new Date().toISOString().split('T')[0];
+    let coaCode = '1010';
+    if (acc.type === 'Mobile Money') coaCode = '1020';
+    else if (acc.type === 'Cash') coaCode = '1030';
+
+    await db.run(
+      `INSERT INTO journal_entries (id, entry_date, reference, description, created_by, status)
+       VALUES (?, ?, ?, ?, ?, 'Posted')`,
+      [journalId, entryDate, finalRef, finalPurpose, 'Treasury Movement Engine']
+    );
+
+    if (type === 'Income') {
+      // Debit Cash/Bank, Credit Revenue 4000
+      await db.run(`INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, ?, 0, ?)`, [journalId, coaCode, numAmount, finalPurpose]);
+      await db.run(`INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, '4000', 0, ?, ?)`, [journalId, numAmount, finalPurpose]);
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = ?`, [numAmount, coaCode]);
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = '4000'`, [numAmount]);
+    } else {
+      // Debit Expense 5000, Credit Cash/Bank
+      await db.run(`INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, '5000', ?, 0, ?)`, [journalId, numAmount, finalPurpose]);
+      await db.run(`INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, 0, ?, ?)`, [journalId, coaCode, numAmount, finalPurpose]);
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = '5000'`, [numAmount]);
+      await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance - ? WHERE account_code = ?`, [numAmount, coaCode]);
+    }
+  } catch(e) {
+    console.error('GL Sync error on direct movement:', e.message);
+  }
+
+  const updatedAccount = await db.get('SELECT * FROM accounts WHERE id = ?', [acc.id]);
+  res.json({
+    success: true,
+    message: `${type === 'Income' ? 'Deposited' : 'Disbursed'} KES ${numAmount.toLocaleString()} ${type === 'Income' ? 'into' : 'from'} ${acc.name} successfully!`,
+    account: updatedAccount,
+    transaction_id: txId
+  });
+});
+
+// POST /api/accounts/transfer (Inter-Account Transfer & Petty Cash Replenishment)
+app.post('/api/accounts/transfer', async (req, res) => {
+  const { from_account_id, to_account_id, amount, purpose, reference, transfer_date } = req.body;
+  const numAmount = parseFloat(amount);
+  if (!numAmount || numAmount <= 0) {
+    return res.status(400).json({ error: 'Transfer amount must be greater than zero.' });
+  }
+  if (!from_account_id || !to_account_id || from_account_id === to_account_id) {
+    return res.status(400).json({ error: 'Please choose two different accounts for the transfer.' });
+  }
+
+  const fromAcc = await db.get('SELECT * FROM accounts WHERE id = ?', [from_account_id]);
+  const toAcc = await db.get('SELECT * FROM accounts WHERE id = ?', [to_account_id]);
+  if (!fromAcc || !toAcc) {
+    return res.status(404).json({ error: 'Source or destination account not found.' });
+  }
+
+  const txIdOut = `TRX-XFER-OUT-${Date.now().toString().slice(-6)}`;
+  const txIdIn = `TRX-XFER-IN-${Date.now().toString().slice(-6)}`;
+  const ref = reference || `XFER-${Date.now().toString().slice(-4)}`;
+  const note = purpose || `Internal Transfer: ${fromAcc.name} → ${toAcc.name}`;
+
+  // 1. Outward from source (Expense) -> trigger deducts from fromAcc
+  await db.run(
+    `INSERT INTO transactions (id, account_id, tender_id, type, amount, purpose, reference)
+     VALUES (?, ?, NULL, 'Expense', ?, ?, ?)`,
+    [txIdOut, fromAcc.id, numAmount, `[Transfer OUT to ${toAcc.name}] ${note}`, ref]
+  );
+
+  // 2. Inward to destination (Income) -> trigger adds to toAcc
+  await db.run(
+    `INSERT INTO transactions (id, account_id, tender_id, type, amount, purpose, reference)
+     VALUES (?, ?, NULL, 'Income', ?, ?, ?)`,
+    [txIdIn, toAcc.id, numAmount, `[Transfer IN from ${fromAcc.name}] ${note}`, ref]
+  );
+
+  // 3. Sync balanced double-entry GL
+  try {
+    const journalId = `JRN-XFER-${Date.now().toString().slice(-6)}`;
+    const entryDate = transfer_date || new Date().toISOString().split('T')[0];
+    
+    let fromCOA = '1010';
+    if (fromAcc.type === 'Mobile Money') fromCOA = '1020';
+    else if (fromAcc.type === 'Cash') fromCOA = '1030';
+
+    let toCOA = '1010';
+    if (toAcc.type === 'Mobile Money') toCOA = '1020';
+    else if (toAcc.type === 'Cash') toCOA = '1030';
+
+    await db.run(
+      `INSERT INTO journal_entries (id, entry_date, reference, description, created_by, status)
+       VALUES (?, ?, ?, ?, ?, 'Posted')`,
+      [journalId, entryDate, ref, `Internal Transfer: ${fromAcc.name} to ${toAcc.name}`, 'Treasury System']
+    );
+
+    // Debit Destination COA
+    await db.run(
+      `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, ?, 0, ?)`,
+      [journalId, toCOA, numAmount, `Transfer from ${fromAcc.name}`]
+    );
+    // Credit Source COA
+    await db.run(
+      `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, 0, ?, ?)`,
+      [journalId, fromCOA, numAmount, `Transfer to ${toAcc.name}`]
+    );
+
+    await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = ?`, [numAmount, toCOA]);
+    await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance - ? WHERE account_code = ?`, [numAmount, fromCOA]);
+  } catch(e) {
+    console.error('GL Transfer error:', e.message);
+  }
+
+  const updatedFrom = await db.get('SELECT * FROM accounts WHERE id = ?', [fromAcc.id]);
+  const updatedTo = await db.get('SELECT * FROM accounts WHERE id = ?', [toAcc.id]);
+
+  res.json({
+    success: true,
+    message: `Transferred KES ${numAmount.toLocaleString()} from ${fromAcc.name} to ${toAcc.name} successfully!`,
+    fromAccount: updatedFrom,
+    toAccount: updatedTo
+  });
+});
+
+// POST /api/supplier_invoices/:id/pay (Supplier Disbursement from Bank, M-Pesa, or Petty Cash)
+app.post('/api/supplier_invoices/:id/pay', async (req, res) => {
+  const { id } = req.params;
+  const { account_id, payment_date, payment_method, reference } = req.body;
+
+  const inv = await db.get('SELECT * FROM supplier_invoices WHERE id = ?', [id]);
+  if (!inv) return res.status(404).json({ error: 'Supplier Invoice not found' });
+
+  // Resolve paying account
+  let payAccount = null;
+  if (account_id) {
+    payAccount = await db.get('SELECT * FROM accounts WHERE id = ?', [account_id]);
+  }
+  if (!payAccount) {
+    payAccount = await db.get("SELECT * FROM accounts WHERE type = 'Bank' ORDER BY id ASC LIMIT 1");
+  }
+  if (!payAccount) {
+    payAccount = await db.get("SELECT * FROM accounts LIMIT 1");
+  }
+  if (!payAccount) {
+    return res.status(400).json({ error: 'No active Bank, M-Pesa, or Petty Cash account available for disbursement' });
+  }
+
+  const txId = `TRX-PAY-${Date.now().toString().slice(-6)}`;
+  const payRef = reference || `PAY-${inv.id}`;
+  const purpose = `Supplier Disbursement: ${inv.supplier_name} - Inv #${inv.id} (PO: ${inv.po_id || 'Direct'})`;
+
+  // 1. Insert outward transaction (Expense) -> Trigger after_transaction_insert deducts from payAccount.current_balance
+  await db.run(
+    `INSERT INTO transactions (id, account_id, tender_id, type, amount, purpose, reference)
+     VALUES (?, ?, NULL, 'Expense', ?, ?, ?)`,
+    [txId, payAccount.id, inv.amount, purpose, payRef]
+  );
+
+  // 2. Post balanced GL Journal Entry: Debit Accounts Payable (2000), Credit Cash & Bank (1010/1020/1030)
+  try {
+    const journalId = `JRN-PAY-${Date.now().toString().slice(-6)}`;
+    const entryDate = payment_date || new Date().toISOString().split('T')[0];
+    let coaCode = '1010';
+    if (payAccount.type === 'Mobile Money') coaCode = '1020';
+    else if (payAccount.type === 'Cash') coaCode = '1030';
+
+    await db.run(
+      `INSERT INTO journal_entries (id, entry_date, reference, description, created_by, status)
+       VALUES (?, ?, ?, ?, ?, 'Posted')`,
+      [journalId, entryDate, payRef, purpose, 'Accounts Payable Engine']
+    );
+
+    // Debit AP 2000
+    await db.run(
+      `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, '2000', ?, 0, ?)`,
+      [journalId, inv.amount, `Settlement of Inv #${inv.id}`]
+    );
+    // Credit Bank/M-Pesa/Cash
+    await db.run(
+      `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, 0, ?, ?)`,
+      [journalId, coaCode, inv.amount, `Disbursement via ${payAccount.name}`]
+    );
+
+    // Update COA balances
+    await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance - ? WHERE account_code = '2000'`, [inv.amount]);
+    await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance - ? WHERE account_code = ?`, [inv.amount, coaCode]);
+  } catch (glErr) {
+    console.error('GL Sync error on supplier payment:', glErr.message);
+  }
+
+  // 3. Update invoice status to 'Paid'
+  await db.run(
+    `UPDATE supplier_invoices SET status = 'Paid', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [id]
+  );
+
+  const updatedAccount = await db.get('SELECT * FROM accounts WHERE id = ?', [payAccount.id]);
+  res.json({
+    success: true,
+    message: `Payment of KES ${Number(inv.amount).toLocaleString()} successfully disbursed to ${inv.supplier_name} from ${payAccount.name}!`,
+    account: updatedAccount,
+    transaction_id: txId
+  });
+});
+
+// POST /api/client_invoices/:id/pay (Client Receipt into Bank, M-Pesa, or Petty Cash)
+app.post('/api/client_invoices/:id/pay', async (req, res) => {
+  const { id } = req.params;
+  const { account_id, payment_date, payment_method, reference, amount } = req.body;
+
+  const inv = await db.get('SELECT * FROM client_invoices WHERE id = ?', [id]);
+  if (!inv) return res.status(404).json({ error: 'Client Invoice not found' });
+
+  let depositAccount = null;
+  if (account_id) {
+    depositAccount = await db.get('SELECT * FROM accounts WHERE id = ?', [account_id]);
+  }
+  if (!depositAccount) {
+    depositAccount = await db.get("SELECT * FROM accounts WHERE type = 'Bank' ORDER BY id ASC LIMIT 1");
+  }
+  if (!depositAccount) {
+    depositAccount = await db.get("SELECT * FROM accounts LIMIT 1");
+  }
+  if (!depositAccount) {
+    return res.status(400).json({ error: 'No active Bank, M-Pesa, or Petty Cash account available for receipt' });
+  }
+
+  const payAmount = Number(amount) > 0 ? Number(amount) : Number(inv.amount);
+  const txId = `TRX-REC-${Date.now().toString().slice(-6)}`;
+  const payRef = reference || `REC-${inv.id}`;
+  const purpose = `Client Payment Receipt: Invoice #${inv.id}`;
+
+  // 1. Insert inward transaction (Income) -> Trigger after_transaction_insert adds to depositAccount.current_balance
+  await db.run(
+    `INSERT INTO transactions (id, account_id, tender_id, type, amount, purpose, reference)
+     VALUES (?, ?, ?, 'Income', ?, ?, ?)`,
+    [txId, depositAccount.id, inv.tender_id || null, payAmount, purpose, payRef]
+  );
+
+  // 2. Post balanced GL Journal Entry: Debit Cash & Bank (1010/1020/1030), Credit Accounts Receivable (1200)
+  try {
+    const journalId = `JRN-REC-${Date.now().toString().slice(-6)}`;
+    const entryDate = payment_date || new Date().toISOString().split('T')[0];
+    let coaCode = '1010';
+    if (depositAccount.type === 'Mobile Money') coaCode = '1020';
+    else if (depositAccount.type === 'Cash') coaCode = '1030';
+
+    await db.run(
+      `INSERT INTO journal_entries (id, entry_date, reference, description, created_by, status)
+       VALUES (?, ?, ?, ?, ?, 'Posted')`,
+      [journalId, entryDate, payRef, purpose, 'Accounts Receivable Engine']
+    );
+
+    // Debit Bank/M-Pesa/Cash
+    await db.run(
+      `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, ?, ?, 0, ?)`,
+      [journalId, coaCode, payAmount, `Receipt deposited to ${depositAccount.name}`]
+    );
+    // Credit AR 1200
+    await db.run(
+      `INSERT INTO journal_items (journal_id, account_code, debit, credit, memo) VALUES (?, '1200', 0, ?, ?)`,
+      [journalId, payAmount, `Settlement of Client Inv #${inv.id}`]
+    );
+
+    // Update COA balances
+    await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = ?`, [payAmount, coaCode]);
+    await db.run(`UPDATE chart_of_accounts SET current_balance = current_balance - ? WHERE account_code = '1200'`, [payAmount]);
+  } catch (glErr) {
+    console.error('GL Sync error on client payment:', glErr.message);
+  }
+
+  // 3. Update invoice status to 'Paid'
+  await db.run(
+    `UPDATE client_invoices SET status = 'Paid', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [id]
+  );
+
+  const updatedAccount = await db.get('SELECT * FROM accounts WHERE id = ?', [depositAccount.id]);
+  res.json({
+    success: true,
+    message: `Receipt of KES ${payAmount.toLocaleString()} successfully deposited into ${depositAccount.name}!`,
+    account: updatedAccount,
+    transaction_id: txId
+  });
 });
 
 // ---------------------------------------------------------
@@ -2148,7 +2470,7 @@ app.post('/api/bookkeeping/journals', async (req, res) => {
       );
 
       // Update account current_balance in Chart of Accounts
-      const account = await db.get('SELECT type, current_balance FROM chart_of_accounts WHERE account_code = ?', [line.account_code]);
+      const account = await db.get('SELECT type, category, name, current_balance FROM chart_of_accounts WHERE account_code = ?', [line.account_code]);
       if (account) {
         let balanceDelta = 0;
         // Asset & Expense increase with Debit (+), decrease with Credit (-)
@@ -2162,6 +2484,45 @@ app.post('/api/bookkeeping/journals', async (req, res) => {
           'UPDATE chart_of_accounts SET current_balance = current_balance + ? WHERE account_code = ?',
           [balanceDelta, line.account_code]
         );
+
+        // Check if this COA account represents Cash & Bank (Bank, M-Pesa, or Petty Cash)
+        const isCashBank = account.category === 'Cash & Bank' ||
+          ['1010', '1020', '1030'].includes(line.account_code) ||
+          account.name.toLowerCase().includes('bank') ||
+          account.name.toLowerCase().includes('pesa') ||
+          account.name.toLowerCase().includes('petty');
+
+        if (isCashBank && (debitVal > 0 || creditVal > 0)) {
+          let targetAccount = null;
+          if (line.account_code === '1020' || account.name.toLowerCase().includes('pesa')) {
+            targetAccount = await db.get("SELECT * FROM accounts WHERE type = 'Mobile Money' ORDER BY id ASC LIMIT 1");
+          } else if (line.account_code === '1030' || account.name.toLowerCase().includes('petty') || account.name.toLowerCase().includes('cash')) {
+            targetAccount = await db.get("SELECT * FROM accounts WHERE type = 'Cash' ORDER BY id ASC LIMIT 1");
+          } else {
+            targetAccount = await db.get("SELECT * FROM accounts WHERE type = 'Bank' ORDER BY id ASC LIMIT 1");
+          }
+
+          if (!targetAccount) {
+            targetAccount = await db.get("SELECT * FROM accounts LIMIT 1");
+          }
+
+          if (targetAccount) {
+            const isIncome = debitVal > creditVal;
+            const txAmount = Math.abs(debitVal - creditVal);
+            if (txAmount > 0) {
+              const txId = `TRX-${journalId}-${line.account_code}-${Math.floor(100+Math.random()*900)}`;
+              const txPurpose = line.memo || description || `Bookkeeping: ${account.name}`;
+              
+              // Inserting into transactions automatically triggers `after_transaction_insert`
+              // which updates `accounts.current_balance` for targetAccount.id!
+              await db.run(
+                `INSERT INTO transactions (id, account_id, tender_id, type, amount, purpose, reference, created_at)
+                 VALUES (?, ?, NULL, ?, ?, ?, ?, ?)`,
+                [txId, targetAccount.id, isIncome ? 'Income' : 'Expense', txAmount, txPurpose, reference || journalId, entry_date ? `${entry_date} 12:00:00` : new Date().toISOString()]
+              );
+            }
+          }
+        }
       }
     }
 

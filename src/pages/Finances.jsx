@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import Drawer from '../components/Drawer'
 import RecordSupplierInvoiceForm from '../components/RecordSupplierInvoiceForm'
 import BookkeepingHub from '../components/BookkeepingHub'
+import MoneyMovementModal from '../components/MoneyMovementModal'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { useCurrency } from '../context/CurrencyContext'
 
@@ -16,12 +17,26 @@ export default function Finances({ setGlobalDrawer }) {
   const [cashflow, setCashflow] = useState([])
   const [forecastEngine, setForecastEngine] = useState(null)
   const [isInvoiceDrawerOpen, setInvoiceDrawerOpen] = useState(false)
+  const [isMovementModalOpen, setIsMovementModalOpen] = useState(false)
+  const [payingInvoice, setPayingInvoice] = useState(null)
+  const [paymentAccount, setPaymentAccount] = useState('')
+  const [paymentRef, setPaymentRef] = useState('')
+  const [isSubmittingPayment, setIsSubmittingPayment] = useState(false)
 
-  useEffect(() => {
+  const reloadData = () => {
     fetch('http://localhost:5000/api/treasury')
       .then(res => res.json())
       .then(data => setTreasury(data))
       .catch(err => console.error(err))
+
+    fetch('http://localhost:5000/api/supplier_invoices')
+      .then(res => res.json())
+      .then(data => setInvoices(data))
+      .catch(err => console.error(err))
+  }
+
+  useEffect(() => {
+    reloadData()
 
     fetch('http://localhost:5000/api/evidence')
       .then(res => res.json())
@@ -31,11 +46,6 @@ export default function Finances({ setGlobalDrawer }) {
     fetch('http://localhost:5000/api/grns')
       .then(res => res.json())
       .then(data => setGrns(data))
-      .catch(err => console.error(err))
-
-    fetch('http://localhost:5000/api/supplier_invoices')
-      .then(res => res.json())
-      .then(data => setInvoices(data))
       .catch(err => console.error(err))
 
     fetch('http://localhost:5000/api/analytics/cashflow')
@@ -66,8 +76,37 @@ export default function Finances({ setGlobalDrawer }) {
     }
   }
 
-  const payInvoice = async (invoice) => {
-    alert(`Payment of ${formatAmount(invoice.amount)} sent to ${invoice.supplier_name}!\n\n(In production, this triggers an M-Pesa B2B or Bank Transfer API and creates a Transaction)`);
+  const handleConfirmDisbursement = async (e) => {
+    e.preventDefault();
+    if (!payingInvoice || !paymentAccount) {
+      return alert('Please select a disbursement account.');
+    }
+    setIsSubmittingPayment(true);
+    try {
+      const res = await fetch(`http://localhost:5000/api/supplier_invoices/${payingInvoice.id}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          account_id: paymentAccount,
+          reference: paymentRef,
+          payment_date: new Date().toISOString().split('T')[0]
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message || 'Payment disbursed successfully!');
+        setPayingInvoice(null);
+        reloadData();
+        window.dispatchEvent(new Event('refreshCorporateHub'));
+      } else {
+        alert(data.error || 'Failed to disburse payment');
+      }
+    } catch(err) {
+      console.error(err);
+      alert('Error connecting to payment disbursement engine');
+    } finally {
+      setIsSubmittingPayment(false);
+    }
   }
 
   return (
@@ -136,7 +175,12 @@ export default function Finances({ setGlobalDrawer }) {
                 <h2 style={{ margin: 0 }}>Treasury & Cash Book</h2>
                 <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem' }}>Live balances across all company financial accounts.</p>
               </div>
-              <button className="btn btn-primary" onClick={() => setGlobalDrawer('transaction')}>+ Record Transaction</button>
+              <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <button className="btn" style={{ background: '#16a34a', color: '#fff', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => setIsMovementModalOpen(true)}>
+                  ↕️ Money In / Out / Transfer
+                </button>
+                <button className="btn btn-primary" onClick={() => setGlobalDrawer('transaction')}>+ Record Transaction</button>
+              </div>
             </div>
 
             <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))' }}>
@@ -288,13 +332,27 @@ export default function Finances({ setGlobalDrawer }) {
 
                     {inv.status === 'Matched' && (
                       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, padding: '1rem', background: 'hsla(var(--success), 0.1)', borderLeft: '4px solid hsl(var(--success))', color: 'hsl(var(--success))', fontSize: '0.875rem', borderRadius: '0 4px 4px 0' }}>
+                        <div style={{ flex: 1, padding: '0.75rem 1rem', background: 'hsla(var(--success), 0.1)', borderLeft: '4px solid hsl(var(--success))', color: 'hsl(var(--success))', fontSize: '0.875rem', borderRadius: '0 4px 4px 0' }}>
                           <strong>Match Verified</strong>
-                          <p style={{ marginTop: '0.25rem' }}>Cleared for payment.</p>
+                          <div style={{ marginTop: '0.2rem' }}>Audit confirmed. Ready for account disbursement.</div>
                         </div>
-                        <button className="btn" onClick={() => payInvoice(inv)} style={{ background: 'hsl(var(--success))', color: '#fff', padding: '1rem', fontWeight: 'bold' }}>
-                          Pay {formatAmount(inv?.amount || 0)}
+                        <button 
+                          className="btn" 
+                          onClick={() => {
+                            setPayingInvoice(inv);
+                            setPaymentAccount(treasury.accounts[0]?.id || '');
+                            setPaymentRef(`PAY-${inv.id}`);
+                          }} 
+                          style={{ background: '#16a34a', color: '#fff', padding: '0.75rem 1.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}
+                        >
+                          Disburse {formatAmount(inv?.amount || 0)}
                         </button>
+                      </div>
+                    )}
+
+                    {inv.status === 'Paid' && (
+                      <div style={{ padding: '0.75rem 1rem', background: 'hsla(var(--success), 0.15)', borderLeft: '4px solid hsl(var(--success))', color: 'hsl(var(--success))', fontSize: '0.875rem', borderRadius: '0 4px 4px 0', fontWeight: 'bold' }}>
+                        ✅ Paid & Disbursed from Treasury Accounts
                       </div>
                     )}
                   </div>
@@ -303,6 +361,98 @@ export default function Finances({ setGlobalDrawer }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* SUPPLIER PAYMENT DISBURSEMENT MODAL */}
+      {payingInvoice && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div className="card" style={{ width: '540px', maxWidth: '100%', background: 'var(--bg-card)', border: '2px solid #16a34a', borderRadius: '12px', padding: '1.75rem', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.75rem', marginBottom: '1.25rem' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#16a34a', fontSize: '1.15rem', fontWeight: '800' }}>
+                  Disburse Supplier Payment
+                </h3>
+                <div style={{ fontSize: '0.8rem', color: 'hsl(var(--text-secondary))', marginTop: '0.2rem' }}>
+                  Authorized disbursement for {payingInvoice.supplier_name}
+                </div>
+              </div>
+              <button type="button" className="btn" style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.1rem' }} onClick={() => setPayingInvoice(null)}>✕</button>
+            </div>
+
+            <div style={{ padding: '0.85rem 1rem', background: 'hsla(var(--primary), 0.06)', borderRadius: '8px', border: '1px solid hsla(var(--primary), 0.15)', marginBottom: '1.25rem', fontSize: '0.875rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                <span style={{ color: 'hsl(var(--text-secondary))' }}>Invoice Ref:</span>
+                <span style={{ fontWeight: 'bold' }}>#{payingInvoice.id}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                <span style={{ color: 'hsl(var(--text-secondary))' }}>Purchase Order:</span>
+                <span style={{ fontWeight: 'bold' }}>{payingInvoice.po_id || 'Direct'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid hsl(var(--border))', paddingTop: '0.4rem', marginTop: '0.4rem' }}>
+                <span style={{ fontWeight: 'bold' }}>Total Payable:</span>
+                <span style={{ fontWeight: '800', color: '#16a34a', fontSize: '1.1rem' }}>{formatAmount(payingInvoice.amount)}</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleConfirmDisbursement} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Disburse From Account *</label>
+                <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginBottom: '0.35rem' }}>
+                  Select which Bank Account, M-Pesa Till or Office Petty Cash to deduct:
+                </div>
+                <select 
+                  className="form-control" 
+                  required 
+                  value={paymentAccount} 
+                  onChange={e => setPaymentAccount(e.target.value)}
+                >
+                  <option value="">-- Choose Paying Account --</option>
+                  {treasury.accounts.map(acc => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.type === 'Bank' ? '🏦' : acc.type === 'Mobile Money' ? '📱' : '💵'} {acc.name} ({acc.type}) — Bal: {formatAmount(acc.current_balance || 0)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>Transaction / Voucher Reference *</label>
+                <input 
+                  type="text" 
+                  className="form-control" 
+                  required 
+                  placeholder="e.g. EFT-982103, MPESA-QA883, or CHQ-00192" 
+                  value={paymentRef} 
+                  onChange={e => setPaymentRef(e.target.value)} 
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1rem', borderTop: '1px solid hsl(var(--border))', paddingTop: '1rem' }}>
+                <button type="button" className="btn" onClick={() => setPayingInvoice(null)} disabled={isSubmittingPayment} style={{ background: 'transparent', border: '1px solid hsl(var(--border))' }}>
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn" 
+                  disabled={isSubmittingPayment}
+                  style={{ background: '#16a34a', color: '#fff', fontWeight: 'bold', padding: '0.65rem 1.5rem', border: 'none' }}
+                >
+                  {isSubmittingPayment ? 'Disbursing...' : `Confirm & Deduct ${formatAmount(payingInvoice.amount)}`}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MONEY MOVEMENT & TRANSFER MODAL */}
+      {isMovementModalOpen && (
+        <MoneyMovementModal
+          isOpen={isMovementModalOpen}
+          onClose={() => setIsMovementModalOpen(false)}
+          accounts={treasury.accounts}
+          onSuccess={() => reloadData()}
+        />
       )}
     </div>
   )
