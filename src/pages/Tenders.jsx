@@ -169,25 +169,31 @@ export default function Tenders({ setGlobalDrawer }) {
           </div>
         </div>
 
-        {/* LINKED DOCUMENTS */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+        {/* LINKED DOCUMENTS - UNIFORM 3-COLUMN ROW */}
+        <div className="tender-docs-grid">
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ padding: '1rem', background: 'hsla(var(--primary), 0.1)', borderBottom: '1px solid hsl(var(--border))' }}>
-                <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Sales Quotes (Outbound)</h4>
-              </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          {/* 1. SALES QUOTES (OUTBOUND) */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%', minHeight: '260px' }}>
+            <div style={{ padding: '0.85rem 1rem', background: 'hsla(var(--primary), 0.1)', borderBottom: '1px solid hsl(var(--border))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 style={{ margin: 0, color: 'hsl(var(--primary))', fontSize: '0.925rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <span>📄</span> Sales Quotes (Outbound)
+              </h4>
+              <span className="badge badge-info" style={{ fontSize: '0.7rem' }}>{selectedTender.sales_quotes?.length || 0}</span>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', maxHeight: '280px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                 <tbody>
                   {!selectedTender.sales_quotes || selectedTender.sales_quotes.length === 0 ? (
-                    <tr><td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>No Quotes sent yet.</td></tr>
+                    <tr><td colSpan="2" style={{ padding: '2rem 1rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No Quotes sent yet.</td></tr>
                   ) : selectedTender.sales_quotes.map(sq => (
-                    <React.Fragment key={sq.id}>
-                      <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                        <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{sq.id}</td>
-                        <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>{sq.issue_date}</td>
-                        <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.4rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                          <span style={{ color: 'hsl(var(--primary))', marginRight: '0.5rem', fontWeight: 'bold' }}>{formatAmount(sq.total_value)}</span>
+                    <tr key={sq.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                      <td style={{ padding: '0.65rem 0.85rem' }}>
+                        <div style={{ fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{sq.id}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.15rem' }}>📅 {sq.issue_date || 'N/A'}</div>
+                      </td>
+                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
+                        <div style={{ color: 'hsl(var(--primary))', fontWeight: 'bold', marginBottom: '0.3rem' }}>{formatAmount(sq.total_value)}</div>
+                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                           <button 
                             className="btn" 
                             onClick={() => setPreviewModalDoc({ 
@@ -218,39 +224,44 @@ export default function Tenders({ setGlobalDrawer }) {
                           >
                             ✏️ Edit
                           </button>
-                        </td>
-                      </tr>
-                    </React.Fragment>
+                        </div>
+                      </td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '1rem', background: 'hsla(var(--border), 0.3)', borderBottom: '1px solid hsl(var(--border))' }}>
-              <h4 style={{ margin: 0 }}>Client LPOs (Incoming)</h4>
+          {/* 2. CLIENT LPOS (INCOMING) */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%', minHeight: '260px' }}>
+            <div style={{ padding: '0.85rem 1rem', background: 'hsla(var(--success), 0.1)', borderBottom: '1px solid hsl(var(--border))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 style={{ margin: 0, color: 'hsl(var(--success))', fontSize: '0.925rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <span>📥</span> Client LPOs (Incoming)
+              </h4>
+              <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>{selectedTender.lpos?.length || 0}</span>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <tbody>
-                {!selectedTender.lpos || selectedTender.lpos.length === 0 ? (
-                  <tr><td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>No Client LPOs linked.</td></tr>
-                ) : selectedTender.lpos.map(lpo => (
-                  <React.Fragment key={lpo.id}>
-                    <tr style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                      <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>
-                        {lpo.id}
+            <div style={{ flex: 1, overflowY: 'auto', maxHeight: '280px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <tbody>
+                  {!selectedTender.lpos || selectedTender.lpos.length === 0 ? (
+                    <tr><td colSpan="2" style={{ padding: '2rem 1rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No Client LPOs linked.</td></tr>
+                  ) : selectedTender.lpos.map(lpo => (
+                    <tr key={lpo.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                      <td style={{ padding: '0.65rem 0.85rem' }}>
+                        <div style={{ fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{lpo.id}</div>
                         {lpo.client_reference && (
-                          <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.25rem', fontWeight: 'normal' }}>
+                          <div style={{ fontSize: '0.75rem', color: 'hsl(var(--primary))', marginTop: '0.15rem' }}>
                             Ref: {lpo.client_reference}
                           </div>
                         )}
+                        <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.15rem' }}>
+                          📅 Due: {lpo.due_date || 'N/A'}
+                        </div>
                       </td>
-                      <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>Due: {lpo.due_date}</td>
-                      <td style={{ padding: '0.75rem 1rem', textAlign: 'right', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        <span style={{ color: 'hsl(var(--success))', marginRight: '0.5rem', fontWeight: 'bold' }}>{formatAmount(lpo.total_value)}</span>
-                        <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
+                        <div style={{ color: 'hsl(var(--success))', fontWeight: 'bold', marginBottom: '0.3rem' }}>{formatAmount(lpo.total_value)}</div>
+                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
                           <button 
                             className="btn" 
                             onClick={() => setPreviewModalDoc({ isOpen: true, doc: lpo, type: 'CLIENT LOCAL PURCHASE ORDER' })} 
@@ -263,41 +274,52 @@ export default function Tenders({ setGlobalDrawer }) {
                         </div>
                       </td>
                     </tr>
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '1rem', background: 'hsla(var(--border), 0.3)', borderBottom: '1px solid hsl(var(--border))' }}>
-              <h4 style={{ margin: 0 }}>Supplier Purchase Orders (Outgoing)</h4>
+          {/* 3. SUPPLIER PURCHASE ORDERS (OUTGOING) */}
+          <div className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%', minHeight: '260px' }}>
+            <div style={{ padding: '0.85rem 1rem', background: 'hsla(var(--warning), 0.1)', borderBottom: '1px solid hsl(var(--border))', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h4 style={{ margin: 0, color: 'hsl(var(--warning))', fontSize: '0.925rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <span>📤</span> Supplier POs (Outgoing)
+              </h4>
+              <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>{selectedTender.pos?.length || 0}</span>
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <tbody>
-                {!selectedTender.pos || selectedTender.pos.length === 0 ? (
-                  <tr><td style={{ padding: '1rem', color: 'hsl(var(--text-secondary))' }}>No Supplier POs linked.</td></tr>
-                ) : selectedTender.pos.map(po => (
-                  <tr key={po.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: 'bold' }}>{po.id}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: 'hsl(var(--text-secondary))' }}>{po.supplier_name}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right', color: 'hsl(var(--danger))', fontWeight: 'bold' }}>{formatAmount(po.total_value)}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>
-                      <button 
-                        className="btn" 
-                        onClick={() => setPreviewModalDoc({ isOpen: true, doc: po, type: 'PURCHASE ORDER' })} 
-                        style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)' }}
-                        title="Preview Purchase Order"
-                      >
-                        👁️
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div style={{ flex: 1, overflowY: 'auto', maxHeight: '280px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <tbody>
+                  {!selectedTender.pos || selectedTender.pos.length === 0 ? (
+                    <tr><td colSpan="2" style={{ padding: '2rem 1rem', textAlign: 'center', color: 'hsl(var(--text-secondary))' }}>No Supplier POs linked.</td></tr>
+                  ) : selectedTender.pos.map(po => (
+                    <tr key={po.id} style={{ borderBottom: '1px solid hsl(var(--border))' }}>
+                      <td style={{ padding: '0.65rem 0.85rem' }}>
+                        <div style={{ fontWeight: '600', color: 'hsl(var(--text-primary))' }}>{po.id}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'hsl(var(--text-secondary))', marginTop: '0.15rem' }}>
+                          🏢 {po.supplier_name || 'N/A'}
+                        </div>
+                      </td>
+                      <td style={{ padding: '0.65rem 0.85rem', textAlign: 'right' }}>
+                        <div style={{ color: 'hsl(var(--danger))', fontWeight: 'bold', marginBottom: '0.3rem' }}>{formatAmount(po.total_value)}</div>
+                        <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <button 
+                            className="btn" 
+                            onClick={() => setPreviewModalDoc({ isOpen: true, doc: po, type: 'PURCHASE ORDER' })} 
+                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.75rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', border: '1px solid hsla(var(--primary), 0.3)' }}
+                            title="Preview Purchase Order"
+                          >
+                            👁️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
 
         </div>
 

@@ -577,3 +577,18 @@ select.form-control {
   }
 }
 
+/* Tender 360 Linked Documents Uniform 1-Line Row */
+.tender-docs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+@media (max-width: 1080px) {
+  .tender-docs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
