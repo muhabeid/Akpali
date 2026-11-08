@@ -1138,6 +1138,11 @@ Managing Director / Authorized Corporate Signatory`
                     <option value="SAFETY_INCIDENT">EHS Incident & Hazard Report</option>
                     <option value="PAYMENT_CERT">Interim Payment Certificate (IPC)</option>
                     <option value="SUBCONTRACTOR_EVAL">Subcontractor Performance Appraisal</option>
+                    <option value="POWER_OF_ATTORNEY">⚖️ Written Power of Attorney (Commissioner for Oaths)</option>
+                    <option value="CODE_OF_ETHICS">🛡️ Declaration & Commitment to Code of Ethics</option>
+                    <option value="BUSINESS_CAPACITY">📊 Capacity to Handle Business Volume Declaration</option>
+                    <option value="CREDIT_TERMS_60">💳 Confirmation of 60-Day Commercial Credit Facility</option>
+                    <option value="QUALITY_CONFORMANCE">✅ Quality & Technical Specifications Conformance</option>
                   </select>
                 </div>
               </div>
