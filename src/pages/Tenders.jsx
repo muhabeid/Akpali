@@ -141,8 +141,57 @@ export default function Tenders({ setGlobalDrawer }) {
               {selectedTender.id} {selectedTender.client_reference ? <span style={{ color: 'hsl(var(--primary))' }}>(Ref: {selectedTender.client_reference})</span> : ''} | Client: {selectedTender.client}
             </p>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div className="badge badge-success">{selectedTender.status}</div>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className={`badge ${selectedTender.status === 'Completed' ? 'badge-success' : 'badge-info'}`}>{selectedTender.status}</div>
+
+            {selectedTender.status !== 'Completed' ? (
+              <button 
+                className="btn" 
+                style={{ background: '#16a34a', color: '#fff', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', border: 'none' }}
+                onClick={async () => {
+                  if (window.confirm(`Mark tender '${selectedTender.name}' as Completed and log to Past Project Experience with all document trails?`)) {
+                    try {
+                      const res = await fetch(`http://localhost:5000/api/tenders/${selectedTender.id}/complete-and-log-experience`, { method: 'POST' });
+                      const data = await res.json();
+                      if (res.ok) {
+                        alert(data.message || 'Tender marked as Completed and logged to Past Experience!');
+                        window.location.reload();
+                      } else {
+                        alert(data.error || 'Failed to complete tender');
+                      }
+                    } catch(err) {
+                      alert('Error completing tender');
+                    }
+                  }
+                }}
+                title="Mark this tender as 100% completed and archive all its LPOs, Quotes, POs, and Invoices into Past Project Experience"
+              >
+                🏁 Mark Completed & Log to Experience
+              </button>
+            ) : (
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <span className="badge badge-success" style={{ padding: '0.4rem 0.65rem', fontSize: '0.8rem', background: 'hsla(var(--success), 0.15)', color: 'hsl(var(--success))', border: '1px solid hsl(var(--success))' }}>
+                  🏆 Logged in Past Experience
+                </span>
+                <button 
+                  className="btn" 
+                  style={{ background: '#0284c7', color: '#fff', fontSize: '0.75rem', padding: '0.35rem 0.6rem', border: 'none' }}
+                  onClick={async () => {
+                    try {
+                      const res = await fetch(`http://localhost:5000/api/experience/sync-tender/${selectedTender.id}`, { method: 'POST' });
+                      const data = await res.json();
+                      alert(data.message || 'Experience documents re-synced!');
+                    } catch(err) {
+                      alert('Failed to re-sync experience');
+                    }
+                  }}
+                  title="Re-sync latest LPOs, Quotes, and POs into Experience record"
+                >
+                  🔄 Re-Sync Docs
+                </button>
+              </div>
+            )}
+
             <a href={`http://localhost:5000/api/tenders/${selectedTender.id}/archive`} className="btn" style={{ background: 'hsla(var(--primary), 0.2)', color: 'hsl(var(--primary))', textDecoration: 'none' }} target="_blank" rel="noopener noreferrer">
               📦 Download Archive (.zip)
             </a>

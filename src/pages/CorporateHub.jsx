@@ -26,6 +26,7 @@ export default function CorporateHub({ setGlobalDrawer }) {
   const [editingAccount, setEditingAccount] = useState(null)
   const [showMoneyMovementModal, setShowMoneyMovementModal] = useState(false)
   const [movementInitialAccount, setMovementInitialAccount] = useState('')
+  const [selectedExpDocs, setSelectedExpDocs] = useState(null)
 
   const [companyData, setCompanyData] = useState({
     legal_name: '', trading_name: '', registration_num: '', registration_date: '',
@@ -281,19 +282,19 @@ export default function CorporateHub({ setGlobalDrawer }) {
           <div>
             
             {/* INTEGRATED SUB-TAB HEADER */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.85rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
                 <h3 style={{ margin: 0, color: 'hsl(var(--primary))', fontSize: '1.1rem', fontWeight: '700' }}>Company Profile & 9 Qualification Sections</h3>
                 <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>Manage organizational details, directors, regulatory certificates, policies, and past projects.</div>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.35rem', background: 'hsla(var(--primary), 0.06)', padding: '0.25rem', borderRadius: '8px', border: '1px solid hsla(var(--primary), 0.12)', flexWrap: 'wrap' }}>
-                <button type="button" className={`btn ${profileSubTab === 'info' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'info' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'info' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'info' ? '700' : '600' }} onClick={() => setProfileSubTab('info')}>Company Info</button>
-                <button type="button" className={`btn ${profileSubTab === 'letter' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'letter' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'letter' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'letter' ? '700' : '600' }} onClick={() => setProfileSubTab('letter')}>Intro Letter</button>
-                <button type="button" className={`btn ${profileSubTab === 'directors' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'directors' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'directors' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'directors' ? '700' : '600' }} onClick={() => setProfileSubTab('directors')}>Directors ({directors.length})</button>
-                <button type="button" className={`btn ${profileSubTab === 'registrations' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'registrations' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'registrations' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'registrations' ? '700' : '600' }} onClick={() => setProfileSubTab('registrations')}>Tender Regs ({tenderRegistrations.length})</button>
-                <button type="button" className={`btn ${profileSubTab === 'policies' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'policies' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'policies' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'policies' ? '700' : '600' }} onClick={() => setProfileSubTab('policies')}>Policies ({policies.length})</button>
-                <button type="button" className={`btn ${profileSubTab === 'experience' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.75rem', border: 'none', background: profileSubTab === 'experience' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'experience' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'experience' ? '700' : '600' }} onClick={() => setProfileSubTab('experience')}>Experience ({experience.length})</button>
+              <div style={{ display: 'flex', gap: '0.25rem', background: 'hsla(var(--primary), 0.06)', padding: '0.25rem', borderRadius: '8px', border: '1px solid hsla(var(--primary), 0.12)', flexWrap: 'nowrap', overflowX: 'auto', alignItems: 'center' }}>
+                <button type="button" className={`btn ${profileSubTab === 'info' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', border: 'none', background: profileSubTab === 'info' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'info' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'info' ? '700' : '600', whiteSpace: 'nowrap' }} onClick={() => setProfileSubTab('info')}>Company Info</button>
+                <button type="button" className={`btn ${profileSubTab === 'letter' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', border: 'none', background: profileSubTab === 'letter' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'letter' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'letter' ? '700' : '600', whiteSpace: 'nowrap' }} onClick={() => setProfileSubTab('letter')}>Intro Letter</button>
+                <button type="button" className={`btn ${profileSubTab === 'directors' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', border: 'none', background: profileSubTab === 'directors' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'directors' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'directors' ? '700' : '600', whiteSpace: 'nowrap' }} onClick={() => setProfileSubTab('directors')}>Directors ({directors.length})</button>
+                <button type="button" className={`btn ${profileSubTab === 'registrations' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', border: 'none', background: profileSubTab === 'registrations' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'registrations' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'registrations' ? '700' : '600', whiteSpace: 'nowrap' }} onClick={() => setProfileSubTab('registrations')}>Tender Regs ({tenderRegistrations.length})</button>
+                <button type="button" className={`btn ${profileSubTab === 'policies' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', border: 'none', background: profileSubTab === 'policies' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'policies' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'policies' ? '700' : '600', whiteSpace: 'nowrap' }} onClick={() => setProfileSubTab('policies')}>Policies ({policies.length})</button>
+                <button type="button" className={`btn ${profileSubTab === 'experience' ? 'btn-primary' : ''}`} style={{ fontSize: '0.78rem', padding: '0.35rem 0.65rem', border: 'none', background: profileSubTab === 'experience' ? 'hsl(var(--primary))' : 'transparent', color: profileSubTab === 'experience' ? '#ffffff' : '#475569', fontWeight: profileSubTab === 'experience' ? '700' : '600', whiteSpace: 'nowrap' }} onClick={() => setProfileSubTab('experience')}>Experience ({experience.length})</button>
               </div>
             </div>
               
@@ -614,12 +615,31 @@ Managing Director / Authorized Corporate Signatory`
               {/* SUB-TAB 5: PAST EXPERIENCE */}
               {profileSubTab === 'experience' && (
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                     <div>
-                      <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Past Project Experience & Reference Letters</h4>
-                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Log executed projects, contract values, reference letters, and completion certificates.</div>
+                      <h4 style={{ margin: 0, color: 'hsl(var(--primary))' }}>Past Project Experience & Tender Completion Archive</h4>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Log executed projects, contract values, reference letters, completion certificates, and completed tender document trails.</div>
                     </div>
-                    <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setActiveModal('experience')}>+ Add Past Project</button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <button 
+                        className="btn" 
+                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', background: '#0284c7', color: '#fff', border: 'none', fontWeight: 'bold', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }} 
+                        onClick={async () => {
+                          try {
+                            const res = await fetch('http://localhost:5000/api/experience/sync-completed-tenders', { method: 'POST' });
+                            const data = await res.json();
+                            alert(data.message || 'Synced completed tenders to experience!');
+                            fetchData();
+                          } catch(e) {
+                            alert('Failed to sync completed tenders');
+                          }
+                        }}
+                        title="Scan all completed tenders and archive them to past experience with all documents"
+                      >
+                        🔄 Sync Completed Tenders
+                      </button>
+                      <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }} onClick={() => setActiveModal('experience')}>+ Add Past Project</button>
+                    </div>
                   </div>
 
                   <div style={{ border: '1px solid hsla(var(--primary), 0.18)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -630,28 +650,70 @@ Managing Director / Authorized Corporate Signatory`
                           <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Client</th>
                           <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700' }}>Completion Date</th>
                           <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'right' }}>Contract Value</th>
-                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'center' }}>Actions</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'center' }}>Documents & Trail</th>
+                          <th style={{ padding: '0.75rem 0.85rem', fontWeight: '700', textAlign: 'center', width: '120px' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {experience.length === 0 ? (
-                          <tr><td colSpan="5" style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>No past projects recorded. Click "+ Add Past Project".</td></tr>
-                        ) : experience.map(exp => (
-                          <tr key={exp.id} style={{ borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
-                            <td style={{ padding: '0.75rem 0.85rem', fontWeight: '700', color: '#ffffff' }}>{exp.project_name}</td>
-                            <td style={{ padding: '0.75rem 0.85rem', color: '#f8fafc', fontWeight: '500' }}>{exp.client_name}</td>
-                            <td style={{ padding: '0.75rem 0.85rem', color: '#cbd5e1' }}>{exp.completion_date || 'Completed'}</td>
-                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#4ade80' }}>KSh {Number(exp.contract_value || 0).toLocaleString()}</td>
-                            <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
-                              <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
-                                if(window.confirm(`Delete project ${exp.project_name}?`)) {
-                                  await fetch(`http://localhost:5000/api/experience/${exp.id}`, { method: 'DELETE' })
-                                  fetchData()
-                                }
-                              }}>Delete</button>
-                            </td>
-                          </tr>
-                        ))}
+                          <tr><td colSpan="6" style={{ padding: '1.5rem', textAlign: 'center', color: '#94a3b8' }}>No past projects recorded yet. Complete a tender or click "+ Add Past Project".</td></tr>
+                        ) : experience.map(exp => {
+                          let docs = null;
+                          try {
+                            if (exp.documents_info) docs = JSON.parse(exp.documents_info);
+                          } catch(e) {}
+
+                          return (
+                            <tr key={exp.id} style={{ borderBottom: '1px solid hsla(var(--border), 0.5)' }}>
+                              <td style={{ padding: '0.75rem 0.85rem' }}>
+                                <div style={{ fontWeight: '700', color: '#ffffff' }}>{exp.project_name}</div>
+                                {exp.tender_id && (
+                                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.2rem', padding: '0.15rem 0.45rem', background: 'hsla(var(--primary), 0.15)', color: 'hsl(var(--primary))', borderRadius: '4px', fontSize: '0.72rem', fontWeight: 'bold' }}>
+                                    🎯 Linked Tender: #{exp.tender_id}
+                                  </div>
+                                )}
+                              </td>
+                              <td style={{ padding: '0.75rem 0.85rem', color: '#f8fafc', fontWeight: '500' }}>{exp.client_name}</td>
+                              <td style={{ padding: '0.75rem 0.85rem', color: '#cbd5e1' }}>{exp.completion_date || 'Completed'}</td>
+                              <td style={{ padding: '0.75rem 0.85rem', textAlign: 'right', fontWeight: '700', color: '#4ade80' }}>KSh {Number(exp.contract_value || 0).toLocaleString()}</td>
+                              <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
+                                {docs ? (
+                                  <button 
+                                    className="btn" 
+                                    style={{ padding: '0.25rem 0.55rem', fontSize: '0.725rem', background: '#1e293b', color: '#38bdf8', border: '1px solid #38bdf8', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                                    onClick={() => setSelectedExpDocs({ project: exp, docs })}
+                                  >
+                                    📄 {(docs.lpos?.length || 0) + (docs.quotes?.length || 0) + (docs.deliverables?.length || 0) + (docs.invoices?.length || 0) + (docs.pos?.length || 0)} Docs Trail
+                                  </button>
+                                ) : (
+                                  <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                                    {exp.reference_letter_url || exp.completion_certificate_url ? '📎 Proof attached' : 'Manual entry'}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: '0.75rem 0.85rem', textAlign: 'center' }}>
+                                <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
+                                  {docs && (
+                                    <button 
+                                      className="btn" 
+                                      style={{ padding: '0.2rem 0.45rem', fontSize: '0.725rem', background: '#0284c7', color: '#fff' }}
+                                      onClick={() => setSelectedExpDocs({ project: exp, docs })}
+                                      title="View all linked documents information"
+                                    >
+                                      👁️
+                                    </button>
+                                  )}
+                                  <button className="btn" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#fee2e2', color: '#dc2626' }} onClick={async () => {
+                                    if(window.confirm(`Delete past project experience '${exp.project_name}'?`)) {
+                                      await fetch(`http://localhost:5000/api/experience/${exp.id}`, { method: 'DELETE' })
+                                      fetchData()
+                                    }
+                                  }}>Delete</button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -1328,6 +1390,147 @@ Managing Director / Authorized Corporate Signatory`
             accounts={accounts}
             onSuccess={() => fetchData()}
           />
+        )}
+
+        {/* TENDER EXPERIENCE DOCUMENTS AUDIT TRAIL MODAL */}
+        {selectedExpDocs && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1.5rem' }}>
+            <div className="card" style={{ width: '820px', maxWidth: '98%', maxHeight: '92vh', overflowY: 'auto', background: 'var(--bg-card)', border: '2px solid #0284c7', borderRadius: '12px', padding: '1.75rem', boxShadow: '0 20px 50px rgba(0,0,0,0.6)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '0.85rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <h3 style={{ margin: 0, color: '#0284c7', fontSize: '1.2rem', fontWeight: '800' }}>
+                    📁 Tender Document Trail & Proof of Execution
+                  </h3>
+                  <div style={{ fontSize: '0.85rem', color: 'hsl(var(--text-secondary))', marginTop: '0.25rem' }}>
+                    {selectedExpDocs.project.project_name} &bull; Client: {selectedExpDocs.project.client_name}
+                  </div>
+                </div>
+                <button type="button" className="btn" style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }} onClick={() => setSelectedExpDocs(null)}>✕</button>
+              </div>
+
+              {/* OVERVIEW CHIPS */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <div style={{ padding: '0.65rem 0.85rem', background: 'hsla(var(--primary), 0.08)', borderRadius: '6px', border: '1px solid hsla(var(--primary), 0.2)' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))' }}>Tender ID</div>
+                  <div style={{ fontWeight: 'bold', color: 'hsl(var(--primary))' }}>{selectedExpDocs.docs.tender_id || 'TND'}</div>
+                </div>
+                <div style={{ padding: '0.65rem 0.85rem', background: 'hsla(var(--success), 0.08)', borderRadius: '6px', border: '1px solid hsla(var(--success), 0.2)' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))' }}>Executed Value</div>
+                  <div style={{ fontWeight: 'bold', color: 'hsl(var(--success))' }}>{formatAmount(selectedExpDocs.project.contract_value)}</div>
+                </div>
+                <div style={{ padding: '0.65rem 0.85rem', background: 'hsla(var(--info), 0.08)', borderRadius: '6px', border: '1px solid hsla(var(--info), 0.2)' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))' }}>Client Reference</div>
+                  <div style={{ fontWeight: 'bold' }}>{selectedExpDocs.docs.client_reference || 'N/A'}</div>
+                </div>
+                <div style={{ padding: '0.65rem 0.85rem', background: 'hsla(var(--warning), 0.08)', borderRadius: '6px', border: '1px solid hsla(var(--warning), 0.2)' }}>
+                  <div style={{ fontSize: '0.7rem', color: 'hsl(var(--text-secondary))' }}>Completion Date</div>
+                  <div style={{ fontWeight: 'bold' }}>{selectedExpDocs.project.completion_date || 'Completed'}</div>
+                </div>
+              </div>
+
+              {/* LPOs & SALES QUOTATIONS */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div className="card" style={{ padding: '1rem', background: 'hsla(var(--border), 0.15)' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#16a34a' }}>📥 Client LPOs ({selectedExpDocs.docs.lpos?.length || 0})</h4>
+                  {selectedExpDocs.docs.lpos?.length === 0 ? (
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No Client LPOs recorded.</div>
+                  ) : (
+                    selectedExpDocs.docs.lpos?.map(l => (
+                      <div key={l.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderBottom: '1px solid hsla(var(--border), 0.3)', fontSize: '0.8rem' }}>
+                        <div>
+                          <strong>{l.id}</strong>
+                          {l.client_reference && <span style={{ color: '#94a3b8', marginLeft: '0.3rem' }}>({l.client_reference})</span>}
+                        </div>
+                        <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{formatAmount(l.total_value)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="card" style={{ padding: '1rem', background: 'hsla(var(--border), 0.15)' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#0284c7' }}>📑 Sales Quotations ({selectedExpDocs.docs.quotes?.length || 0})</h4>
+                  {selectedExpDocs.docs.quotes?.length === 0 ? (
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No Quotations recorded.</div>
+                  ) : (
+                    selectedExpDocs.docs.quotes?.map(q => (
+                      <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderBottom: '1px solid hsla(var(--border), 0.3)', fontSize: '0.8rem' }}>
+                        <div>
+                          <strong>{q.id}</strong>
+                          <span style={{ color: '#94a3b8', marginLeft: '0.3rem' }}>({q.issue_date})</span>
+                        </div>
+                        <span style={{ color: '#38bdf8', fontWeight: 'bold' }}>{formatAmount(q.total_value)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* DELIVERABLES & CLIENT INVOICES */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div className="card" style={{ padding: '1rem', background: 'hsla(var(--border), 0.15)' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#a855f7' }}>📦 Deliverables & GDNs ({selectedExpDocs.docs.deliverables?.length || 0})</h4>
+                  {selectedExpDocs.docs.deliverables?.length === 0 ? (
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No deliverables recorded.</div>
+                  ) : (
+                    selectedExpDocs.docs.deliverables?.map(d => (
+                      <div key={d.id} style={{ padding: '0.35rem 0', borderBottom: '1px solid hsla(var(--border), 0.3)', fontSize: '0.8rem' }}>
+                        <div style={{ fontWeight: '600' }}>{d.id}: {d.description}</div>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Status: {d.status} &bull; Date: {d.planned_date || 'N/A'}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="card" style={{ padding: '1rem', background: 'hsla(var(--border), 0.15)' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#f59e0b' }}>🧾 Client Invoices ({selectedExpDocs.docs.invoices?.length || 0})</h4>
+                  {selectedExpDocs.docs.invoices?.length === 0 ? (
+                    <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No invoices issued yet.</div>
+                  ) : (
+                    selectedExpDocs.docs.invoices?.map(i => (
+                      <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.35rem 0', borderBottom: '1px solid hsla(var(--border), 0.3)', fontSize: '0.8rem' }}>
+                        <div>
+                          <strong>#{i.id}</strong>
+                          <span style={{ color: '#94a3b8', marginLeft: '0.3rem' }}>({i.invoice_date})</span>
+                        </div>
+                        <span style={{ color: '#fbbf24', fontWeight: 'bold' }}>{formatAmount(i.amount)}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* SUPPLIER PURCHASE ORDERS */}
+              <div className="card" style={{ padding: '1rem', background: 'hsla(var(--border), 0.15)', marginBottom: '1.25rem' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#f43f5e' }}>📋 Supplier POs & Sourcing ({selectedExpDocs.docs.pos?.length || 0})</h4>
+                {selectedExpDocs.docs.pos?.length === 0 ? (
+                  <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>No supplier POs recorded.</div>
+                ) : (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem' }}>
+                    {selectedExpDocs.docs.pos?.map(p => (
+                      <div key={p.id} style={{ padding: '0.45rem 0.65rem', background: 'hsla(var(--background), 0.5)', borderRadius: '6px', fontSize: '0.8rem' }}>
+                        <div style={{ fontWeight: 'bold' }}>{p.id} &bull; {p.supplier_name}</div>
+                        <div style={{ color: '#f87171', fontWeight: 'bold' }}>{formatAmount(p.total_value)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* FULL SCOPE PREVIEW */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <h4 style={{ margin: '0 0 0.4rem 0', fontSize: '0.85rem' }}>Detailed Project Scope & Audit Log</h4>
+                <div style={{ padding: '0.85rem 1rem', background: '#0f172a', color: '#cbd5e1', borderRadius: '8px', fontSize: '0.8rem', lineHeight: '1.6', whiteSpace: 'pre-wrap', maxHeight: '180px', overflowY: 'auto' }}>
+                  {selectedExpDocs.project.scope}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid hsl(var(--border))', paddingTop: '1rem' }}>
+                <button type="button" className="btn btn-primary" onClick={() => setSelectedExpDocs(null)}>
+                  Close Document Trail
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
       </div>

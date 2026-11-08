@@ -163,6 +163,11 @@ async function initializeDB() {
     try { await db.exec(`ALTER TABLE accounts ADD COLUMN ${colDef};`); } catch(e) {}
   }
 
+  const expCols = ['tender_id TEXT', 'documents_info TEXT'];
+  for (const colDef of expCols) {
+    try { await db.exec(`ALTER TABLE company_experience ADD COLUMN ${colDef};`); } catch(e) {}
+  }
+
   const accountsCount = await db.get('SELECT COUNT(*) as count FROM accounts');
   if (accountsCount.count === 0) {
     await db.exec(`
@@ -1200,6 +1205,98 @@ app.post('/api/tenders', validate(TenderSchema), async (req, res) => {
   res.status(201).json(newTender);
 });
 
+// Auto-log completed tender and all its documents information to company_experience
+async function logTenderToExperience(tenderId) {
+  const tender = await db.get('SELECT *, client_name as client FROM tenders WHERE id = ?', [tenderId]);
+  if (!tender) return null;
+
+  // 1. Gather all documents associated with this tender
+  const [lpos, quotes, rfqs, pos, deliverables, invoices] = await Promise.all([
+    db.all('SELECT * FROM client_lpos WHERE tender_id = ? ORDER BY issue_date DESC, created_at DESC', [tenderId]),
+    db.all('SELECT * FROM sales_quotes WHERE tender_id = ? ORDER BY issue_date DESC, created_at DESC', [tenderId]),
+    db.all('SELECT * FROM rfqs WHERE tender_id = ? ORDER BY created_at DESC', [tenderId]),
+    db.all('SELECT * FROM purchase_orders WHERE tender_id = ? ORDER BY created_at DESC', [tenderId]),
+    db.all('SELECT * FROM deliverables WHERE tender_id = ? ORDER BY created_at DESC', [tenderId]),
+    db.all('SELECT * FROM client_invoices WHERE tender_id = ? ORDER BY invoice_date DESC, created_at DESC', [tenderId])
+  ]);
+
+  // Evidence files (GDNs, completion notes)
+  const evidenceList = await db.all(`
+    SELECT e.* FROM evidence e
+    JOIN deliverables d ON e.deliverable_id = d.id
+    WHERE d.tender_id = ?
+    ORDER BY e.created_at DESC
+  `, [tenderId]);
+
+  // Determine actual contract/executed value
+  let totalValue = Number(tender.contract_value) || 0;
+  if (totalValue <= 0) {
+    const lpoSum = lpos.reduce((sum, l) => sum + (Number(l.total_value) || 0), 0);
+    const quoteSum = quotes.reduce((sum, q) => sum + (Number(q.total_value) || 0), 0);
+    const invSum = invoices.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+    totalValue = lpoSum || quoteSum || invSum || 0;
+  }
+
+  // Construct structured documents_info JSON
+  const docsInfo = {
+    tender_id: tenderId,
+    client_reference: tender.client_reference || '',
+    category: tender.category || 'Framework Contracting',
+    lpos: lpos.map(l => ({ id: l.id, issue_date: l.issue_date, total_value: l.total_value, client_reference: l.client_reference })),
+    quotes: quotes.map(q => ({ id: q.id, issue_date: q.issue_date, total_value: q.total_value, status: q.status })),
+    rfqs: rfqs.map(r => ({ id: r.id, deadline: r.deadline, status: r.status })),
+    pos: pos.map(p => ({ id: p.id, supplier_name: p.supplier_name, total_value: p.total_value, status: p.status })),
+    deliverables: deliverables.map(d => ({ id: d.id, description: d.description, status: d.status, planned_date: d.planned_date })),
+    invoices: invoices.map(i => ({ id: i.id, amount: i.amount, invoice_date: i.invoice_date, status: i.status })),
+    evidence: evidenceList.map(ev => ({ id: ev.id, type: ev.type, details: ev.details, file_url: ev.file_url }))
+  };
+
+  // Build human-readable scope summary and document audit trail
+  let scopeSummary = `Completed ${tender.category || 'Tender'} executed for ${tender.client_name || tender.client || 'Client'}.`;
+  if (tender.client_reference) {
+    scopeSummary += ` Client Contract / Ref: ${tender.client_reference}.`;
+  }
+  scopeSummary += `\n\n📌 PROJECT DOCUMENTS AUDIT TRAIL:`;
+
+  if (lpos.length > 0) {
+    scopeSummary += `\n• Official Client LPOs (${lpos.length}): ` + lpos.map(l => `#${l.id}${l.client_reference ? ` (Ref: ${l.client_reference})` : ''} - KES ${Number(l.total_value || 0).toLocaleString()}`).join('; ');
+  }
+  if (quotes.length > 0) {
+    scopeSummary += `\n• Sales Quotations (${quotes.length}): ` + quotes.map(q => `#${q.id} - KES ${Number(q.total_value || 0).toLocaleString()}`).join('; ');
+  }
+  if (deliverables.length > 0) {
+    scopeSummary += `\n• Completed Deliverables & GDNs (${deliverables.length}): ` + deliverables.map(d => `${d.id} (${d.description}) [${d.status}]`).join('; ');
+  }
+  if (invoices.length > 0) {
+    scopeSummary += `\n• Client Invoices (${invoices.length}): ` + invoices.map(i => `#${i.id} - KES ${Number(i.amount || 0).toLocaleString()} [${i.status || 'Issued'}]`).join('; ');
+  }
+  if (pos.length > 0) {
+    scopeSummary += `\n• Sourcing Purchase Orders (${pos.length}): ` + pos.map(p => `#${p.id} (${p.supplier_name} - KES ${Number(p.total_value || 0).toLocaleString()})`).join('; ');
+  }
+
+  const completionCert = evidenceList.find(e => e.file_url)?.file_url || null;
+  const existing = await db.get('SELECT id FROM company_experience WHERE tender_id = ? OR id = ?', [tenderId, `EXP-${tenderId}`]);
+  const expId = existing ? existing.id : `EXP-${tenderId}`;
+  const completionDate = tender.completion_date || (tender.updated_at ? String(tender.updated_at).split(' ')[0] : new Date().toISOString().split('T')[0]);
+
+  if (existing) {
+    await db.run(
+      `UPDATE company_experience 
+       SET project_name = ?, client_name = ?, contract_value = ?, completion_date = ?, scope = ?, documents_info = ?, completion_certificate_url = COALESCE(completion_certificate_url, ?)
+       WHERE id = ?`,
+      [tender.name, tender.client_name || tender.client || 'Client', totalValue, completionDate, scopeSummary, JSON.stringify(docsInfo), completionCert, expId]
+    );
+  } else {
+    await db.run(
+      `INSERT INTO company_experience (id, tender_id, project_name, client_name, contract_value, completion_date, scope, documents_info, completion_certificate_url)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [expId, tenderId, tender.name, tender.client_name || tender.client || 'Client', totalValue, completionDate, scopeSummary, JSON.stringify(docsInfo), completionCert]
+    );
+  }
+
+  return await db.get('SELECT * FROM company_experience WHERE id = ?', [expId]);
+}
+
 app.put('/api/tenders/:id', async (req, res) => {
   const { id } = req.params;
   const { name, client, client_reference, category, contract_type, contract_period, contract_value, status } = req.body;
@@ -1219,8 +1316,50 @@ app.put('/api/tenders/:id', async (req, res) => {
     [name, client, client_reference, category, contract_type, contract_period, contract_value, status, id]
   );
 
+  // Automatically log to company_experience if marked as Completed
+  if (status === 'Completed') {
+    try {
+      await logTenderToExperience(id);
+    } catch (expErr) {
+      console.error('Error auto-logging completed tender to company_experience:', expErr.message);
+    }
+  }
+
   const updated = await db.get('SELECT *, client_name as client FROM tenders WHERE id = ?', [id]);
   res.json(updated);
+});
+
+// POST /api/tenders/:id/complete-and-log-experience (1-Click Mark Completed & Log to Past Experience)
+app.post('/api/tenders/:id/complete-and-log-experience', async (req, res) => {
+  const { id } = req.params;
+  await db.run("UPDATE tenders SET status = 'Completed', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+  const exp = await logTenderToExperience(id);
+  const updatedTender = await db.get('SELECT *, client_name as client FROM tenders WHERE id = ?', [id]);
+  res.json({
+    success: true,
+    message: `Tender '${updatedTender.name}' successfully marked as Completed and logged to Past Experience with all documents!`,
+    tender: updatedTender,
+    experience: exp
+  });
+});
+
+// POST /api/experience/sync-completed-tenders (Sync all completed tenders into company_experience)
+app.post('/api/experience/sync-completed-tenders', async (req, res) => {
+  const tenders = await db.all("SELECT id FROM tenders WHERE status = 'Completed'");
+  let count = 0;
+  for (const t of tenders) {
+    await logTenderToExperience(t.id);
+    count++;
+  }
+  const allExp = await db.all('SELECT * FROM company_experience ORDER BY completion_date DESC');
+  res.json({ success: true, count, message: `Synced ${count} completed tender(s) into company experience.`, experience: allExp });
+});
+
+// POST /api/experience/sync-tender/:id (Force sync any tender into company_experience)
+app.post('/api/experience/sync-tender/:id', async (req, res) => {
+  const { id } = req.params;
+  const exp = await logTenderToExperience(id);
+  res.json({ success: true, message: `Tender #${id} documents synced to company experience!`, experience: exp });
 });
 
 app.delete('/api/tenders/:id', async (req, res) => {
