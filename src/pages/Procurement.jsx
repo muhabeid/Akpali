@@ -7,6 +7,7 @@ import DocumentPreviewModal from '../components/DocumentPreviewModal'
 import QuotationEvaluationMatrixModal from '../components/QuotationEvaluationMatrixModal'
 import { useRole } from '../context/RoleContext'
 import { useCurrency } from '../context/CurrencyContext'
+import { ShoppingCart, PlusCircle, FileText, Truck, Send } from 'lucide-react'
 
 export default function Procurement({ setGlobalDrawer }) {
   const { currentRole } = useRole()
@@ -246,6 +247,44 @@ export default function Procurement({ setGlobalDrawer }) {
         }} />
       </Drawer>
 
+      {/* PROCUREMENT MODULE TOP HEADER */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid hsl(var(--border))', paddingBottom: '1.25rem' }}>
+        <div>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: 'hsl(var(--primary))', fontSize: '1.5rem', fontWeight: '800' }}>
+            <ShoppingCart size={24} /> Procurement & Supply Chain
+          </h2>
+          <p style={{ color: 'hsl(var(--text-secondary))', marginTop: '0.25rem', fontSize: '0.875rem' }}>
+            Manage supplier RFQs, purchase orders (POs), site material receipts (GRN), and warehouse inventory.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button 
+            type="button"
+            className="btn btn-primary" 
+            onClick={() => setRFQDrawerOpen(true)} 
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 'bold' }}
+          >
+            <PlusCircle size={16} /> Generate RFQ from LPO
+          </button>
+          <button 
+            type="button"
+            className="btn btn-primary" 
+            onClick={() => setGRNDrawerOpen(true)} 
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 'bold' }}
+          >
+            <PlusCircle size={16} /> Record GRN (Delivery)
+          </button>
+          <button 
+            type="button"
+            className="btn btn-primary" 
+            onClick={() => setGlobalDrawer('new_po')} 
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 'bold' }}
+          >
+            <PlusCircle size={16} /> Raise PO
+          </button>
+        </div>
+      </div>
+
       {/* DYNAMIC STAT CARDS WITH RESPONSIVE AUTO-FIT GRID */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
         <div className="card stat-card">
@@ -272,7 +311,9 @@ export default function Procurement({ setGlobalDrawer }) {
                 <h3 style={{ margin: 0 }}>Requests for Quotation (RFQs)</h3>
                 <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginTop: '0.25rem' }}>Active sourcing requests sent to suppliers.</p>
               </div>
-              <button className="btn btn-primary" onClick={() => setRFQDrawerOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>+ Generate RFQ from LPO</button>
+              <button type="button" className="btn btn-primary" onClick={() => setRFQDrawerOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 'bold' }}>
+                <PlusCircle size={16} /> Generate RFQ from LPO
+              </button>
             </div>
           </div>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -400,8 +441,12 @@ export default function Procurement({ setGlobalDrawer }) {
                 <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.875rem', marginTop: '0.25rem' }}>Track all material orders raised to suppliers.</p>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                <button className="btn btn-primary" onClick={() => setGRNDrawerOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>+ Record GRN (Delivery)</button>
-                <button className="btn btn-primary" onClick={() => setGlobalDrawer('new_po')}>+ Raise PO</button>
+                <button type="button" className="btn btn-primary" onClick={() => setGRNDrawerOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 'bold' }}>
+                  <PlusCircle size={16} /> Record GRN (Delivery)
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => setGlobalDrawer('new_po')} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', fontWeight: 'bold' }}>
+                  <PlusCircle size={16} /> Raise PO
+                </button>
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
@@ -567,7 +612,7 @@ export default function Procurement({ setGlobalDrawer }) {
               <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#4A8BCE' }}>🏢 Client & Customer Directory</h3>
               <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.8rem', marginTop: '0.2rem' }}>Registered project clients, tax PINs & contacts.</p>
             </div>
-            <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', fontWeight: 'bold' }} onClick={() => setGlobalDrawer('new_client')}>+ Add Client</button>
+            <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', fontWeight: 'bold' }} onClick={() => setGlobalDrawer('new_client')}><PlusCircle size={14} style={{ marginRight: '0.35rem' }} /> Add Client</button>
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
@@ -609,7 +654,7 @@ export default function Procurement({ setGlobalDrawer }) {
               <h3 style={{ margin: 0, fontSize: '1.05rem', color: '#4A8BCE' }}>🏭 Supplier & Vendor Directory</h3>
               <p style={{ color: 'hsl(var(--text-secondary))', fontSize: '0.8rem', marginTop: '0.2rem' }}>Approved vendors, KRA PINs & ratings.</p>
             </div>
-            <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', fontWeight: 'bold' }} onClick={() => setGlobalDrawer('new_supplier')}>+ Add Supplier</button>
+            <button className="btn btn-primary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', fontWeight: 'bold' }} onClick={() => setGlobalDrawer('new_supplier')}><PlusCircle size={14} style={{ marginRight: '0.35rem' }} /> Add Supplier</button>
           </div>
 
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
